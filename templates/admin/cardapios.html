@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="fade-in">
+    <div style="margin-bottom: 2rem;">
+        <a href="{{ url_for('admin_dashboard') }}" style="color: var(--text-muted); display: inline-flex; align-items: center;"><i class="ph ph-arrow-left" style="margin-right: 4px;"></i> Voltar ao Painel</a>
+        <h1 style="margin-top: 1rem;"><i class="ph ph-calendar-plus"></i> Gerenciar Cardápios</h1>
+    </div>
+
+    <div class="grid">
+        <div class="card">
+            <h2>Novo Cardápio</h2>
+            <form method="POST" action="{{ url_for('admin_cardapios') }}">
+                <div class="form-group">
+                    <label for="data">Data do Almoço</label>
+                    <input type="date" id="data" name="data" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="descricao">Descrição / Comida (Ex: Arroz, Feijão, Frango e Salada)</label>
+                    <input type="text" id="descricao" name="descricao" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%;"><i class="ph ph-plus-circle" style="margin-right: 8px;"></i> Adicionar Cardápio</button>
+            </form>
+            
+            <div class="alert alert-info" style="margin-top: 1.5rem; font-size: 0.9rem;">
+                <strong>Dica:</strong> Uma vez cadastrado, alunos já visualizarão!
+            </div>
+        </div>
+
+        <div class="card" style="grid-column: span 2;">
+            <h2>Cardápios e Refeições</h2>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Descrição</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in cardapios %}
+                        <tr>
+                            <td style="vertical-align: middle;"><strong>{{ c.data | datetimeformat }}</strong></td>
+                            
+                            <!-- Formulário de Edição Inline -->
+                            <td style="vertical-align: middle;">
+                                <form method="POST" action="{{ url_for('admin_cardapios_editar', id=c.id) }}" style="display: flex; gap: 0.5rem;" id="form-edit-{{ c.id }}">
+                                    <input type="text" name="descricao" value="{{ c.descricao }}" required style="padding: 0.25rem 0.5rem; font-size: 0.9rem;">
+                                </form>
+                            </td>
+                            
+                            <td style="vertical-align: middle; white-space: nowrap;">
+                                <button type="submit" form="form-edit-{{ c.id }}" class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; border-radius: 4px;" title="Salvar Edição">
+                                    <i class="ph ph-floppy-disk"></i> Salvar
+                                </button>
+                                
+                                <form method="POST" action="{{ url_for('admin_cardapios_excluir', id=c.id) }}" style="display: inline-block;">
+                                    <button type="submit" class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; border-radius: 4px;" onclick="return confirm('Deseja realmente excluir este cardápio?');" title="Excluir">
+                                        <i class="ph ph-trash"></i> Excluir
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="3" style="text-align: center; color: var(--text-muted);">Nenhum cardápio cadastrado.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

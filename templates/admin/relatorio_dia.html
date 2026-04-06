@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="fade-in">
+    <div style="margin-bottom: 2rem;" class="no-print">
+        <a href="{{ url_for('admin_relatorios') }}" style="color: var(--text-muted); display: inline-flex; align-items: center;"><i class="ph ph-arrow-left" style="margin-right: 4px;"></i> Voltar a Lista</a>
+        <h1 style="margin-top: 1rem;"><i class="ph ph-receipt"></i> Relatório de Refeições</h1>
+        <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+            <button onclick="window.print()" class="btn btn-secondary"><i class="ph ph-printer" style="margin-right: 8px;"></i> Imprimir / PDF</button>
+            <a href="{{ url_for('admin_relatorio_excel', cardapio_id=cardapio.id) }}" class="btn" style="background: #1D6F42; color: white;"><i class="ph ph-file-xls" style="margin-right: 8px;"></i> Baixar Planilha (Excel)</a>
+        </div>
+    </div>
+
+    <!-- Cabeçalho de Impressão -->
+    <div class="print-header" style="text-align: center; margin-bottom: 2rem;">
+        <h2 style="font-size: 1.5rem; margin-bottom: 0.5rem;">Fornecimento de Almoço Escolar</h2>
+        <p style="font-size: 1.25rem;">Data da Distribuição: <strong>{{ cardapio.data | datetimeformat }}</strong></p>
+        <p style="color: var(--text-muted);">Cardápio Principal: {{ cardapio.descricao }}</p>
+    </div>
+
+    <div class="grid" style="margin-bottom: 2rem;">
+        <div class="card" style="text-align: center; padding: 1.5rem;">
+            <p style="color: var(--text-muted); font-size: 0.9rem; text-transform: uppercase;">Total Geral Solicitado</p>
+            <h1 style="font-size: 3rem; color: var(--primary); margin: 0;">{{ total_geral }}</h1>
+            <p style="font-size: 0.85rem; margin-top: 0.5rem; color: var(--text-muted);">Pratos Previstos</p>
+        </div>
+        
+        <div class="card" style="text-align: center; padding: 1.5rem;">
+            <p style="color: var(--text-muted); font-size: 0.9rem; text-transform: uppercase;">Já Consumido / Entregue</p>
+            <h1 style="font-size: 3rem; color: var(--secondary); margin: 0;">{{ total_consumidas }}</h1>
+            <p style="font-size: 0.85rem; margin-top: 0.5rem; color: var(--text-muted);">Baixas via QR Code</p>
+        </div>
+    </div>
+
+    <!-- Filtros de Pesquisa (Não aparecem na impressão) -->
+    <div class="card no-print" style="margin-bottom: 2rem; background: #f8fafc;">
+        <h4 style="margin-bottom: 1rem;"><i class="ph ph-funnel"></i> Filtrar Resultados</h4>
+        <form method="GET" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: flex-end;">
+            <div class="form-group" style="margin-bottom: 0;">
+                <label>Filtrar por Turma</label>
+                <select name="turma_id" onchange="this.form.submit()">
+                    <option value="">Todas as Turmas</option>
+                    {% for t in turmas %}
+                    <option value="{{ t.id }}" {% if filtro_turma == t.id %}selected{% endif %}>{{ t.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label>Status de Consumo</label>
+                <select name="status" onchange="this.form.submit()">
+                    <option value="">Todos os Status</option>
+                    <option value="ATIVA" {% if filtro_status == 'ATIVA' %}selected{% endif %}>Apenas Pendentes</option>
+                    <option value="CONSUMIDA" {% if filtro_status == 'CONSUMIDA' %}selected{% endif %}>Apenas Entregues</option>
+                </select>
+            </div>
+            <div>
+                <a href="{{ url_for('admin_relatorio_dia', cardapio_id=cardapio.id) }}" class="btn" style="background: var(--border); color: var(--text-main); width: 100%;">Limpar Filtros</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Resumo Consolidado por Turma -->
+    <div class="card" style="margin-bottom: 2rem;">
+        <h3 style="margin-bottom: 1rem; border-bottom: 2px solid var(--primary); padding-bottom: 0.5rem;">Resumo Consolidado por Turma</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background: #f1f5f9;">
+                    <th style="padding: 0.75rem; text-align: left;">Turma / Curso</th>
+                    <th style="padding: 0.75rem; text-align: center;">Total Pedidos</th>
+                    <th style="padding: 0.75rem; text-align: center;">Total Entregue</th>
+                    <th style="padding: 0.75rem; text-align: right;">% Presença</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in resumo_turmas %}
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 0.75rem;"><strong>{{ r.turma_nome if r.turma_nome else 'Outros / Sem Turma' }}</strong></td>
+                    <td style="padding: 0.75rem; text-align: center;">{{ r.total }}</td>
+                    <td style="padding: 0.75rem; text-align: center;">{{ r.consumidas }}</td>
+                    <td style="padding: 0.75rem; text-align: right; font-weight: 600;">
+                        {% if r.total > 0 %}
+                            {{ (r.consumidas / r.total * 100) | round(1) }}%
+                        {% else %}
+                            0%
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card" style="box-shadow: none; border: 1px solid var(--border);">
+        <h3 style="margin-bottom: 1.5rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem;">Lista Nominal Detalhada</h3>
+        
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="border-bottom: 1px solid #000;">
+                    <th style="padding: 0.5rem; text-align: left; background: none; color: #000; font-weight: bold;">Estudante</th>
+                    <th style="padding: 0.5rem; text-align: left; background: none; color: #000; font-weight: bold;">Matrícula / Turma</th>
+                    <th style="padding: 0.5rem; text-align: left; background: none; color: #000; font-weight: bold;">Restrição/Dieta Extra?</th>
+                    <th style="padding: 0.5rem; text-align: left; background: none; color: #000; font-weight: bold;">Situação</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in reservas %}
+                <tr style="border-bottom: 1px dashed var(--border);">
+                    <td style="padding: 0.75rem 0.5rem; vertical-align: middle;">
+                        <span style="font-weight: 500; display: block;">{{ r.nome }}</span>
+                    </td>
+                    <td style="padding: 0.75rem 0.5rem; vertical-align: middle;">
+                        {{ r.matricula }}<br><small style="color:var(--text-muted);">{{ r.turma_nome or '---' }}</small>
+                    </td>
+                    <td style="padding: 0.75rem 0.5rem; vertical-align: middle;">
+                        {% if r.restricoes %}
+                            <strong style="color: var(--danger); font-size: 0.95rem;">✓ {{ r.restricoes }}</strong>
+                        {% else %}
+                            <span style="color: var(--text-muted);">Padrão</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 0.75rem 0.5rem; vertical-align: middle;">
+                        {% if r.status == 'CONSUMIDA' %}
+                        <span style="color: #059669; font-weight: 600;">(Entregue)</span>
+                        {% else %}
+                        <span style="color: #4F46E5; font-weight: 600;">Pendente de Retirada</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                        Nenhum registro encontrado para os filtros aplicados.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+@media print {
+    body { background: white; color: black; }
+    .navbar, .no-print { display: none !important; }
+    .card { box-shadow: none !important; border: 1px solid #ccc !important; page-break-inside: avoid; }
+    main { padding: 0 !important; max-width: 100% !important; }
+    .grid { gap: 1rem; }
+}
+</style>
+{% endblock %}

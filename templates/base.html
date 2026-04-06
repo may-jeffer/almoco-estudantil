@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ global_config.nome_sistema if global_config else 'Cantina Estudantil' }}{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <!-- Phosphor Icons para iconografia moderna -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+<body>
+    {% block navbar %}
+    <nav class="navbar">
+        <div class="navbar-brand" style="display: flex; align-items: center; gap: 10px;">
+            {% if global_config.logo_path %}
+                <img src="{{ global_config.logo_path }}" alt="Logo" style="height: 35px; width: auto; object-fit: contain;">
+            {% else %}
+                <i class="ph ph-fork-knife"></i>
+            {% endif %}
+            <span>{{ global_config.nome_sistema if global_config else 'Cantina Estudantil' }}</span>
+        </div>
+        <div class="navbar-links">
+            {% if session.get('aluno_id') %}
+                <span>Olá, {{ session.get('aluno_nome') }}</span>
+                <a href="{{ url_for('logout') }}" class="btn btn-danger" style="padding: 0.5rem 1rem; border-radius: 6px;">Sair</a>
+            {% elif session.get('is_admin') %}
+                <a href="{{ url_for('admin_dashboard') }}">Painel</a>
+                {% if tem_permissao('fila') %}
+                    <a href="{{ url_for('admin_entrega') }}">Fila de Entrega</a>
+                {% endif %}
+                <a href="{{ url_for('admin_logout') }}" class="btn btn-danger" style="padding: 0.5rem 1rem; border-radius: 6px;">Sair</a>
+            {% endif %}
+        </div>
+    </nav>
+    {% endblock %}
+
+    <main>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="alerts fade-in">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            {% if category == 'success' %}<i class="ph ph-check-circle"></i>{% endif %}
+                            {% if category == 'error' %}<i class="ph ph-warning-circle"></i>{% endif %}
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

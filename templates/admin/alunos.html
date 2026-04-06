@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="fade-in">
+    <div style="margin-bottom: 2rem;">
+        <a href="{{ url_for('admin_dashboard') }}" style="color: var(--text-muted); display: inline-flex; align-items: center;"><i class="ph ph-arrow-left" style="margin-right: 4px;"></i> Voltar ao Painel</a>
+        <h1 style="margin-top: 1rem;"><i class="ph ph-student"></i> Gerenciar Alunos</h1>
+    </div>
+
+    <!-- Área de Importação Massiva (CSV) -->
+    <div class="card" style="background: linear-gradient(to right, var(--primary), var(--primary-hover)); color: white; margin-bottom: 2rem;">
+        <h2 style="color: white; margin-bottom: 0.5rem;"><i class="ph ph-file-csv" style="margin-right: 8px;"></i> Importação em Lote via Planilha</h2>
+        <p style="margin-bottom: 1.5rem; font-size: 0.95rem; opacity: 0.9;">Utilize essa ferramenta para importar alunos rapidamente. Respeite sempre a formatação de colunas do modelo oficial.</p>
+        
+        <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+            <a href="{{ url_for('admin_alunos_csv_template') }}" class="btn" style="background: white; color: var(--primary); font-weight: bold;">
+                <i class="ph ph-download-simple" style="margin-right: 8px;"></i> Baixar Modelo (CSV)
+            </a>
+            
+            <form method="POST" action="{{ url_for('admin_alunos_importar') }}" enctype="multipart/form-data" style="display: flex; gap: 0.5rem; background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 8px; flex: 1;">
+                <input type="file" name="arquivo_csv" accept=".csv" required style="color: white; border: none; padding: 0.5rem;">
+                <button type="submit" class="btn" style="background: var(--secondary); color: white;">
+                    <i class="ph ph-upload-simple" style="margin-right: 8px;"></i> Importar Alunos
+                </button>
+            </form>
+        </div>
+        
+        <div style="margin-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 1rem; text-align: right;">
+            <button onclick="document.getElementById('suapModal').style.display='block'" class="btn" style="background: transparent; border: 1px dashed white; color: white; opacity: 1;">
+                <i class="ph ph-plugs-connected" style="margin-right: 8px;"></i> Conectar Turma via SUAP API
+            </button>
+        </div>
+    </div>
+    
+    <!-- Modal SUAP -->
+    <div id="suapModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center;">
+        <div class="card fade-in" style="background: white; border-radius: 12px; width: 100%; max-width: 500px; padding: 2rem; margin: auto; position: relative; top: 15%;">
+            <h2 style="color: var(--primary); margin-bottom: 1rem;"><i class="ph ph-plugs-connected"></i> Sincronização SUAP</h2>
+            <p style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 1.5rem;">Crie a ponte direta com os dados dos alunos baseando-se no Token de Acesso do SUAP.</p>
+            
+            <form method="POST" action="{{ url_for('admin_alunos_suap_sync') }}">
+                <div class="form-group">
+                    <label>URL Endpoint (Alunos da Turma)</label>
+                    <input type="url" name="api_url" value="https://suap.ifap.edu.br/api/v2/edu/alunos/" required>
+                </div>
+                <div class="form-group">
+                    <label>Token de Acesso Bearer</label>
+                    <input type="text" name="token" placeholder="Insira o Token Gerado no SUAP..." required>
+                </div>
+                <div class="form-group">
+                    <label>Turma de Destino no Sistema Local</label>
+                    <select name="turma_id" required>
+                        <option value="">-- Selecione a Turma a preencher --</option>
+                        {% for t in turmas %}
+                        <option value="{{ t.id }}">{{ t.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                    <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="document.getElementById('suapModal').style.display='none'">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" style="flex: 1;"><i class="ph ph-arrows-clockwise" style="margin-right: 8px;"></i> Sincronizar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="grid" style="grid-template-columns: 1fr 2fr;">
+        <!-- Card do Formulário Manual -->
+        <div class="card">
+            <h2>Novo Aluno</h2>
+            <form method="POST" action="{{ url_for('admin_alunos') }}">
+                <div class="form-group">
+                    <label for="nome">Nome Completo</label>
+                    <input type="text" id="nome" name="nome" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="matricula">Matrícula</label>
+                    <input type="text" id="matricula" name="matricula" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="cpf">CPF do Estudante</label>
+                    <input type="text" id="cpf" name="cpf" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="data_nascimento">Data de Nascimento</label>
+                    <input type="date" id="data_nascimento" name="data_nascimento" required>
+                </div>
+                
+                <div class="form-group" style="grid-column: span 2;">
+                    <label for="email">E-mail do Aluno (Opcional, para Recuperação de Senha)</label>
+                    <input type="email" id="email" name="email" placeholder="aluno@ifap.edu.br">
+                </div>
+                
+                <div class="form-group" style="grid-column: span 2;">
+                    <label for="turma_id">Turma do Aluno</label>
+                    <select id="turma_id" name="turma_id" required>
+                        <option value="">Ainda nâo definido</option>
+                        {% for t in turmas %}
+                            <option value="{{ t.id }}">{{ t.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="restricoes">Restrições / Especificidades Alimentares (Opcional)</label>
+                    <input type="text" id="restricoes" name="restricoes" placeholder="Ex: Intolerância à lactose, Vegano...">
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%;"><i class="ph ph-user-plus" style="margin-right: 8px;"></i> Cadastrar Aluno</button>
+            </form>
+        </div>
+
+        <!-- Lista de Alunos -->
+        <div class="card">
+            <h2>Alunos Cadastrados</h2>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>CPF</th>
+                            <th>Nº Matr.</th>
+                            <th>Nascimento</th>
+                            <th>Ações</th>
+                            <th>Restrições</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for a in alunos %}
+                        <tr>
+                            <td>
+                                <strong>{{ a.nome }}</strong><br>
+                                <span style="font-size: 0.85rem; color: var(--text-muted);">
+                                    Matr.: {{ a.matricula }} | CPF: {{ a.cpf }} <br>
+                                    Turma: {{ a.turma_nome if a.turma_nome else '---' }} <br>
+                                    Email: {{ a.email if a.email else 'Não cadastrado' }}
+                                </span>
+                            </td>
+                            <td>{{ a.cpf }}</td>
+                            <td>{{ a.matricula }}</td>
+                            <td>{{ a.data_nascimento|datetimeformat }}</td>
+                            <td>
+                                {% if global_config.modo_login_aluno == 'SENHA' and a.senha_hash %}
+                                <form method="POST" action="{{ url_for('admin_alunos_resetar_senha', id=a.id) }}" style="display:inline;">
+                                    <button type="submit" class="btn" style="background:var(--warning); color:black; font-size: 0.75rem; padding: 0.25rem 0.5rem;" title="O aluno precisará recadastrar a senha na próxima vez que logar." onclick="return confirm('Deseja resetar a senha deste aluno para a Data de Nascimento?');">Resetar Senha</button>
+                                </form>
+                                {% endif %}
+                                <button class="btn" style="background: transparent; border: 1px solid var(--border); color: var(--text); font-size: 0.75rem; padding: 0.25rem 0.5rem;"><i class="ph ph-pencil-simple"></i></button>
+                            </td>
+                            <td>
+                                {% if a.restricoes %}
+                                    <span class="badge" style="background: #FEE2E2; color: #991B1B;">{{ a.restricoes }}</span>
+                                {% else %}
+                                    <span style="color: var(--text-muted); font-size: 0.9rem;">Nenhuma</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" style="text-align: center; color: var(--text-muted);">Nenhum aluno cadastrado.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block title %}Redefinir Senha - {{ global_config.nome_sistema if global_config else 'Cantina IFAP' }}{% endblock %}
+
+{% block navbar %}
+<nav class="navbar" style="justify-content: center;">
+    <div class="navbar-brand">
+        <i class="ph ph-shield-check" style="margin-right: 8px;"></i> Segurança Refeita
+    </div>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: center; align-items: center; min-height: 80vh;">
+    <div class="card fade-in" style="max-width: 400px; width: 100%; border-top: 5px solid var(--primary);">
+        <h2 style="text-align: center; color: var(--primary); margin-bottom: 0.5rem;"><i class="ph ph-key"></i> Forjar Novo Escudo</h2>
+        <p style="text-align: center; color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem;">
+            Acesso franqueado, {{ aluno.nome.split(' ')[0] }}. Como prometido, crie agora sua nova senha resistente!
+        </p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} fade-in">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('recuperar_senha', token=token) }}">
+            <div class="form-group">
+                <label for="nova_senha">Nova Senha</label>
+                <input type="password" id="nova_senha" name="nova_senha" required placeholder="Mínimo 6 caracteres" minlength="6">
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; font-size: 1.1rem; padding: 0.8rem; margin-top: 1rem;">
+                <i class="ph ph-lock-key" style="margin-right: 8px;"></i> Salvar e Entrar na Fila
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

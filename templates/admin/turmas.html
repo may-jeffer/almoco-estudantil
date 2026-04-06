@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="fade-in">
+    <div style="margin-bottom: 2rem;">
+        <a href="{{ url_for('admin_dashboard') }}" style="color: var(--text-muted); display: inline-flex; align-items: center;"><i class="ph ph-arrow-left" style="margin-right: 4px;"></i> Voltar ao Painel</a>
+        <h1 style="margin-top: 1rem;"><i class="ph ph-chalkboard-teacher"></i> Gerenciar Turmas</h1>
+    </div>
+
+    <div class="grid">
+        <div class="card">
+            <h2>Nova Turma</h2>
+            <form method="POST" action="{{ url_for('admin_turmas') }}">
+                <div class="form-group">
+                    <label for="nome">Nome da Turma (Ex: Informática 1º Ano)</label>
+                    <input type="text" id="nome" name="nome" required>
+                </div>
+                <button type="submit" class="btn btn-primary"><i class="ph ph-plus-circle" style="margin-right: 8px;"></i> Cadastrar Turma</button>
+            </form>
+        </div>
+
+        <div class="card" style="grid-column: span 2;">
+            <h2>Turmas Cadastradas</h2>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nome</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for t in turmas %}
+                        <tr>
+                            <td>#{{ t.id }}</td>
+                            <td><strong>{{ t.nome }}</strong></td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="2" style="text-align: center; color: var(--text-muted);">Nenhuma turma cadastrada.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="fade-in">
+    <div style="margin-bottom: 1.5rem; text-align: center;">
+        <div style="text-align: left; margin-bottom: 1rem; clear: both; overflow: hidden;">
+            {% if session.get('admin_perfil') == 'admin_mestre' %}
+            <a href="{{ url_for('admin_dashboard') }}" style="color: var(--text-muted); display: inline-flex; align-items: center; text-decoration: none; float: left;">
+                <i class="ph ph-arrow-left" style="margin-right: 4px;"></i> Voltar ao Painel
+            </a>
+            {% endif %}
+            
+            <a href="{{ url_for('admin_logout') }}" style="color: var(--danger); display: inline-flex; align-items: center; text-decoration: none; float: right;">
+                <i class="ph ph-sign-out" style="margin-right: 4px;"></i> Sair da Contra
+            </a>
+        </div>
+        <h1 style="margin-top: 1rem; clear: both;"><i class="ph ph-qr-code"></i> Ponto de Controle</h1>
+    </div>
+
+    {% if https_alert %}
+    <div class="alert alert-warning" style="margin-bottom: 2rem;">
+        <i class="ph ph-warning-circle" style="font-size: 1.5rem;"></i>
+        <div>
+            <strong>Aviso de Câmera bloqueada pelo celular:</strong><br>
+            Você está acessando em HTTP. Navegadores mobile bloqueiam a câmera. Utilize a URL `https://`
+        </div>
+    </div>
+    {% endif %}
+
+    {% if cardapio_hoje %}
+    <!-- Container para Mensagens Flutuantes (AJAX) -->
+    <div id="liveAlertPlaceholder" style="position: fixed; top: 20px; right: 20px; z-index: 9999; max-width: 350px;"></div>
+
+    <!-- 1. BLOCO DA CÂMERA -->
+    <div class="card" style="display: flex; flex-direction: column; align-items: center; border: 2px solid var(--primary); padding-bottom: 1rem;">
+        <h2 style="font-size: 1.25rem;"><i class="ph ph-camera"></i> Escanear Ticket (QR Code)</h2>
+        <div id="reader" style="width: 100%; max-width: 400px; border-radius: 8px; overflow: hidden; margin-top: 0.5rem;"></div>
+    </div>
+    
+    <!-- 2. BLOCO CÓDIGO MANUAL -->
+    <div class="card" style="padding: 1rem 2rem;">
+        <form id="form-baixa-ajax" style="display: flex; gap: 0.5rem; align-items: flex-end;">
+            <input type="hidden" id="cardapio_id" value="{{ cardapio_hoje.id }}">
+            <div class="form-group" style="flex: 1; margin: 0;">
+                <label for="codigo_unico" style="font-size: 0.85rem;">Ou digite o Código Manual</label>
+                <input type="text" id="codigo_unico" style="text-transform: uppercase; font-size: 1.2rem; letter-spacing: 0.1em;" required placeholder="XXXXXX">
+            </div>
+            <button type="submit" class="btn btn-primary" style="padding: 0.8rem 1rem;"><i class="ph ph-arrow-right"></i> Baixar</button>
+        </form>
+    </div>
+
+    <!-- 3. BLOCO BUSCA LISTA AO VIVO -->
+    <div class="card">
+        <h2 style="font-size: 1.25rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;"><i class="ph ph-magnifying-glass"></i> Busca Rápida na Lista do Dia</h2>
+        <input type="text" id="searchBox" placeholder="Digite o nome do aluno ou matrícula..." style="margin-top: 1rem; margin-bottom: 1rem; font-size: 1.1rem; padding: 1rem; border-radius: 12px; background: #FAFAFA;">
+        
+        <div id="studentListContainer" style="max-height: 400px; overflow-y: auto;">
+            {% for r in reservas_hoje %}
+            <div class="aluno-fila-item" id="item-{{ r.codigo_unico }}" data-nome="{{ r.nome.lower() }}" data-mat="{{ r.matricula.lower() }}" style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px dashed var(--border);">
+                <div style="flex: 1;">
+                    <strong style="display: block; font-size: 1.1rem;">{{ r.nome }}</strong>
+                    <span style="color: var(--text-muted); font-size: 0.85rem;">Mat: {{ r.matricula }} • Cód: {{ r.codigo_unico }}</span>
+                </div>
+                <div class="status-col">
+                    {% if r.status == 'CONSUMIDA' %}
+                        <span class="badge" style="background: #E5E7EB; color: #374151;">Entregue <i class="ph ph-check"></i></span>
+                    {% else %}
+                        <button onclick="submitManualCode('{{ r.codigo_unico }}')" class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.85rem;"><i class="ph ph-check-square"></i> Dar Baixa</button>
+                    {% endif %}
+                </div>
+            </div>
+            {% else %}
+            <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                Nenhum aluno com reserva válida hoje.
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-warning" style="justify-content: center; padding: 2rem;">
+        <i class="ph ph-warning-circle" style="font-size: 2rem;"></i>
+        <div style="text-align: center;">
+            <strong style="display:block; font-size: 1.2rem;">Não há almoço hoje!</strong>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+<script>
+    function showAlert(message, type) {
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = `
+            <div class="alert alert-${type} fade-in" style="box-shadow: var(--shadow-lg);">
+                <div>${message}</div>
+                <button type="button" onclick="this.parentElement.remove()" style="background:none; border:none; margin-left:10px; cursor:pointer;">&times;</button>
+            </div>
+        `;
+        const container = document.getElementById('liveAlertPlaceholder');
+        container.append(wrapper);
+        setTimeout(() => { if(wrapper) wrapper.remove(); }, 5000);
+    }
+
+    async function processarBaixa(codigo) {
+        const cardapioId = document.getElementById('cardapio_id').value;
+        try {
+            const response = await fetch('/admin/api/baixar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ codigo_unico: codigo, cardapio_id: cardapioId })
+            });
+            const result = await response.json();
+            
+            if (result.success) {
+                showAlert(result.message, 'success');
+                // Atualizar a lista visual sem reload
+                const item = document.getElementById('item-' + codigo);
+                if(item){
+                    item.querySelector('.status-col').innerHTML = '<span class="badge" style="background: #E5E7EB; color: #374151;">Entregue <i class="ph ph-check"></i></span>';
+                }
+                const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+                audio.play().catch(()=>{});
+            } else {
+                showAlert(result.message, result.type || 'error');
+            }
+        } catch (error) {
+            showAlert('Erro de conexão com o servidor.', 'error');
+        }
+    }
+
+    // 1. Script Câmera
+    document.addEventListener("DOMContentLoaded", function() {
+        if(document.getElementById('reader')){
+            function onScanSuccess(decodedText, decodedResult) {
+                processarBaixa(decodedText);
+            }
+
+            let html5QrcodeScanner = new Html5QrcodeScanner(
+                "reader",
+                { fps: 10, qrbox: {width: 250, height: 250}, rememberLastUsedCamera: true },
+                false
+            );
+            html5QrcodeScanner.render(onScanSuccess, function(error){});
+        }
+        
+        // Form Manual
+        const formManual = document.getElementById('form-baixa-ajax');
+        if(formManual){
+            formManual.addEventListener('submit', function(e){
+                e.preventDefault();
+                const code = document.getElementById('codigo_unico').value.toUpperCase();
+                processarBaixa(code);
+                document.getElementById('codigo_unico').value = '';
+            });
+        }
+
+        // 2. Script Busca ao Vivo
+        const searchBox = document.getElementById('searchBox');
+        if(searchBox){
+            searchBox.addEventListener('input', function(e) {
+                const termo = e.target.value.toLowerCase().trim();
+                const itens = document.querySelectorAll('.aluno-fila-item');
+                itens.forEach(item => {
+                    const nome = item.getAttribute('data-nome');
+                    const mat = item.getAttribute('data-mat');
+                    item.style.display = (nome.includes(termo) || mat.includes(termo)) ? 'flex' : 'none';
+                });
+            });
+        }
+    });
+    
+    function submitManualCode(codigo) {
+        if(confirm('Confirmar a entrega do almoço para este aluno?')) {
+            processarBaixa(codigo);
+        }
+    }
+</script>
+{% endblock %}

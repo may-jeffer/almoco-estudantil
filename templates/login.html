@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block navbar %}{% endblock %}
+
+{% block content %}
+<div class="flex-center fade-in">
+    <div class="card" style="width: 100%; max-width: 400px;">
+        <div style="text-align: center; margin-bottom: 2rem;">
+            {% if global_config.logo_path %}
+                <img src="{{ global_config.logo_path }}" alt="Logo" style="height: 80px; width: auto; margin-bottom: 1rem; object-fit: contain;">
+            {% else %}
+                <i class="ph ph-fork-knife" style="font-size: 3rem; color: var(--primary);"></i>
+            {% endif %}
+            <h1 style="margin-top: 0.5rem; font-size: 1.5rem;">{{ global_config.nome_sistema if global_config else 'Cantina Estudantil' }}</h1>
+            <p style="color: var(--text-muted); font-size: 0.9rem;">Portal do Aluno - {{ global_config.sigla_instituicao if global_config else 'Marcar Almoço' }}</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('login') }}">
+            <div class="form-group">
+                <label for="cpf">CPF do Estudante</label>
+                <input type="text" id="cpf" name="cpf" required placeholder="000.000.000-00">
+            </div>
+
+            {% if global_config and global_config.modo_login_aluno == 'SENHA' %}
+            <div class="form-group">
+                <label for="senha">Senha de Acesso</label>
+                <input type="password" id="senha" name="senha" required placeholder="********">
+                <small style="color:var(--text-muted); display:block; margin-top:0.25rem; font-size: 0.8rem;">
+                    <strong>1º Acesso?</strong> A sua senha provisória é sua <b>Data de Nascimento</b>.
+                </small>
+                <a href="{{ url_for('esqueci_senha') }}" style="display:block; text-align:right; margin-top:0.5rem; font-size: 0.85rem; color: var(--primary); text-decoration: none;"><strong>Esqueci minha Senha</strong></a>
+            </div>
+            {% else %}
+            <div class="form-group">
+                <label for="data_nascimento">Data de Nascimento</label>
+                <input type="date" id="data_nascimento" name="data_nascimento" required>
+            </div>
+            {% endif %}
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; font-size: 1.1rem; padding: 0.8rem; margin-top: 1rem;">
+                <i class="ph ph-sign-in" style="margin-right: 8px;"></i> Acessar Cantina
+            </button>
+        </form>
+        
+        <div style="text-align: center; margin-top: 2rem;">
+            <a href="{{ url_for('admin_login') }}" style="font-size: 0.85rem; color: var(--text-muted);"><i class="ph ph-lock-key"></i> Acesso Administrativo</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

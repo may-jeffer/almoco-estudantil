@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+
+{% block title %}Primeiro Acesso - {{ global_config.nome_sistema if global_config else 'Cantina Estudantil' }}{% endblock %}
+
+{% block navbar %}
+<nav class="navbar" style="justify-content: center;">
+    <div class="navbar-brand">
+        <i class="ph ph-shield-check" style="margin-right: 8px;"></i>Configuração de Segurança
+    </div>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: center; align-items: center; min-height: 80vh;">
+    <div class="card fade-in" style="max-width: 400px; width: 100%; border-top: 5px solid var(--primary);">
+        <h2 style="text-align: center; color: var(--primary); margin-bottom: 0.5rem;"><i class="ph ph-key"></i> Defina sua Senha</h2>
+        <p style="text-align: center; color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem;">
+            Seja bem-vindo(a)! Como este é o seu primeiro acesso ao sistema da cantina, por favor, cadastre um email (opcional) e uma senha segura.
+        </p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} fade-in">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('aluno_setup_senha') }}">
+            <div class="form-group">
+                <label for="email">E-mail Pessoal (Opcional)</label>
+                <input type="email" id="email" name="email" placeholder="nome@exemplo.com">
+            </div>
+
+            <div class="form-group">
+                <label for="nova_senha">Crie uma Senha Forte</label>
+                <input type="password" id="nova_senha" name="nova_senha" required placeholder="Mínimo 6 caracteres" minlength="6">
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; font-size: 1.1rem; padding: 0.8rem; margin-top: 1rem;">
+                <i class="ph ph-floppy-disk" style="margin-right: 8px;"></i> Salvar e Ativar Conta
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

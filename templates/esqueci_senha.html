@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block title %}Esqueci minha Senha - {{ global_config.nome_sistema if global_config else 'Cantina IFAP' }}{% endblock %}
+
+{% block navbar %}
+<nav class="navbar" style="justify-content: center;">
+    <div class="navbar-brand">
+        <i class="ph ph-password" style="margin-right: 8px;"></i> SOS Acesso
+    </div>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: center; align-items: center; min-height: 80vh;">
+    <div class="card fade-in" style="max-width: 400px; width: 100%; border-top: 5px solid var(--primary);">
+        <div style="text-align: center; margin-bottom: 1.5rem;">
+            <i class="ph ph-envelope-open" style="font-size: 3rem; color: var(--primary);"></i>
+            <h2 style="color: var(--text); margin-top: 0.5rem;">Recuperação Mágica</h2>
+            <p style="color: var(--text-muted); font-size: 0.9rem;">
+                Esqueceu a senha? Digite seu CPF e, se seu e-mail estiver cadastrado, nós lhe enviaremos uma chave dourada.
+            </p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} fade-in">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('esqueci_senha') }}">
+            <div class="form-group">
+                <label for="cpf">Seu CPF Cadastrado</label>
+                <input type="text" id="cpf" name="cpf" required placeholder="Ex: 000.000.000-00">
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; font-size: 1.1rem; padding: 0.8rem; margin-top: 1rem;">
+                <i class="ph ph-paper-plane-tilt" style="margin-right: 8px;"></i> Solicitar Chave no E-mail
+            </button>
+        </form>
+
+        <div style="text-align: center; margin-top: 1.5rem;">
+            <a href="{{ url_for('login') }}" style="color: var(--text-muted); font-size: 0.9rem; text-decoration: none;">
+                <i class="ph ph-arrow-left"></i> Voltar para o portal
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

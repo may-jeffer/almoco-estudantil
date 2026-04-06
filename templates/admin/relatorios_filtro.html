@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="fade-in">
+    <div style="margin-bottom: 2rem;">
+        <a href="{{ url_for('admin_dashboard') }}" style="color: var(--text-muted); display: inline-flex; align-items: center;"><i class="ph ph-arrow-left" style="margin-right: 4px;"></i> Voltar ao Painel</a>
+        <h1 style="margin-top: 1rem;"><i class="ph ph-file-text"></i> Relatórios Pós-Fechamento</h1>
+        <p style="color: var(--text-muted);">Gere o arquivo consolidado contendo os alunos que vão almoçar num dia específico.</p>
+    </div>
+
+    <div class="card" style="max-width: 600px; margin: 0 auto;">
+        <h2>Selecione o Dia / Cardápio</h2>
+        
+        <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1.5rem;">
+            {% for c in cardapios %}
+                <a href="{{ url_for('admin_relatorio_dia', cardapio_id=c.id) }}" class="btn" style="background: #FFF; border: 1px solid var(--border); color: var(--text-main); justify-content: space-between; padding: 1rem; align-items: center;">
+                    <div>
+                        <strong style="font-size: 1.1rem;">{{ c.data | datetimeformat }}</strong>
+                        <span style="display:block; font-size: 0.85rem; color: var(--text-muted); font-weight: 400;">{{ c.descricao }}</span>
+                    </div>
+                    <div style="text-align: right; display: flex; align-items: center; gap: 1rem;">
+                        <div style="font-size: 0.85rem; line-height: 1.2;">
+                            <span style="display:block; color: var(--secondary); font-weight: 600;">{{ c.total_consumidas }} Entregues</span>
+                            <span style="display:block; color: var(--text-muted);">de {{ c.total_reservas }} Pedidos</span>
+                        </div>
+                        <i class="ph ph-arrow-circle-right" style="font-size: 1.5rem; color: var(--primary);"></i>
+                    </div>
+                </a>
+            {% else %}
+                <div class="alert alert-info">Nenhum cardápio cadastrado para gerar relatórios.</div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="fade-in">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <h1><i class="ph ph-squares-four" style="margin-right: 8px;"></i> Painel de Controle</h1>
+    </div>
+
+    <!-- Cards Superiores -->
+    <div class="grid" style="margin-bottom: 2rem;">
+        <div class="card header-stats"
+            style="grid-column: span 3; display: flex; justify-content: space-around; padding: 2rem;">
+            {% if tem_permissao('turmas') %}
+            <div class="stat-item">
+                <i class="ph ph-users-three" style="font-size: 2rem; color: var(--primary);"></i>
+                <div>
+                    <span style="display: block; font-size: 1.5rem; font-weight: bold;">{{ total_turmas }}</span>
+                    <span style="color: var(--text-muted); font-size: 0.9rem;">Turmas</span>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if tem_permissao('alunos') %}
+            <div class="stat-item">
+                <i class="ph ph-student" style="font-size: 2rem; color: #4F46E5;"></i>
+                <div>
+                    <span style="display: block; font-size: 1.5rem; font-weight: bold;">{{ total_alunos }}</span>
+                    <span style="color: var(--text-muted); font-size: 0.9rem;">Alunos</span>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="stat-item">
+                <i class="ph ph-clock" style="font-size: 2rem; color: var(--secondary);"></i>
+                <div>
+                    <span style="display: block; font-size: 1.5rem; font-weight: bold;">{{ config.horario_limite
+                        }}</span>
+                    <span style="color: var(--text-muted); font-size: 0.9rem;">Limite Reserva</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid">
+        <!-- Ações Rápidas -->
+        <div class="card" style="grid-column: span 2;">
+            <h2>Gestão do Sistema</h2>
+            <div class="admin-menu">
+                {% if tem_permissao('turmas') %}
+                <a href="{{ url_for('admin_turmas') }}" class="menu-item">
+                    <i class="ph ph-buildings"></i>
+                    <span>Cadastrar / Editar Turmas</span>
+                </a>
+                {% endif %}
+
+                {% if tem_permissao('alunos') %}
+                <a href="{{ url_for('admin_alunos') }}" class="menu-item">
+                    <i class="ph ph-student"></i>
+                    <span>Cadastrar / Editar Alunos</span>
+                </a>
+                {% endif %}
+
+                {% if tem_permissao('cardapios') %}
+                <a href="{{ url_for('admin_cardapios') }}" class="menu-item">
+                    <i class="ph ph-calendar-plus"></i>
+                    <span>Gerenciar Cardápios</span>
+                </a>
+                {% endif %}
+
+                {% if tem_permissao('relatorios') %}
+                <a href="{{ url_for('admin_relatorios') }}" class="menu-item">
+                    <i class="ph ph-file-text"></i>
+                    <span>Relatórios de Consumo / Excel</span>
+                </a>
+                {% endif %}
+
+                {% if tem_permissao('admins') %}
+                <a href="{{ url_for('admin_administradores') }}" class="menu-item">
+                    <i class="ph ph-shield-check"></i>
+                    <span>Gestão de Acessos (Admins)</span>
+                </a>
+                {% endif %}
+
+                {% if tem_permissao('avisos') %}
+                <a href="{{ url_for('admin_avisos') }}" class="menu-item">
+                    <i class="ph ph-megaphone"></i>
+                    <span>Mural de Avisos (Alunos)</span>
+                </a>
+                {% endif %}
+
+                {% if tem_permissao('fila') %}
+                <a href="{{ url_for('admin_entrega') }}" class="menu-item highlight">
+                    <i class="ph ph-qr-code"></i>
+                    <span>Modo Fila (Escanear Tickets)</span>
+                </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Configurações do Sistema -->
+        {% if tem_permissao('config') or tem_permissao('smtp') %}
+        <div class="card">
+            <h2>Configurações Globais</h2>
+
+            <form method="POST" action="{{ url_for('save_configuracoes') }}" style="margin-top: 1.5rem;">
+                {% if tem_permissao('config') %}
+                <div class="form-group">
+                    <label for="nome_sistema">Nome Principal do Sistema</label>
+                    <input type="text" id="nome_sistema" name="nome_sistema"
+                        value="{{ config.nome_sistema if config else 'Cantina Estudantil' }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="sigla_instituicao">Sigla/Nome da Instituição</label>
+                    <input type="text" id="sigla_instituicao" name="sigla_instituicao"
+                        value="{{ config.sigla_instituicao if config else 'IFAP' }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="horario_limite">Hora Limite para Reserva</label>
+                    <input type="time" id="horario_limite" name="horario_limite" value="{{ config.horario_limite }}"
+                        required>
+                </div>
+
+                <div class="form-group">
+                    <label for="modo_login_aluno">Método de Login do Aluno</label>
+                    <select id="modo_login_aluno" name="modo_login_aluno">
+                        <option value="DATA_NASC" {% if config.modo_login_aluno=='DATA_NASC' %}selected{% endif %}>Data
+                            de Nascimento (Simples)</option>
+                        <option value="SENHA" {% if config.modo_login_aluno=='SENHA' %}selected{% endif %}>CPF + Senha
+                            (Seguro)</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-secondary" style="width: 100%;"><i class="ph ph-floppy-disk"
+                        style="margin-right: 8px;"></i> Salvar Configurações</button>
+                {% endif %}
+            </form>
+
+            {% if tem_permissao('config') %}
+            <hr style="margin: 2rem 0; border: 0; border-top: 1px solid var(--border);">
+
+            <form method="POST" action="{{ url_for('save_logo') }}" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label>Logomarca Institucional</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        {% if config.logo_path %}
+                        <img src="{{ config.logo_path }}"
+                            style="height: 50px; border: 1px solid var(--border); border-radius: 4px;">
+                        {% endif %}
+                        <input type="file" name="logo_file" accept="image/*" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn" style="background: var(--text-main); color: white; width: 100%;"><i
+                        class="ph ph-upload-simple" style="margin-right: 8px;"></i> Atualizar Logo</button>
+            </form>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% if tem_permissao('smtp') %}
+        <div class="card" style="grid-column: span 3;">
+            <h2>Servidor de E-mail (SMTP)</h2>
+            <form method="POST" action="{{ url_for('save_configuracoes_smtp') }}">
+                <div class="grid" style="grid-template-columns: 1fr 1fr 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label>Ativo?</label>
+                        <select name="smtp_ativo">
+                            <option value="1" {% if config.smtp_ativo %}selected{% endif %}>Sim</option>
+                            <option value="0" {% if not config.smtp_ativo %}selected{% endif %}>Não</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Host SMTP</label>
+                        <input type="text" name="smtp_host" value="{{ config.smtp_host or '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label>Porta</label>
+                        <input type="text" name="smtp_porta" value="{{ config.smtp_porta or '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label>Usuário</label>
+                        <input type="text" name="smtp_user" value="{{ config.smtp_user or '' }}">
+                    </div>
+                    <div class="form-group" style="grid-column: span 4;">
+                        <label>Senha / Token SMPT</label>
+                        <input type="password" name="smtp_senha"
+                            placeholder="Mantenha vazio para preservar a senha atual">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;"><i class="ph ph-plugs-connected"
+                        style="margin-right: 8px;"></i> Salvar Configuração SMTP</button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

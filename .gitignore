@@ -1,0 +1,19 @@
+# Ignorar ambientes virtuais
+venv/
+env/
+.env
+
+# Ignorar banco de dados SQLite (Não enviar os dados dos alunos para o git)
+*.db
+*.sqlite3
+database.db
+
+# Ignorar artefatos do Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignorar temporários de OS
+.DS_Store
+Thumbs.db

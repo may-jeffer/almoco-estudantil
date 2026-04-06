@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block navbar %}{% endblock %}
+
+{% block content %}
+<div class="flex-center fade-in">
+    <div class="card" style="width: 100%; max-width: 400px; border-top: 4px solid var(--danger);">
+        <div style="text-align: center; margin-bottom: 2rem;">
+            <i class="ph ph-shield-check" style="font-size: 3rem; color: var(--danger);"></i>
+            <h1 style="margin-top: 0.5rem; font-size: 1.5rem;">Controle de Acesso</h1>
+            <p style="color: var(--text-muted); font-size: 0.9rem;">Área Administrativa</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('admin_login') }}">
+            <div class="form-group">
+                <label for="usuario">Usuário</label>
+                <input type="text" id="usuario" name="usuario" value="admin" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="senha">Senha</label>
+                <input type="password" id="senha" name="senha" required>
+            </div>
+            
+            <button type="submit" class="btn btn-danger" style="width: 100%;"><i class="ph ph-sign-in" style="margin-right: 8px;"></i> Entrar</button>
+        </form>
+        
+        <div style="text-align: center; margin-top: 2rem;">
+            <a href="{{ url_for('login') }}" style="font-size: 0.85rem; color: var(--text-muted);"><i class="ph ph-student"></i> Voltar para Área do Aluno</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

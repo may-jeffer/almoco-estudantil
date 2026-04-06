@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="fade-in">
+    <div style="margin-bottom: 2rem;">
+        <a href="{{ url_for('admin_dashboard') }}" style="color: var(--text-muted); display: inline-flex; align-items: center;"><i class="ph ph-arrow-left" style="margin-right: 4px;"></i> Voltar ao Painel</a>
+        <h1 style="margin-top: 1rem;"><i class="ph ph-megaphone"></i> Mural de Avisos</h1>
+        <p style="color: var(--text-muted);">Crie comunicados que serão exibidos na tela inicial de todos os alunos.</p>
+    </div>
+
+    <div class="grid">
+        <div class="card">
+            <h2>Novo Aviso</h2>
+            <form method="POST" action="{{ url_for('admin_avisos') }}">
+                <div class="form-group">
+                    <label for="titulo">Pequeno Título (Ex: Atenção)</label>
+                    <input type="text" id="titulo" name="titulo" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="mensagem">Mensagem / Texto Completo</label>
+                    <textarea id="mensagem" name="mensagem" style="width: 100%; min-height: 100px; padding: 0.75rem; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 1rem;" required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="tipo">Destaque Visual</label>
+                    <select id="tipo" name="tipo">
+                        <option value="info">💬 Azul (Informativo Genérico)</option>
+                        <option value="warning">⚠️ Amarelo (Atenção/Mudanças)</option>
+                        <option value="danger">🚨 Vermelho (Urgente/Cancelamento)</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%;"><i class="ph ph-plus-circle" style="margin-right: 8px;"></i> Publicar Aviso</button>
+            </form>
+        </div>
+
+        <div class="card" style="grid-column: span 2;">
+            <h2>Avisos Publicados</h2>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Enviado Em</th>
+                            <th>Conteúdo</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for a in avisos %}
+                        <tr>
+                            <td style="vertical-align: top; white-space: nowrap;"><strong>{{ a.data_criacao }}</strong></td>
+                            <td style="vertical-align: top;">
+                                {% if a.tipo == 'danger' %}
+                                    <span class="badge" style="background:#FEE2E2; color:#991B1B;">Urgente</span>
+                                {% elif a.tipo == 'warning' %}
+                                    <span class="badge" style="background:#FEF3C7; color:#92400E;">Atenção</span>
+                                {% else %}
+                                    <span class="badge" style="background:#DBEAFE; color:#1E40AF;">Info</span>
+                                {% endif %}
+                                <strong style="display: block; margin-top: 0.5rem; margin-bottom: 0.25rem;">{{ a.titulo }}</strong>
+                                <span style="font-size: 0.95rem; color: var(--text-muted);">{{ a.mensagem }}</span>
+                            </td>
+                            <td style="vertical-align: top; width: 100px;">
+                                <form method="POST" action="{{ url_for('admin_avisos_excluir', id=a.id) }}">
+                                    <button type="submit" class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; border-radius: 4px;" onclick="return confirm('Excluir este aviso da tela dos alunos?');">
+                                        <i class="ph ph-trash"></i> Retirar
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="3" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                                <i class="ph ph-speaker-none" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
+                                Nenhum aviso extra ativo no mural.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
