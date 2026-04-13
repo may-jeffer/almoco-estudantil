@@ -18,17 +18,29 @@
         <p style="color: var(--text-muted);">Cardápio Principal: {{ cardapio.descricao }}</p>
     </div>
 
-    <div class="grid" style="margin-bottom: 2rem;">
-        <div class="card" style="text-align: center; padding: 1.5rem;">
-            <p style="color: var(--text-muted); font-size: 0.9rem; text-transform: uppercase;">Total Geral Solicitado</p>
-            <h1 style="font-size: 3rem; color: var(--primary); margin: 0;">{{ total_geral }}</h1>
-            <p style="font-size: 0.85rem; margin-top: 0.5rem; color: var(--text-muted);">Pratos Previstos</p>
+    <div class="grid" style="margin-bottom: 2rem; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+        <div class="card" style="text-align: center; padding: 1.5rem; border-top: 4px solid var(--primary);">
+            <p style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Pratos Previstos</p>
+            <h1 style="font-size: 2.5rem; color: var(--text-main); margin: 0;">{{ total_geral }}</h1>
+            <p style="font-size: 0.85rem; margin-top: 0.5rem; color: var(--text-muted);">Reservas Normais</p>
         </div>
         
-        <div class="card" style="text-align: center; padding: 1.5rem;">
-            <p style="color: var(--text-muted); font-size: 0.9rem; text-transform: uppercase;">Já Consumido / Entregue</p>
-            <h1 style="font-size: 3rem; color: var(--secondary); margin: 0;">{{ total_consumidas }}</h1>
-            <p style="font-size: 0.85rem; margin-top: 0.5rem; color: var(--text-muted);">Baixas via QR Code</p>
+        <div class="card" style="text-align: center; padding: 1.5rem; border-top: 4px solid #10b981;">
+            <p style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Consumo da Reserva</p>
+            <h1 style="font-size: 2.5rem; color: #10b981; margin: 0;">{{ consumidas_normal }}</h1>
+            <p style="font-size: 0.85rem; margin-top: 0.5rem; color: var(--text-muted);">Baixas Regulares</p>
+        </div>
+
+        <div class="card" style="text-align: center; padding: 1.5rem; border-top: 4px solid #0ea5e9;">
+            <p style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Consumo Oportuno</p>
+            <h1 style="font-size: 2.5rem; color: #0ea5e9; margin: 0;">{{ consumidas_extra }}</h1>
+            <p style="font-size: 0.85rem; margin-top: 0.5rem; color: var(--text-muted);">Sobras Adicionadas</p>
+        </div>
+
+        <div class="card" style="text-align: center; padding: 1.5rem; background: #f8fafc; border: 1px solid #cbd5e1;">
+            <p style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; font-weight: bold;">Total Entregue</p>
+            <h1 style="font-size: 3rem; color: #334155; margin: 0;">{{ total_consumidas }}</h1>
+            <p style="font-size: 0.85rem; margin-top: 0.5rem; color: var(--text-muted);">Soma Real Físico</p>
         </div>
     </div>
 
@@ -66,9 +78,10 @@
             <thead>
                 <tr style="background: #f1f5f9;">
                     <th style="padding: 0.75rem; text-align: left;">Turma / Curso</th>
-                    <th style="padding: 0.75rem; text-align: center;">Total Pedidos</th>
-                    <th style="padding: 0.75rem; text-align: center;">Total Entregue</th>
-                    <th style="padding: 0.75rem; text-align: right;">% Presença</th>
+                    <th style="padding: 0.75rem; text-align: center;">Pedidos Normal</th>
+                    <th style="padding: 0.75rem; text-align: center;">Entregue Normal</th>
+                    <th style="padding: 0.75rem; text-align: center; color:#0284c7;">Sobra (+)</th>
+                    <th style="padding: 0.75rem; text-align: right;">% Frequência</th>
                 </tr>
             </thead>
             <tbody>
@@ -76,10 +89,11 @@
                 <tr style="border-bottom: 1px solid var(--border);">
                     <td style="padding: 0.75rem;"><strong>{{ r.turma_nome if r.turma_nome else 'Outros / Sem Turma' }}</strong></td>
                     <td style="padding: 0.75rem; text-align: center;">{{ r.total }}</td>
-                    <td style="padding: 0.75rem; text-align: center;">{{ r.consumidas }}</td>
+                    <td style="padding: 0.75rem; text-align: center;">{{ r.consumidas_normais }}</td>
+                    <td style="padding: 0.75rem; text-align: center; color: #0284c7; font-weight:bold;">{{ r.consumidas_extras }}</td>
                     <td style="padding: 0.75rem; text-align: right; font-weight: 600;">
                         {% if r.total > 0 %}
-                            {{ (r.consumidas / r.total * 100) | round(1) }}%
+                            {{ (r.consumidas_normais / r.total * 100) | round(1) }}%
                         {% else %}
                             0%
                         {% endif %}
@@ -99,6 +113,7 @@
                     <th style="padding: 0.5rem; text-align: left; background: none; color: #000; font-weight: bold;">Estudante</th>
                     <th style="padding: 0.5rem; text-align: left; background: none; color: #000; font-weight: bold;">Matrícula / Turma</th>
                     <th style="padding: 0.5rem; text-align: left; background: none; color: #000; font-weight: bold;">Restrição/Dieta Extra?</th>
+                    <th style="padding: 0.5rem; text-align: left; background: none; color: #000; font-weight: bold;">Origem</th>
                     <th style="padding: 0.5rem; text-align: left; background: none; color: #000; font-weight: bold;">Situação</th>
                 </tr>
             </thead>
@@ -116,6 +131,13 @@
                             <strong style="color: var(--danger); font-size: 0.95rem;">✓ {{ r.restricoes }}</strong>
                         {% else %}
                             <span style="color: var(--text-muted);">Padrão</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 0.75rem 0.5rem; vertical-align: middle;">
+                        {% if r.tipo_consumo == 'EXTRA' %}
+                            <span class="badge" style="background:#0ea5e9; color:white; font-size:0.75rem;">Sobra (Extra)</span>
+                        {% else %}
+                            <span style="color:var(--text-muted); font-size:0.85rem;">Normal</span>
                         {% endif %}
                     </td>
                     <td style="padding: 0.75rem 0.5rem; vertical-align: middle;">

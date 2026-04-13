@@ -152,6 +152,13 @@ def init_db():
                 cur.execute("UPDATE administradores SET permissoes = '[\"fila\"]' WHERE perfil = 'operador_fila'")
                 conn.commit()
 
+            # Migração automática 8: Alunos Extra (Sobras na Fila)
+            try:
+                cur.execute("SELECT tipo_consumo FROM reservas LIMIT 1")
+            except sqlite3.OperationalError:
+                cur.execute("ALTER TABLE reservas ADD COLUMN tipo_consumo TEXT DEFAULT 'NORMAL'")
+                conn.commit()
+
             # O admin inicial NÃO é mais criado automaticamente no models.py por motivos de segurança cibernética.
             # O administrador deve rodar o script 'init_admin.py' no momento do deploy para definir sua senha proprietária.
             pass

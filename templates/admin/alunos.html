@@ -64,6 +64,54 @@
             </form>
         </div>
     </div>
+    <!-- Modal Edição de Aluno -->
+    <div id="modalEdicaoAluno" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; align-items: flex-start; justify-content: center; overflow-y: auto; padding-top: 3rem; padding-bottom: 3rem;">
+        <div class="card fade-in" style="background: white; border-radius: 12px; width: 100%; max-width: 600px; padding: 2rem; margin: auto; position: relative;">
+            <h2 style="color: var(--primary); margin-bottom: 1rem;"><i class="ph ph-pencil-simple"></i> Editar Aluno</h2>
+            <form id="formEdicaoAluno" method="POST" action="">
+                <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label>Nome Completo</label>
+                        <input type="text" id="edit_nome" name="nome" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Matrícula</label>
+                        <input type="text" id="edit_matricula" name="matricula" required>
+                    </div>
+                    <div class="form-group">
+                        <label>CPF</label>
+                        <input type="text" id="edit_cpf" name="cpf" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Nascimento</label>
+                        <input type="date" id="edit_data_nascimento" name="data_nascimento" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Turma</label>
+                        <select id="edit_turma_id" name="turma_id" required>
+                            <option value="">Ainda nâo definido</option>
+                            {% for t in turmas %}
+                            <option value="{{ t.id }}">{{ t.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label>E-mail (Opcional)</label>
+                        <input type="email" id="edit_email" name="email">
+                    </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label>Restrições / Dieta Específica</label>
+                        <input type="text" id="edit_restricoes" name="restricoes">
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                    <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="fecharEdicaoAluno()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" style="flex: 2;">Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <div class="grid" style="grid-template-columns: 1fr 2fr;">
         <!-- Card do Formulário Manual -->
@@ -146,10 +194,14 @@
                             <td>
                                 {% if global_config.modo_login_aluno == 'SENHA' and a.senha_hash %}
                                 <form method="POST" action="{{ url_for('admin_alunos_resetar_senha', id=a.id) }}" style="display:inline;">
-                                    <button type="submit" class="btn" style="background:var(--warning); color:black; font-size: 0.75rem; padding: 0.25rem 0.5rem;" title="O aluno precisará recadastrar a senha na próxima vez que logar." onclick="return confirm('Deseja resetar a senha deste aluno para a Data de Nascimento?');">Resetar Senha</button>
+                                    <button type="submit" class="btn" style="background:var(--warning); color:black; font-size: 0.75rem; padding: 0.25rem 0.5rem;" title="O aluno precisará recadastrar a senha." onclick="return confirm('Deseja resetar a senha deste aluno para a Data de Nascimento?');">Resetar Senha</button>
                                 </form>
                                 {% endif %}
-                                <button class="btn" style="background: transparent; border: 1px solid var(--border); color: var(--text); font-size: 0.75rem; padding: 0.25rem 0.5rem;"><i class="ph ph-pencil-simple"></i></button>
+                                <button type="button" class="btn" style="background: transparent; border: 1px solid var(--border); color: var(--text); font-size: 0.75rem; padding: 0.25rem 0.5rem;" title="Editar Aluno" onclick="abrirEdicaoAluno(this)" data-id="{{ a.id }}" data-nome="{{ a.nome }}" data-matricula="{{ a.matricula }}" data-cpf="{{ a.cpf }}" data-data_nascimento="{{ a.data_nascimento }}" data-email="{{ a.email or '' }}" data-turma_id="{{ a.turma_id or '' }}" data-restricoes="{{ a.restricoes or '' }}"><i class="ph ph-pencil-simple"></i></button>
+                                
+                                <form method="POST" action="{{ url_for('admin_alunos_excluir', id=a.id) }}" style="display:inline;">
+                                    <button type="submit" class="btn" style="background: transparent; border: 1px solid var(--danger); color: var(--danger); font-size: 0.75rem; padding: 0.25rem 0.5rem;" title="Excluir Aluno permanentemente" onclick="return confirm('Tem certeza que deseja EXCLUIR permanentemente este aluno e todas as suas reservas? Esta ação não pode ser desfeita!');"><i class="ph ph-trash"></i></button>
+                                </form>
                             </td>
                             <td>
                                 {% if a.restricoes %}
@@ -170,4 +222,23 @@
         </div>
     </div>
 </div>
+
+<script>
+function abrirEdicaoAluno(btn) {
+    const id = btn.getAttribute('data-id');
+    document.getElementById('edit_nome').value = btn.getAttribute('data-nome');
+    document.getElementById('edit_matricula').value = btn.getAttribute('data-matricula');
+    document.getElementById('edit_cpf').value = btn.getAttribute('data-cpf');
+    document.getElementById('edit_data_nascimento').value = btn.getAttribute('data-data_nascimento');
+    document.getElementById('edit_email').value = btn.getAttribute('data-email');
+    document.getElementById('edit_turma_id').value = btn.getAttribute('data-turma_id');
+    document.getElementById('edit_restricoes').value = btn.getAttribute('data-restricoes');
+    
+    document.getElementById('formEdicaoAluno').action = `/admin/alunos/editar/${id}`;
+    document.getElementById('modalEdicaoAluno').style.display = 'flex';
+}
+function fecharEdicaoAluno() {
+    document.getElementById('modalEdicaoAluno').style.display = 'none';
+}
+</script>
 {% endblock %}

@@ -48,6 +48,18 @@
             <button type="submit" class="btn btn-primary" style="padding: 0.8rem 1rem;"><i class="ph ph-arrow-right"></i> Baixar</button>
         </form>
     </div>
+    
+    <!-- 2.5 BLOCO ADICIONAR SOBRA MANUALMENTE -->
+    <div class="card" style="padding: 1rem 2rem; background: #e0f2fe; border: 1px solid #bae6fd;">
+        <h3 style="font-size: 1rem; color: #0369a1; margin-bottom: 0.5rem;"><i class="ph ph-plus-circle"></i> Repassar Sobra (Aluno sem Reserva)</h3>
+        <form id="form-extra-ajax" style="display: flex; gap: 0.5rem; align-items: flex-end;">
+            <div class="form-group" style="flex: 1; margin: 0;">
+                <label for="aluno_busca" style="font-size: 0.85rem; color: #0284c7;">Matrícula ou CPF do Estudante</label>
+                <input type="text" id="aluno_busca" style="font-size: 1.1rem;" required placeholder="Digite a matrícula...">
+            </div>
+            <button type="submit" class="btn" style="background: #0284c7; color: white; padding: 0.8rem 1rem;"><i class="ph ph-check"></i> Adicionar & Entregar</button>
+        </form>
+    </div>
 
     <!-- 3. BLOCO BUSCA LISTA AO VIVO -->
     <div class="card">
@@ -151,6 +163,36 @@
                 const code = document.getElementById('codigo_unico').value.toUpperCase();
                 processarBaixa(code);
                 document.getElementById('codigo_unico').value = '';
+            });
+        }
+
+        // Form Extra Sobra
+        const formExtra = document.getElementById('form-extra-ajax');
+        if (formExtra) {
+            formExtra.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const busca = document.getElementById('aluno_busca').value.trim();
+                const cardapioId = document.getElementById('cardapio_id').value;
+                if (!busca) return;
+                
+                try {
+                    const response = await fetch('/admin/api/adicionar_extra', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ aluno_busca: busca, cardapio_id: cardapioId })
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        showAlert(result.message, 'success');
+                        const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+                        audio.play().catch(()=>{});
+                    } else {
+                        showAlert(result.message, result.type || 'error');
+                    }
+                } catch (error) {
+                    showAlert('Erro de conexão.', 'error');
+                }
+                document.getElementById('aluno_busca').value = '';
             });
         }
 

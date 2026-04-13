@@ -653,6 +653,48 @@ def admin_alunos():
         turmas = conn.execute("SELECT * FROM turmas").fetchall()
     return render_template('admin/alunos.html', alunos=alunos, turmas=turmas)
 
+@app.route('/admin/alunos/editar/<int:id>', methods=['POST'])
+def admin_alunos_editar(id):
+    if not is_logged_in_admin(): return redirect(url_for('admin_login'))
+    if not tem_permissao('alunos'): return redirect(url_for('admin_dashboard'))
+    
+    nome = request.form.get('nome')
+    matricula = request.form.get('matricula')
+    cpf = request.form.get('cpf')
+    data_nascimento = request.form.get('data_nascimento')
+    email = request.form.get('email')
+    restricoes = request.form.get('restricoes')
+    turma_id = request.form.get('turma_id')
+    
+    try:
+        with models.closing(models.get_db_connection()) as conn:
+            conn.execute(
+                """UPDATE alunos 
+                   SET nome=?, matricula=?, cpf=?, data_nascimento=?, email=?, restricoes=?, turma_id=? 
+                   WHERE id=?""",
+                (nome, matricula, cpf, data_nascimento, email, restricoes, turma_id, id)
+            )
+            conn.commit()
+            flash('Aluno atualizado com sucesso!', 'success')
+    except Exception as e:
+        flash('Erro ao atualizar aluno. Verifique cadastros duplicados.', 'error')
+        
+    return redirect(url_for('admin_alunos'))
+
+@app.route('/admin/alunos/excluir/<int:id>', methods=['POST'])
+def admin_alunos_excluir(id):
+    if not is_logged_in_admin(): return redirect(url_for('admin_login'))
+    if not tem_permissao('alunos'): return redirect(url_for('admin_dashboard'))
+    try:
+        with models.closing(models.get_db_connection()) as conn:
+            conn.execute("DELETE FROM reservas WHERE aluno_id = ?", (id,))
+            conn.execute("DELETE FROM alunos WHERE id = ?", (id,))
+            conn.commit()
+            flash('Aluno excluído com sucesso!', 'success')
+    except Exception as e:
+        flash('Erro ao excluir aluno.', 'error')
+    return redirect(url_for('admin_alunos'))
+
 @app.route('/admin/alunos/csv_template')
 def admin_alunos_csv_template():
     if not is_logged_in_admin(): return redirect(url_for('admin_login'))
@@ -984,6 +1026,48 @@ def api_baixar_reserva():
             conn.commit()
             return {"success": True, "message": f"Refeição liberada: {reserva['aluno_nome']}", "aluno": reserva['aluno_nome']}
 
+@app.route('/admin/api/adicionar_extra', methods=['POST'])
+def api_adicionar_extra():
+    if not is_logged_in_admin(): 
+        return {"success": False, "message": "Não autorizado"}, 401
+    if not tem_permissao('fila'):
+        return {"success": False, "message": "Sem permissão de acesso à fila", "type": "error"}, 403
+    
+    data = request.get_json()
+    busca = data.get('aluno_busca') # Pode ser matrícula ou CPF
+    cardapio_id = data.get('cardapio_id')
+    
+    if not busca or not cardapio_id:
+        return {"success": False, "message": "Dados inválidos"}, 400
+        
+    with models.closing(models.get_db_connection()) as conn:
+        aluno = conn.execute("SELECT id, nome FROM alunos WHERE matricula = ? OR cpf = ?", (busca, busca)).fetchone()
+        
+        if not aluno:
+            return {"success": False, "message": "Estudante não encontrado no sistema.", "type": "error"}
+            
+        # Verificar se já comeu hoje (por reserva normal ou extra)
+        ja_comeu = conn.execute("SELECT id, status, tipo_consumo FROM reservas WHERE aluno_id = ? AND cardapio_id = ? AND status = 'CONSUMIDA'", (aluno['id'], cardapio_id)).fetchone()
+        if ja_comeu:
+            return {"success": False, "message": f"Atenção: {aluno['nome']} já consumiu refeição hoje!", "type": "warning"}
+            
+        # Verificar se ele tem uma reserva ATIVA e dar baixa normal para evitar duplicidade
+        reserva_ativa = conn.execute("SELECT id FROM reservas WHERE aluno_id = ? AND cardapio_id = ? AND status = 'ATIVA'", (aluno['id'], cardapio_id)).fetchone()
+        if reserva_ativa:
+            conn.execute("UPDATE reservas SET status='CONSUMIDA' WHERE id = ?", (reserva_ativa['id'],))
+            conn.commit()
+            return {"success": True, "message": f"Foi dada baixa na reserva PADRÃO de {aluno['nome']}.", "aluno": aluno['nome']}
+        
+        # Se não comeu e não tem reserva ativa, insere a sobra
+        codigo = models.generate_unique_code()
+        conn.execute(
+            "INSERT INTO reservas (aluno_id, cardapio_id, status, codigo_unico, data_registro, tipo_consumo) VALUES (?, ?, 'CONSUMIDA', ?, ?, 'EXTRA')",
+            (aluno['id'], cardapio_id, codigo, datetime_now_str())
+        )
+        conn.commit()
+        
+        return {"success": True, "message": f"Sobra entregue: {aluno['nome']} (Marcado como Extra)", "aluno": aluno['nome']}
+
 # Modulo Relatórios
 @app.route('/admin/relatorios')
 def admin_relatorios():
@@ -1012,7 +1096,7 @@ def admin_relatorio_dia(cardapio_id):
         cardapio = conn.execute("SELECT * FROM cardapios WHERE id = ?", (cardapio_id,)).fetchone()
         
         query = """
-            SELECT a.nome, a.matricula, a.restricoes, t.nome as turma_nome, r.status, t.id as turma_id
+            SELECT a.nome, a.matricula, a.restricoes, t.nome as turma_nome, r.status, r.tipo_consumo, t.id as turma_id
             FROM reservas r
             JOIN alunos a ON r.aluno_id = a.id
             LEFT JOIN turmas t ON a.turma_id = t.id
@@ -1036,8 +1120,9 @@ def admin_relatorio_dia(cardapio_id):
         # Cálculo de Resumo por Turma (Consolidado)
         resumo_query = """
             SELECT t.nome as turma_nome, 
-                   COUNT(r.id) as total,
-                   SUM(CASE WHEN r.status = 'CONSUMIDA' THEN 1 ELSE 0 END) as consumidas
+                   SUM(CASE WHEN r.tipo_consumo = 'NORMAL' OR r.tipo_consumo IS NULL THEN 1 ELSE 0 END) as total,
+                   SUM(CASE WHEN r.status = 'CONSUMIDA' AND (r.tipo_consumo = 'NORMAL' OR r.tipo_consumo IS NULL) THEN 1 ELSE 0 END) as consumidas_normais,
+                   SUM(CASE WHEN r.status = 'CONSUMIDA' AND r.tipo_consumo = 'EXTRA' THEN 1 ELSE 0 END) as consumidas_extras
             FROM reservas r
             JOIN alunos a ON r.aluno_id = a.id
             LEFT JOIN turmas t ON a.turma_id = t.id
@@ -1048,14 +1133,19 @@ def admin_relatorio_dia(cardapio_id):
         resumo_turmas = conn.execute(resumo_query, (cardapio_id,)).fetchall()
         
         total_ativas = len([r for r in reservas if r['status'] == 'ATIVA'])
-        total_consumidas = len([r for r in reservas if r['status'] == 'CONSUMIDA'])
-        total_geral = total_ativas + total_consumidas
+        consumidas_normal = len([r for r in reservas if r['status'] == 'CONSUMIDA' and (r['tipo_consumo'] == 'NORMAL' or not r['tipo_consumo'])])
+        consumidas_extra = len([r for r in reservas if r['status'] == 'CONSUMIDA' and r['tipo_consumo'] == 'EXTRA'])
+        
+        total_consumidas = consumidas_normal + consumidas_extra
+        total_geral = total_ativas + consumidas_normal
         
     return render_template('admin/relatorio_dia.html', 
                            cardapio=cardapio, 
                            reservas=reservas, 
                            total_geral=total_geral, 
                            total_consumidas=total_consumidas,
+                           consumidas_normal=consumidas_normal,
+                           consumidas_extra=consumidas_extra,
                            turmas=turmas,
                            resumo_turmas=resumo_turmas,
                            filtro_turma=turma_id,
@@ -1072,7 +1162,7 @@ def admin_relatorio_excel(cardapio_id):
     with models.closing(models.get_db_connection()) as conn:
         cardapio = conn.execute("SELECT * FROM cardapios WHERE id = ?", (cardapio_id,)).fetchone()
         reservas = conn.execute("""
-            SELECT a.nome, a.matricula, a.restricoes, t.nome as turma_nome, r.status
+            SELECT a.nome, a.matricula, a.restricoes, t.nome as turma_nome, r.status, r.tipo_consumo
             FROM reservas r
             JOIN alunos a ON r.aluno_id = a.id
             LEFT JOIN turmas t ON a.turma_id = t.id
@@ -1094,7 +1184,7 @@ def admin_relatorio_excel(cardapio_id):
     ws['A3'] = f"Cardápio: {cardapio['descricao']}"
     
     # Tabela
-    headers = ["Estudante", "Matrícula", "Turma", "Situação", "Obser. Dieta"]
+    headers = ["Estudante", "Matrícula", "Turma", "Situação", "Tipo", "Obser. Dieta"]
     ws.append([]) # Espaço
     ws.append(headers)
     
@@ -1105,7 +1195,8 @@ def admin_relatorio_excel(cardapio_id):
         
     for r in reservas:
         status_txt = "Entregue" if r['status'] == 'CONSUMIDA' else "Pendente"
-        ws.append([r['nome'], r['matricula'], r['turma_nome'] or "---", status_txt, r['restricoes'] or "---"])
+        tipo_txt = "Sobra/Extra" if r['tipo_consumo'] == 'EXTRA' else "Reserva Normal"
+        ws.append([r['nome'], r['matricula'], r['turma_nome'] or "---", status_txt, tipo_txt, r['restricoes'] or "---"])
         
     # Ajuste de largura
     from openpyxl.utils import get_column_letter
