@@ -82,6 +82,33 @@ def sanitize_field(val):
         return "'" + val
     return val
 
+# --- Midleware para Forçar HTTP/HTTPS ---
+@app.before_request
+def force_routing():
+    # Ignora arquivos estáticos para não causar overhead de redirecionamentos neles
+    if request.path.startswith('/static'):
+        return None
+
+    # Se a requisição for para o painel do administrador, queremos forçar HTTPS
+    if request.path.startswith('/admin'):
+        if not request.is_secure:
+            # Troca a porta para a porta HTTPS configurada (5443)
+            host = request.host.split(':')[0]
+            # Usar request.full_path para preservar parâmetros de query
+            url = f"https://{host}:5443{request.full_path}"
+            # O Werkzeug as vezes adiciona um '?' no final full_path se estiver vazio
+            if url.endswith('?'): url = url[:-1]
+            return redirect(url)
+            
+    # Para o painel do aluno (e login), queremos forçar HTTP (evita alertas de segurança de certificado)
+    else:
+        if request.is_secure:
+            # Troca a porta para a porta HTTP (5000)
+            host = request.host.split(':')[0]
+            url = f"http://{host}:5000{request.full_path}"
+            if url.endswith('?'): url = url[:-1]
+            return redirect(url)
+
 # --- Rotas do Aluno ---
 @app.route('/')
 def index():
@@ -1223,10 +1250,23 @@ def admin_relatorio_excel(cardapio_id):
     )
 
 if __name__ == '__main__':
-    # Para testes mobile com iPhone, usamos um contexto SSL adhoc
-    # (Requer pacote pyopenssl: pip install pyopenssl)
-    try:
-        app.run(host='0.0.0.0', port=5000, ssl_context='adhoc', debug=True)
-    except Exception as e:
-        print("Aviso: sem pyopenssl rodando em HTTP (Iphones bloqueiam camera aqui)")
-        app.run(host='0.0.0.0', port=5000, debug=True)
+    # Para resolver a questão do QR Code (Câmera precisa de HTTPS)
+    # E os alunos não precisarem sofrer com certificados auto-assinados assustadores (HTTP)
+    # Iniciamos dois servidores locais simultaneamente: HTTPS (5443) e HTTP (5000)
+    
+    from threading import Thread
+    from werkzeug.serving import run_simple
+
+    def run_https():
+        try:
+            print("🚀 Iniciando Painel do Administrador (HTTPS) na porta 5443...")
+            run_simple('0.0.0.0', 5443, app, ssl_context='adhoc', use_reloader=False)
+        except Exception as e:
+            print(f"⚠️ Aviso: Não foi possível iniciar Servidor HTTPS (Instale o pyopenssl): {e}")
+
+    # Inicia o servidor HTTPS secundário em uma Thread paralela (Daemon para morrer junto com o app)
+    Thread(target=run_https, daemon=True).start()
+
+    # Inicia o servidor HTTP principal no thread raiz com Reload ligado para o Aluno
+    print("🚀 Iniciando Painel do Aluno (HTTP) na porta 5000...")
+    app.run(host='0.0.0.0', port=5000, debug=True)
