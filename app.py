@@ -89,6 +89,10 @@ def create_app():
     # Legacy URL support in Jinja templates
     setup_legacy_url_patch(app)
 
+    # Suporte a Proxy Reverso (Nginx, Apache, Traefik)
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+
     return app
 
 
