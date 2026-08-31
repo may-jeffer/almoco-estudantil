@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="fade-in">
+    <div style="margin-bottom: 2rem;">
+        <a href="{{ url_for('admin_dashboard') }}" style="color: var(--text-muted); display: inline-flex; align-items: center; text-decoration: none;">
+            <i class="ph ph-arrow-left" style="margin-right: 6px;"></i> Voltar ao Painel
+        </a>
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 1rem; flex-wrap: wrap; gap: 1rem;">
+            <div>
+                <h1 style="margin: 0; display: flex; align-items: center; gap: 10px;">
+                    <i class="ph ph-list-checks" style="color: #6366f1;"></i> Formulários e Pesquisas Estudantis
+                </h1>
+                <p style="color: var(--text-muted); margin: 0.25rem 0 0 0; font-size: 0.95rem;">
+                    Crie questionários dinâmicos, colete feedbacks e gere links ou QR Codes para os estudantes.
+                </p>
+            </div>
+            <a href="{{ url_for('admin_pesquisa_novo') }}" class="btn btn-primary" style="padding: 0.6rem 1.2rem; font-size: 0.95rem;">
+                <i class="ph ph-plus-circle" style="margin-right: 6px;"></i> Nova Pesquisa
+            </a>
+        </div>
+    </div>
+
+    <!-- Cards de Resumo -->
+    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+        <div class="card" style="padding: 1.25rem; text-align: center; border-top: 4px solid #6366f1; margin: 0;">
+            <p style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; margin-bottom: 0.25rem; font-weight: 600;">Total de Pesquisas</p>
+            <h2 style="font-size: 2.2rem; color: #6366f1; margin: 0;">{{ total_formularios }}</h2>
+            <small style="color: var(--text-muted); font-size: 0.75rem;">Cadastradas no sistema</small>
+        </div>
+
+        <div class="card" style="padding: 1.25rem; text-align: center; border-top: 4px solid #10b981; margin: 0;">
+            <p style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; margin-bottom: 0.25rem; font-weight: 600;">Pesquisas Ativas</p>
+            <h2 style="font-size: 2.2rem; color: #10b981; margin: 0;">{{ total_ativos }}</h2>
+            <small style="color: var(--text-muted); font-size: 0.75rem;">Abertas para resposta</small>
+        </div>
+
+        <div class="card" style="padding: 1.25rem; text-align: center; border-top: 4px solid #0ea5e9; margin: 0;">
+            <p style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; margin-bottom: 0.25rem; font-weight: 600;">Total de Respostas</p>
+            <h2 style="font-size: 2.2rem; color: #0ea5e9; margin: 0;">{{ total_respostas_geral }}</h2>
+            <small style="color: var(--text-muted); font-size: 0.75rem;">Coletadas até o momento</small>
+        </div>
+    </div>
+
+    <!-- Tabela de Formulários -->
+    <div class="card">
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Título / Descrição</th>
+                        <th style="text-align: center;">Identificação</th>
+                        <th style="text-align: center;">Perguntas</th>
+                        <th style="text-align: center;">Respostas</th>
+                        <th>Validade</th>
+                        <th style="text-align: center;">Status</th>
+                        <th style="text-align: right;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in formularios %}
+                    <tr>
+                        <td style="vertical-align: middle;">
+                            <strong style="font-size: 1.05rem; display: block; color: var(--text-main);">{{ f.titulo }}</strong>
+                            {% if f.descricao %}
+                            <span style="font-size: 0.85rem; color: var(--text-muted); display: block; max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                {{ f.descricao }}
+                            </span>
+                            {% endif %}
+                            <small style="color: var(--text-muted); font-size: 0.75rem;">Criado por {{ f.criado_por }} em {{ f.data_criacao | datetimeformat }}</small>
+                        </td>
+
+                        <td style="vertical-align: middle; text-align: center;">
+                            {% if f.is_anonimo %}
+                            <span class="badge" style="background: #f1f5f9; color: #475569; font-size: 0.75rem;">
+                                <i class="ph ph-mask-happy"></i> Anônimo
+                            </span>
+                            {% else %}
+                            <span class="badge" style="background: #e0e7ff; color: #4338ca; font-size: 0.75rem;">
+                                <i class="ph ph-user"></i> Identificado
+                            </span>
+                            {% endif %}
+                        </td>
+
+                        <td style="vertical-align: middle; text-align: center;">
+                            <span class="badge" style="background: #f8fafc; border: 1px solid var(--border); color: var(--text-main); font-weight: bold;">
+                                {{ f.total_perguntas }}
+                            </span>
+                        </td>
+
+                        <td style="vertical-align: middle; text-align: center;">
+                            <a href="{{ url_for('admin_pesquisa_respostas', id=f.id) }}" class="badge" style="background: #ecfdf5; color: #065f46; font-size: 0.85rem; font-weight: bold; text-decoration: none; padding: 4px 10px; border: 1px solid #a7f3d0;" title="Ver Respostas">
+                                <i class="ph ph-chat-circle-dots"></i> {{ f.total_respostas }}
+                            </a>
+                        </td>
+
+                        <td style="vertical-align: middle; font-size: 0.85rem;">
+                            {% if f.data_inicio or f.data_fim %}
+                                <div>{{ f.data_inicio | datetimeformat if f.data_inicio else 'Início imediato' }}</div>
+                                <div style="color: var(--text-muted); font-size: 0.8rem;">até {{ f.data_fim | datetimeformat if f.data_fim else 'Sem término' }}</div>
+                                {% if f.data_fim and hoje_str > f.data_fim %}
+                                    <span class="badge badge-cancelled" style="font-size: 0.7rem; margin-top: 2px;">Expirado</span>
+                                {% endif %}
+                            {% else %}
+                                <span style="color: var(--text-muted);">Sem limite</span>
+                            {% endif %}
+                        </td>
+
+                        <td style="vertical-align: middle; text-align: center;">
+                            <button type="button" 
+                                    class="btn" 
+                                    style="padding: 0.25rem 0.6rem; font-size: 0.75rem; border-radius: 20px; font-weight: bold; border: none; cursor: pointer; {% if f.ativo %}background: #dcfce7; color: #166534;{% else %}background: #fee2e2; color: #991b1b;{% endif %}"
+                                    onclick="toggleStatusPesquisa({{ f.id }}, this)"
+                                    id="btn-status-{{ f.id }}"
+                                    title="Clique para alternar o status da pesquisa">
+                                {% if f.ativo %}
+                                    <i class="ph ph-check-circle"></i> ATIVO
+                                {% else %}
+                                    <i class="ph ph-x-circle"></i> INATIVO
+                                {% endif %}
+                            </button>
+                        </td>
+
+                        <td style="vertical-align: middle; text-align: right; white-space: nowrap;">
+                            <div style="display: inline-flex; gap: 0.35rem;">
+                                <!-- Botão Copiar Link -->
+                                <button type="button" class="btn btn-secondary" style="padding: 0.3rem 0.5rem; font-size: 0.8rem;" 
+                                        onclick="copiarLinkPesquisa('{{ url_for('pesquisa_responder', slug=f.slug, _external=True) }}', this)" 
+                                        title="Copiar Link da Pesquisa">
+                                    <i class="ph ph-link"></i>
+                                </button>
+
+                                <!-- Botão QR Code -->
+                                <button type="button" class="btn btn-secondary" style="padding: 0.3rem 0.5rem; font-size: 0.8rem;" 
+                                        onclick="abrirModalQRCode({{ f.id }})" 
+                                        title="Ver / Baixar QR Code">
+                                    <i class="ph ph-qr-code"></i>
+                                </button>
+
+                                <!-- Botão Resultados -->
+                                <a href="{{ url_for('admin_pesquisa_respostas', id=f.id) }}" class="btn btn-secondary" style="padding: 0.3rem 0.5rem; font-size: 0.8rem;" title="Ver Relatório e Gráficos de Respostas">
+                                    <i class="ph ph-chart-bar"></i>
+                                </a>
+
+                                <!-- Botão Editar -->
+                                <a href="{{ url_for('admin_pesquisa_editar', id=f.id) }}" class="btn btn-secondary" style="padding: 0.3rem 0.5rem; font-size: 0.8rem;" title="Editar Formulário">
+                                    <i class="ph ph-pencil-simple"></i>
+                                </a>
+
+                                <!-- Botão Excluir -->
+                                <form method="POST" action="{{ url_for('admin_pesquisa_excluir', id=f.id) }}" style="display: inline-block;">
+                                    <button type="submit" class="btn btn-danger" style="padding: 0.3rem 0.5rem; font-size: 0.8rem;" onclick="return confirm('Deseja realmente excluir esta pesquisa e todas as suas respostas?');" title="Excluir Pesquisa">
+                                        <i class="ph ph-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                            <i class="ph ph-clipboard-text" style="font-size: 3rem; color: #cbd5e1; display: block; margin-bottom: 0.5rem;"></i>
+                            Nenhuma pesquisa cadastrada.<br>
+                            <a href="{{ url_for('admin_pesquisa_novo') }}" style="color: var(--primary); font-weight: 600; text-decoration: none; margin-top: 0.5rem; display: inline-block;">
+                                Clique aqui para criar a primeira pesquisa
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal QR Code -->
+<div id="modalQRCode" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center;">
+    <div class="card fade-in" style="background: white; border-radius: 12px; width: 90%; max-width: 420px; padding: 1.75rem; text-align: center; position: relative;">
+        <h3 id="modalQrTitulo" style="margin-top: 0; margin-bottom: 0.5rem; font-size: 1.2rem; color: var(--text-main);"></h3>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.25rem;">Escaneie o QR Code abaixo para responder a pesquisa:</p>
+        
+        <div style="background: white; padding: 1rem; border: 2px solid var(--border); border-radius: 8px; display: inline-block; margin-bottom: 1rem;">
+            <img id="modalQrImg" src="" alt="QR Code" style="width: 200px; height: 200px; display: block; margin: auto;">
+        </div>
+
+        <div style="margin-bottom: 1.5rem;">
+            <input type="text" id="modalQrUrl" readonly style="width: 100%; font-size: 0.8rem; padding: 0.5rem; text-align: center; background: #f8fafc; border: 1px solid var(--border); border-radius: 6px;">
+        </div>
+
+        <div style="display: flex; gap: 0.5rem; justify-content: center;">
+            <button type="button" class="btn btn-secondary" onclick="copiarLinkDoModal()" style="flex: 1;">
+                <i class="ph ph-copy"></i> Copiar Link
+            </button>
+            <a id="modalQrDownload" href="" download="qrcode_pesquisa.png" class="btn btn-primary" style="flex: 1; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                <i class="ph ph-download-simple"></i> Baixar PNG
+            </a>
+        </div>
+
+        <button type="button" onclick="fecharModalQRCode()" style="position: absolute; top: 12px; right: 12px; background: none; border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer;">
+            &times;
+        </button>
+    </div>
+</div>
+
+<script>
+function copiarLinkPesquisa(url, btn) {
+    navigator.clipboard.writeText(url).then(() => {
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="ph ph-check" style="color: #10b981;"></i>';
+        setTimeout(() => { btn.innerHTML = originalHtml; }, 2000);
+    }).catch(err => {
+        prompt("Copie o link:", url);
+    });
+}
+
+function copiarLinkDoModal() {
+    const url = document.getElementById('modalQrUrl').value;
+    navigator.clipboard.writeText(url).then(() => {
+        alert("Link copiado com sucesso!");
+    }).catch(err => {
+        prompt("Copie o link:", url);
+    });
+}
+
+async function abrirModalQRCode(id) {
+    try {
+        const res = await fetch(`/admin/pesquisas/qrcode/${id}`);
+        const data = await res.json();
+        if (data.success) {
+            document.getElementById('modalQrTitulo').innerText = data.titulo;
+            document.getElementById('modalQrImg').src = 'data:image/png;base64,' + data.qr_b64;
+            document.getElementById('modalQrUrl').value = data.url;
+            document.getElementById('modalQrDownload').href = 'data:image/png;base64,' + data.qr_b64;
+            document.getElementById('modalQrDownload').download = `qrcode_${data.slug}.png`;
+            
+            document.getElementById('modalQRCode').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        } else {
+            alert('Não foi possível carregar o QR Code.');
+        }
+    } catch (e) {
+        alert('Erro ao buscar QR Code.');
+    }
+}
+
+function fecharModalQRCode() {
+    document.getElementById('modalQRCode').style.display = 'none';
+    document.body.style.overflow = '';
+}
+
+document.getElementById('modalQRCode').addEventListener('click', function(e) {
+    if (e.target === this) fecharModalQRCode();
+});
+
+async function toggleStatusPesquisa(id, btn) {
+    try {
+        const res = await fetch(`/admin/pesquisas/toggle/${id}`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            if (data.novo_status === 1) {
+                btn.style.background = '#dcfce7';
+                btn.style.color = '#166534';
+                btn.innerHTML = '<i class="ph ph-check-circle"></i> ATIVO';
+            } else {
+                btn.style.background = '#fee2e2';
+                btn.style.color = '#991b1b';
+                btn.innerHTML = '<i class="ph ph-x-circle"></i> INATIVO';
+            }
+        } else {
+            alert(data.message || 'Erro ao alterar status.');
+        }
+    } catch (e) {
+        alert('Erro ao conectar ao servidor.');
+    }
+}
+</script>
+{% endblock %}

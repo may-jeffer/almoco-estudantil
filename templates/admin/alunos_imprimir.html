@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Imprimir Crachás Estudantis</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f3f4f6;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .no-print {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .badges-container {
+            /* Definido dinamicamente de acordo com o modo */
+        }
+
+        .badge {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 12px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+            overflow: hidden;
+            page-break-inside: avoid;
+        }
+
+        /* --- MODO A4 --- */
+        body.mode-a4 .badges-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        body.mode-a4 .badge {
+            width: 200px;
+            height: 320px;
+        }
+
+        /* --- MODO CARTÃO PVC --- */
+        body.mode-card .badges-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+        body.mode-card .badge {
+            width: 54mm;
+            height: 86mm;
+            border-radius: 3.18mm; /* Bordas arredondadas padrão de cartão PVC */
+        }
+        body.mode-card .badge-footer {
+            margin: 0 -12px -12px -12px;
+            width: calc(100% + 24px);
+        }
+
+        .badge-header {
+            width: 100%;
+            text-align: center;
+            border-bottom: 1px solid #10b981;
+            padding-bottom: 5px;
+        }
+
+        .badge-header h1 {
+            font-size: 0.7rem;
+            margin: 0;
+            color: #1f2937;
+            text-transform: uppercase;
+        }
+
+        .badge-header p {
+            font-size: 0.55rem;
+            margin: 2px 0 0 0;
+            color: #059669;
+            font-weight: bold;
+        }
+
+        .badge-content {
+            text-align: center;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .aluno-nome {
+            font-size: 0.85rem;
+            font-weight: 700;
+            margin: 5px 0;
+            color: #111827;
+            line-height: 1.1;
+        }
+
+        .aluno-matricula {
+            font-size: 0.7rem;
+            color: #4b5563;
+            font-family: monospace;
+            margin-bottom: 10px;
+        }
+
+        .qr-container {
+            border: 1px solid #eee;
+            padding: 5px;
+            background: #fff;
+            border-radius: 4px;
+        }
+
+        .qr-container img {
+            width: 110px;
+            height: 110px;
+        }
+
+        .badge-footer {
+            width: 100%;
+            text-align: center;
+            background: #f0fdf4;
+            padding: 6px 0;
+            margin: 0 -12px -12px -12px;
+            width: calc(100% + 24px);
+            border-top: 1px solid #d1fae5;
+        }
+
+        .badge-footer span {
+            font-size: 0.6rem;
+            color: #065f46;
+            font-weight: 600;
+        }
+
+        @media print {
+            body { 
+                background: white !important; 
+                padding: 0 !important; 
+                margin: 0 !important; 
+            }
+            .no-print { 
+                display: none !important; 
+            }
+            
+            /* Regras de impressão para A4 */
+            body.mode-a4 .badges-container {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 5px;
+            }
+            body.mode-a4 .badge {
+                width: 200px;
+                height: 320px;
+                border: 1px solid #ccc;
+                margin: 0;
+                page-break-inside: avoid;
+            }
+
+            /* Regras de impressão para Cartão PVC */
+            body.mode-card .badges-container {
+                display: block;
+                padding: 0;
+                margin: 0;
+            }
+            body.mode-card .badge {
+                width: 54mm;
+                height: 86mm;
+                border: none;
+                margin: 0;
+                box-sizing: border-box;
+                page-break-after: always;
+                page-break-inside: avoid;
+            }
+        }
+
+        .btn {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn:hover { background: #059669; }
+    </style>
+</head>
+<body class="mode-a4">
+
+    <div class="no-print">
+        <div>
+            <h2 style="margin:0;">Impressão de Crachás Estudantis</h2>
+            <p style="margin:5px 0 0 0; color:#666;">Foram gerados {{ crachas|length }} crachás para impressão.</p>
+        </div>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+                <label for="printMode" style="font-size: 0.8rem; font-weight: bold; color: #4b5563;">Formato de Impressão:</label>
+                <select id="printMode" onchange="changePrintMode(this.value)" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #d1d5db; font-size: 0.85rem; outline: none; background: white; cursor: pointer;">
+                    <option value="a4">Folha A4 (Múltiplos Crachás)</option>
+                    <option value="card">Cartão PVC (Individual - Fargo DTC1250e / CR-80)</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: 8px; align-self: flex-end;">
+                <button type="button" onclick="voltar()" class="btn" style="background:#6b7280;">Voltar</button>
+                <button type="button" onclick="window.print()" class="btn">Imprimir Agora</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="badges-container">
+        {% for c in crachas %}
+        <div class="badge">
+            <div class="badge-header">
+                <h1>{{ global_config.nome_sistema }}</h1>
+                <p>IDENTIFICAÇÃO ESTUDANTIL</p>
+            </div>
+
+            <div class="badge-content">
+                <div class="aluno-nome">{{ c.nome }}</div>
+                <div class="aluno-matricula">Matrícula: {{ c.matricula }}</div>
+                
+                <div class="qr-container">
+                    <img src="data:image/png;base64,{{ c.qr_code }}" alt="QR Code">
+                </div>
+                <div style="font-size: 0.65rem; color: #94a3b8; margin-top: 10px; font-family: monospace;">
+                    {{ c.codigo }}
+                </div>
+            </div>
+
+            <div class="badge-footer">
+                <span>{{ c.turma }}</span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <script>
+        function voltar() {
+            // Se a página foi aberta em uma nova aba/janela e não possui histórico anterior
+            if (window.history.length <= 1) {
+                window.close();
+                // Caso o navegador restrinja o window.close(), redireciona para a tela de alunos
+                setTimeout(() => {
+                    window.location.href = "{{ url_for('admin_alunos') }}";
+                }, 150);
+                return;
+            }
+            // Se tem histórico na mesma aba, volta normalmente
+            window.history.back();
+        }
+
+        function changePrintMode(mode) {
+            document.body.className = 'mode-' + mode;
+            
+            // Remove estilo dinâmico anterior se existir
+            let dynamicStyle = document.getElementById('dynamic-page-style');
+            if (dynamicStyle) {
+                dynamicStyle.remove();
+            }
+            
+            // Cria nova tag de estilo para injetar a regra @page
+            dynamicStyle = document.createElement('style');
+            dynamicStyle.id = 'dynamic-page-style';
+            
+            if (mode === 'card') {
+                dynamicStyle.innerHTML = `
+                    @page {
+                        size: 54mm 86mm;
+                        margin: 0;
+                    }
+                `;
+            } else {
+                dynamicStyle.innerHTML = `
+                    @page {
+                        size: A4;
+                        margin: 1cm;
+                    }
+                `;
+            }
+            document.head.appendChild(dynamicStyle);
+            
+            // Salva a preferência no localStorage
+            localStorage.setItem('badge_print_mode', mode);
+        }
+
+        // Recupera a preferência salva ou usa o padrão A4
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedMode = localStorage.getItem('badge_print_mode') || 'a4';
+            document.getElementById('printMode').value = savedMode;
+            changePrintMode(savedMode);
+        });
+    </script>
+</body>
+</html>

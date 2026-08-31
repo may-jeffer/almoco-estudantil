@@ -9,10 +9,10 @@
     <!-- Cards Superiores -->
     <div class="grid" style="margin-bottom: 2rem;">
         <div class="card header-stats"
-            style="grid-column: span 3; display: flex; justify-content: space-around; padding: 2rem;">
+            style="grid-column: span 3; display: flex; justify-content: space-around; flex-wrap: wrap; gap: 1.5rem; padding: 2rem;">
             {% if tem_permissao('turmas') %}
-            <div class="stat-item">
-                <i class="ph ph-users-three" style="font-size: 2rem; color: var(--primary);"></i>
+            <div class="stat-item" style="display: flex; align-items: center; gap: 10px;">
+                <i class="ph ph-buildings" style="font-size: 2rem; color: var(--primary);"></i>
                 <div>
                     <span style="display: block; font-size: 1.5rem; font-weight: bold;">{{ total_turmas }}</span>
                     <span style="color: var(--text-muted); font-size: 0.9rem;">Turmas</span>
@@ -21,16 +21,33 @@
             {% endif %}
 
             {% if tem_permissao('alunos') %}
-            <div class="stat-item">
+            <div class="stat-item" style="display: flex; align-items: center; gap: 10px;">
                 <i class="ph ph-student" style="font-size: 2rem; color: #4F46E5;"></i>
                 <div>
                     <span style="display: block; font-size: 1.5rem; font-weight: bold;">{{ total_alunos }}</span>
-                    <span style="color: var(--text-muted); font-size: 0.9rem;">Alunos</span>
+                    <span style="color: var(--text-muted); font-size: 0.9rem;">Alunos Regulares</span>
                 </div>
             </div>
             {% endif %}
 
-            <div class="stat-item">
+            {% if session.get('admin_perfil') == 'admin_mestre' or 'eventos' in session.get('admin_permissoes', []) %}
+            <div class="stat-item" style="display: flex; align-items: center; gap: 10px;">
+                <i class="ph ph-calendar-star" style="font-size: 2rem; color: #10b981;"></i>
+                <div>
+                    <span style="display: block; font-size: 1.5rem; font-weight: bold;">{{ total_eventos }}</span>
+                    <span style="color: var(--text-muted); font-size: 0.9rem;">Eventos Ativos</span>
+                </div>
+            </div>
+            <div class="stat-item" style="display: flex; align-items: center; gap: 10px;">
+                <i class="ph ph-users-three" style="font-size: 2rem; color: #f59e0b;"></i>
+                <div>
+                    <span style="display: block; font-size: 1.5rem; font-weight: bold;">{{ total_visitantes }}</span>
+                    <span style="color: var(--text-muted); font-size: 0.9rem;">Visitantes (Eventos)</span>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="stat-item" style="display: flex; align-items: center; gap: 10px;">
                 <i class="ph ph-clock" style="font-size: 2rem; color: var(--secondary);"></i>
                 <div>
                     <span style="display: block; font-size: 1.5rem; font-weight: bold;">{{ config.horario_limite
@@ -41,9 +58,10 @@
         </div>
     </div>
 
+    <!-- Linha principal: Menu + Configurações -->
     <div class="grid">
         <!-- Ações Rápidas -->
-        <div class="card" style="grid-column: span 2;">
+        <div class="card" style="grid-column: span 1; align-self: start;">
             <h2>Gestão do Sistema</h2>
             <div class="admin-menu">
                 {% if tem_permissao('turmas') %}
@@ -57,6 +75,14 @@
                 <a href="{{ url_for('admin_alunos') }}" class="menu-item">
                     <i class="ph ph-student"></i>
                     <span>Cadastrar / Editar Alunos</span>
+                </a>
+                {% endif %}
+
+                {% if session.get('admin_perfil') == 'admin_mestre' or 'eventos' in session.get('admin_permissoes', [])
+                %}
+                <a href="{{ url_for('admin_eventos') }}" class="menu-item">
+                    <i class="ph ph-calendar-star" style="color: #10b981;"></i>
+                    <span>Eventos / Público Externo</span>
                 </a>
                 {% endif %}
 
@@ -81,12 +107,45 @@
                 </a>
                 {% endif %}
 
+                {% if session.get('admin_perfil') == 'admin_mestre' or tem_permissao('all') %}
+                <a href="{{ url_for('admin_auditoria') }}" class="menu-item">
+                    <i class="ph ph-shield-warning"></i>
+                    <span>Logs de Auditoria</span>
+                </a>
+                {% endif %}
+
                 {% if tem_permissao('avisos') %}
                 <a href="{{ url_for('admin_avisos') }}" class="menu-item">
                     <i class="ph ph-megaphone"></i>
                     <span>Mural de Avisos (Alunos)</span>
                 </a>
                 {% endif %}
+
+                {% if tem_permissao('pesquisas') %}
+                <a href="{{ url_for('admin_pesquisas') }}" class="menu-item">
+                    <i class="ph ph-list-checks" style="color: #6366f1;"></i>
+                    <span>Pesquisas e Formulários</span>
+                </a>
+                {% endif %}
+
+                {% if tem_permissao('fila') %}
+                <a href="{{ url_for('admin_reservas') }}" class="menu-item">
+                    <i class="ph ph-ticket"></i>
+                    <span>Gerenciar Reservas Ativas</span>
+                </a>
+                {% endif %}
+
+                {% if tem_permissao('base_conhecimento') %}
+                <a href="{{ url_for('admin.admin_base_conhecimento') }}" class="menu-item">
+                    <i class="ph ph-books" style="color: #7c3aed;"></i>
+                    <span>Base de Conhecimento</span>
+                </a>
+                {% endif %}
+
+                <a href="{{ url_for('admin_manual') }}" class="menu-item">
+                    <i class="ph ph-book-open" style="color: #0ea5e9;"></i>
+                    <span>Manual do Sistema & Ajuda</span>
+                </a>
 
                 {% if tem_permissao('fila') %}
                 <a href="{{ url_for('admin_entrega') }}" class="menu-item highlight">
@@ -99,7 +158,7 @@
 
         <!-- Configurações do Sistema -->
         {% if tem_permissao('config') or tem_permissao('smtp') %}
-        <div class="card">
+        <div class="card" style="align-self: start;">
             <h2>Configurações Globais</h2>
 
             <form method="POST" action="{{ url_for('save_configuracoes') }}" style="margin-top: 1.5rem;">
@@ -113,7 +172,7 @@
                 <div class="form-group">
                     <label for="sigla_instituicao">Sigla/Nome da Instituição</label>
                     <input type="text" id="sigla_instituicao" name="sigla_instituicao"
-                        value="{{ config.sigla_instituicao if config else 'IFAP' }}">
+                        value="{{ config.sigla_instituicao if config else 'SIGLA' }}">
                 </div>
 
                 <div class="form-group">
@@ -132,8 +191,36 @@
                     </select>
                 </div>
 
-                <button type="submit" class="btn btn-secondary" style="width: 100%;"><i class="ph ph-floppy-disk"
-                        style="margin-right: 8px;"></i> Salvar Configurações</button>
+                <div class="form-group">
+                    <label for="max_reservas_ativas">Máx. de Reservas Ativas por Aluno</label>
+                    <input type="number" id="max_reservas_ativas" name="max_reservas_ativas"
+                        value="{{ config.max_reservas_ativas if config.max_reservas_ativas else 1 }}" min="1" max="30">
+                    <small style="color: var(--text-muted);">Quantas refeições um aluno pode reservar ao mesmo tempo
+                        (padrão: 1).</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="email_qr_reserva">Enviar QR Code por E-mail ao Reservar?</label>
+                    <select id="email_qr_reserva" name="email_qr_reserva">
+                        <option value="1" {% if config.email_qr_reserva %}selected{% endif %}>Sim (requer SMTP ativo e
+                            e-mail do aluno)</option>
+                        <option value="0" {% if not config.email_qr_reserva %}selected{% endif %}>Não</option>
+                    </select>
+                    <small style="color: var(--text-muted);">O QR Code será enviado automaticamente após cada reserva
+                        confirmada.</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="tempo_autologout">Tempo de Autologout (Segundos, use 0 para desativar)</label>
+                    <input type="number" id="tempo_autologout" name="tempo_autologout"
+                        value="{{ config.tempo_autologout if config.tempo_autologout is not none else 60 }}" min="0">
+                    <small style="color: var(--text-muted);">Tempo inativo antes de deslogar automaticamente o aluno nos
+                        tablets (0 desativa o timer).</small>
+                </div>
+
+                <button type="submit" class="btn btn-secondary" style="width: 100%;">
+                    <i class="ph ph-floppy-disk" style="margin-right: 8px;"></i> Salvar Configurações
+                </button>
                 {% endif %}
             </form>
 
@@ -151,14 +238,18 @@
                         <input type="file" name="logo_file" accept="image/*" required>
                     </div>
                 </div>
-                <button type="submit" class="btn" style="background: var(--text-main); color: white; width: 100%;"><i
-                        class="ph ph-upload-simple" style="margin-right: 8px;"></i> Atualizar Logo</button>
+                <button type="submit" class="btn" style="background: var(--text-main); color: white; width: 100%;">
+                    <i class="ph ph-upload-simple" style="margin-right: 8px;"></i> Atualizar Logo
+                </button>
             </form>
             {% endif %}
         </div>
         {% endif %}
+    </div>
 
-        {% if tem_permissao('smtp') %}
+    <!-- SMTP — linha separada, largura total -->
+    {% if tem_permissao('smtp') %}
+    <div class="grid" style="margin-top: 1.5rem;">
         <div class="card" style="grid-column: span 3;">
             <h2>Servidor de E-mail (SMTP)</h2>
             <form method="POST" action="{{ url_for('save_configuracoes_smtp') }}">
@@ -183,16 +274,37 @@
                         <input type="text" name="smtp_user" value="{{ config.smtp_user or '' }}">
                     </div>
                     <div class="form-group" style="grid-column: span 4;">
-                        <label>Senha / Token SMPT</label>
+                        <label>Senha / Token SMTP</label>
                         <input type="password" name="smtp_senha"
                             placeholder="Mantenha vazio para preservar a senha atual">
                     </div>
                 </div>
-                <button type="submit" class="btn btn-primary" style="width: 100%;"><i class="ph ph-plugs-connected"
-                        style="margin-right: 8px;"></i> Salvar Configuração SMTP</button>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    <i class="ph ph-plugs-connected" style="margin-right: 8px;"></i> Salvar Configuração SMTP
+                </button>
+            </form>
+
+            <hr style="margin: 2rem 0; border: 0; border-top: 1px solid var(--border);">
+
+            <h3 style="margin-bottom: 1rem; font-size: 1rem; display: flex; align-items: center; gap: 8px;">
+                <i class="ph ph-paper-plane-tilt" style="color: #0ea5e9;"></i> Testar Conexão SMTP
+            </h3>
+            <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1rem;">
+                Envie um e-mail de teste antes de ativar em produção. Salve as configurações SMTP acima primeiro.
+            </p>
+            <form method="POST" action="{{ url_for('testar_smtp') }}"
+                style="display: flex; gap: 10px; align-items: flex-end;">
+                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                    <label for="email_teste">E-mail de destino do teste</label>
+                    <input type="email" id="email_teste" name="email_teste" placeholder="seu@email.com" required>
+                </div>
+                <button type="submit" class="btn"
+                    style="background: #0ea5e9; color: white; white-space: nowrap; padding: 0.7rem 1.2rem;">
+                    <i class="ph ph-paper-plane-tilt" style="margin-right: 6px;"></i> Enviar Teste
+                </button>
             </form>
         </div>
-        {% endif %}
     </div>
+    {% endif %}
 </div>
 {% endblock %}

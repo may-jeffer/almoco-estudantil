@@ -96,6 +96,7 @@ input[type="email"],
 input[type="date"],
 input[type="password"],
 input[type="time"],
+input[type="number"],
 select {
   width: 100%;
   padding: 0.75rem 1rem;
@@ -130,19 +131,26 @@ input:focus, select:focus {
   background-color: var(--primary);
   color: white;
 }
-.btn-primary:hover { background-color: var(--primary-hover); transform: translateY(-1px); }
+.btn-primary:hover { background-color: var(--primary-hover); color: white !important; transform: translateY(-1px); }
 
 .btn-secondary {
   background-color: var(--secondary);
   color: white;
 }
-.btn-secondary:hover { background-color: var(--secondary-hover); transform: translateY(-1px); }
+.btn-secondary:hover { background-color: var(--secondary-hover); color: white !important; transform: translateY(-1px); }
 
 .btn-danger {
   background-color: var(--danger);
   color: white;
 }
-.btn-danger:hover { background-color: var(--danger-hover); transform: translateY(-1px); }
+.btn-danger:hover { background-color: var(--danger-hover); color: white !important; transform: translateY(-1px); }
+
+.btn-sm {
+  padding: 0.4rem 0.85rem !important;
+  font-size: 0.85rem !important;
+  min-height: unset !important;
+  width: auto !important;
+}
 
 /* Alerts */
 .alerts {
@@ -226,9 +234,25 @@ tr:hover {
 
 /* Dashboard Grid */
 .grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 1.5rem;
+}
+
+.card-full {
+  width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    align-items: start;
+  }
+  
+  .card-full {
+    grid-column: span 2;
+  }
 }
 
 /* Badges */
@@ -342,9 +366,146 @@ tr:hover {
 
 /* Mobile specific fixes */
 @media (max-width: 640px) {
-  .navbar { flex-direction: column; gap: 1rem; padding: 1rem; }
-  .navbar-links a { margin: 0 0.5rem; }
-  main { padding: 1rem 0.5rem; }
-  .card { padding: 1.5rem 1rem; }
-  .grid { grid-template-columns: 1fr; }
+  .navbar { 
+    flex-direction: column; 
+    gap: 1rem; 
+    padding: 1rem; 
+    text-align: center;
+  }
+  .navbar-links { 
+    display: flex; 
+    flex-wrap: wrap; 
+    justify-content: center; 
+    gap: 0.5rem; 
+    width: 100%;
+  }
+  .navbar-links a { 
+    margin: 0; 
+    padding: 0.6rem; 
+    background: #f9fafb; 
+    border: 1px solid var(--border);
+    border-radius: 8px; 
+    flex: 1; 
+    min-width: 140px;
+    font-size: 0.9rem;
+  }
+
+  main { padding: 1.5rem 0.75rem; }
+  .card { padding: 1.5rem 1.25rem; margin-bottom: 1.5rem; }
+  .grid { grid-template-columns: 1fr; gap: 1.25rem; }
+  
+  h1 { font-size: 1.75rem; }
+  h2 { font-size: 1.4rem; }
+  
+  /* Ajuste para campos de formulário no mobile */
+  .form-group { margin-bottom: 1.25rem; }
+  input, select, .btn {
+    font-size: 16px !important; /* iOS zoom prevention */
+    padding: 0.9rem 1rem !important;
+    min-height: 48px; /* Touch target size */
+  }
+  
+  .btn { width: 100%; padding: 1rem !important; }
+  
+  /* Containers flex que devem empilhar no mobile */
+  .flex-mobile-column {
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center;
+    gap: 1rem !important;
+  }
+
+  .qr-container img {
+    width: 200px;
+    height: 200px;
+  }
 }
+
+/* Modal overlay - always fixed to viewport regardless of parent context */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 99999;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+.modal-overlay.is-open {
+  display: flex;
+}
+
+.modal-box {
+  background: white;
+  border-radius: 14px;
+  width: 100%;
+  max-width: 620px;
+  padding: 2rem;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+  position: relative;
+}
+
+@media (max-width: 480px) {
+  .modal-box {
+    padding: 1.5rem 1rem;
+  }
+  
+  .modal-box .grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Tab Buttons & Contents (Dashboard BI) */
+.tab-btn {
+  background: none;
+  border: none;
+  padding: 1rem 1.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--text-muted);
+  border-bottom: 3px solid transparent;
+  font-size: 1rem;
+  transition: var(--transition);
+}
+
+.tab-btn:hover {
+  color: var(--primary);
+}
+
+.tab-btn.active {
+  color: var(--primary) !important;
+  border-bottom: 3px solid var(--primary) !important;
+}
+
+.tab-content {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Pulsing Red Warning Icon & Modal Animations */
+@keyframes pulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 15px rgba(239, 68, 68, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+.pulse-warning-icon {
+  animation: pulse 1.5s infinite;
+}
+

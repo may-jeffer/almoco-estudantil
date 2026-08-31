@@ -4,11 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{{ global_config.nome_sistema if global_config else 'Cantina Estudantil' }}{% endblock %}</title>
+    {% if global_config and global_config.logo_path %}
+    <link rel="icon" href="{{ global_config.logo_path }}">
+    <link rel="shortcut icon" href="{{ global_config.logo_path }}">
+    <link rel="apple-touch-icon" href="{{ global_config.logo_path }}">
+    {% else %}
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍽️</text></svg>">
+    <link rel="shortcut icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍽️</text></svg>">
+    {% endif %}
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <!-- Phosphor Icons para iconografia moderna -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
 </head>
 <body>
+    {% if session.get('aluno_id') and not request.path.startswith('/admin') and global_config and global_config.tempo_autologout != 0 %}
+    <div id="autologout-banner" style="background: var(--primary, #EF4444); color: white; text-align: center; padding: 5px; font-weight: bold; font-size: 0.9rem; z-index: 1000; position: relative;">
+        Sessão expira em <span id="autologout-timer"></span>. Mexa na tela para continuar.
+    </div>
+    {% endif %}
     {% block navbar %}
     <nav class="navbar">
         <div class="navbar-brand" style="display: flex; align-items: center; gap: 10px;">
@@ -20,15 +33,25 @@
             <span>{{ global_config.nome_sistema if global_config else 'Cantina Estudantil' }}</span>
         </div>
         <div class="navbar-links">
-            {% if session.get('aluno_id') %}
-                <span>Olá, {{ session.get('aluno_nome') }}</span>
-                <a href="{{ url_for('logout') }}" class="btn btn-danger" style="padding: 0.5rem 1rem; border-radius: 6px;">Sair</a>
-            {% elif session.get('is_admin') %}
-                <a href="{{ url_for('admin_dashboard') }}">Painel</a>
-                {% if tem_permissao('fila') %}
-                    <a href="{{ url_for('admin_entrega') }}">Fila de Entrega</a>
+            {% if request.path.startswith('/admin') %}
+                {% if session.get('is_admin') %}
+                    <span>Admin: {{ session.get('admin_usuario', 'Administrador') }}</span>
+                    <a href="{{ url_for('admin_dashboard') }}">Painel</a>
+                    <a href="{{ url_for('admin_manual') }}" style="display: inline-flex; align-items: center; gap: 4px;"><i class="ph ph-book-open"></i> Manual</a>
+                    {% if tem_permissao('fila') %}
+                    <a href="{{ url_for('admin_entrega') }}">Fila</a>
+                    {% endif %}
+                    <a href="{{ url_for('admin_logout') }}" class="btn btn-danger" style="padding: 0.5rem 1rem; border-radius: 6px;">Sair</a>
+                {% else %}
+                    <a href="{{ url_for('admin_login') }}">Login Restrito</a>
                 {% endif %}
-                <a href="{{ url_for('admin_logout') }}" class="btn btn-danger" style="padding: 0.5rem 1rem; border-radius: 6px;">Sair</a>
+            {% else %}
+                {% if session.get('aluno_id') %}
+                    <span>Olá, {{ session.get('aluno_nome') }}</span>
+                    <a href="{{ url_for('logout') }}" class="btn btn-danger" style="padding: 0.5rem 1rem; border-radius: 6px;">Sair</a>
+                {% else %}
+                    <a href="{{ url_for('login') }}">Área do Estudante</a>
+                {% endif %}
             {% endif %}
         </div>
     </nav>
@@ -51,5 +74,74 @@
 
         {% block content %}{% endblock %}
     </main>
+
+    {% block modals %}{% endblock %}
+
+    {% if session.get('aluno_id') and not request.path.startswith('/admin') and global_config and global_config.tempo_autologout != 0 %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            let timeoutSeconds = parseInt("{{ global_config.tempo_autologout if global_config and global_config.tempo_autologout else 60 }}", 10) || 60;
+            let timeRemaining = timeoutSeconds;
+            let logoutTimerElement = document.getElementById('autologout-timer');
+            
+            function updateTimerDisplay() {
+                if (!logoutTimerElement) return;
+                let minutes = Math.floor(timeRemaining / 60);
+                let seconds = timeRemaining % 60;
+                logoutTimerElement.innerText = (minutes > 0 ? minutes + "m " : "") + seconds + "s";
+            }
+
+            function resetTimer() {
+                timeRemaining = timeoutSeconds;
+                updateTimerDisplay();
+            }
+
+            function tick() {
+                timeRemaining--;
+                if (timeRemaining <= 0) {
+                    window.location.href = "{{ url_for('logout') }}";
+                } else {
+                    updateTimerDisplay();
+                }
+            }
+
+            setInterval(tick, 1000);
+            updateTimerDisplay();
+
+            // Reseta ao detectar atividade
+            ['click', 'mousemove', 'keypress', 'scroll', 'touchstart'].forEach(function(evt) {
+                window.addEventListener(evt, resetTimer, false);
+            });
+        });
+    </script>
+    {% endif %}
+
+    <!-- Script para remover PWA e limpar cache do navegador -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for (let registration of registrations) {
+                    registration.unregister().then(function(boolean) {
+                        if (boolean) {
+                            console.log('[PWA] Service Worker desregistrado com sucesso.');
+                        }
+                    });
+                }
+            }).catch(function(err) {
+                console.error('[PWA] Erro ao desregistrar Service Worker:', err);
+            });
+        }
+        if ('caches' in window) {
+            caches.keys().then(function(names) {
+                for (let name of names) {
+                    caches.delete(name).then(function(success) {
+                        if (success) {
+                            console.log('[PWA] Cache deletado:', name);
+                        }
+                    });
+                }
+            });
+        }
+    </script>
 </body>
 </html>

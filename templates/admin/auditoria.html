@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="fade-in">
+    <div style="margin-bottom: 2rem;">
+        <a href="{{ url_for('admin.admin_dashboard') }}" style="color: var(--text-muted); display: inline-flex; align-items: center;"><i class="ph ph-arrow-left" style="margin-right: 4px;"></i> Voltar ao Painel</a>
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+            <div>
+                <h1 style="margin-top: 1rem; margin-bottom: 0.25rem;"><i class="ph ph-shield-check"></i> Logs de Auditoria</h1>
+                <p style="color: var(--text-muted); margin-top: 0;">Monitore as ações administrativas realizadas no sistema.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros de Auditoria -->
+    <div class="card" style="margin-bottom: 1.5rem;">
+        <form method="GET" action="{{ url_for('admin.admin_auditoria') }}">
+            <div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end;">
+                <div class="form-group" style="margin: 0; flex: 1; min-width: 200px;">
+                    <label for="q" style="font-size: 0.85rem; font-weight: 600;">Buscar por Usuário ou Ação</label>
+                    <input type="text" id="q" name="q" value="{{ busca }}" placeholder="Ex: admin, Criar Aluno..."
+                           style="padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid var(--border); font-size: 0.9rem; width: 100%;">
+                </div>
+                
+                <div class="form-group" style="margin: 0; min-width: 150px;">
+                    <label for="data_inicio" style="font-size: 0.85rem; font-weight: 600;">De</label>
+                    <input type="date" id="data_inicio" name="data_inicio" value="{{ data_inicio }}"
+                           style="padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid var(--border); font-size: 0.9rem; width: 100%;">
+                </div>
+
+                <div class="form-group" style="margin: 0; min-width: 150px;">
+                    <label for="data_fim" style="font-size: 0.85rem; font-weight: 600;">Até</label>
+                    <input type="date" id="data_fim" name="data_fim" value="{{ data_fim }}"
+                           style="padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid var(--border); font-size: 0.9rem; width: 100%;">
+                </div>
+
+                <div style="display: flex; gap: 0.5rem; align-items: flex-end;">
+                    <button type="submit" class="btn btn-primary" style="padding: 0.5rem 1rem;">
+                        <i class="ph ph-magnifying-glass"></i> Filtrar
+                    </button>
+                    <a href="{{ url_for('admin.admin_auditoria') }}" class="btn btn-secondary" style="padding: 0.5rem 1rem;">
+                        <i class="ph ph-x"></i> Limpar
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Tabela de Auditoria -->
+    <div class="card">
+        <h2 style="margin-top: 0; margin-bottom: 1.5rem;">Ações Registradas ({{ total }})</h2>
+
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
+                <thead>
+                    <tr style="border-bottom: 2px solid var(--border); color: var(--text-muted); font-weight: 600;">
+                        <th style="padding: 0.75rem 1rem; width: 160px;">Data/Hora</th>
+                        <th style="padding: 0.75rem 1rem; width: 150px;">Usuário</th>
+                        <th style="padding: 0.75rem 1rem; width: 180px;">Ação</th>
+                        <th style="padding: 0.75rem 1rem;">Detalhes</th>
+                        <th style="padding: 0.75rem 1rem; width: 130px;">Endereço IP</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr style="border-bottom: 1px solid var(--border); transition: background 0.15s ease;">
+                        <td style="padding: 0.75rem 1rem; color: var(--text-muted); font-family: monospace;">{{ log.data_criacao }}</td>
+                        <td style="padding: 0.75rem 1rem;">
+                            <strong>{{ log.usuario or 'Sistema/Desconhecido' }}</strong>
+                            {% if log.admin_id %}
+                                <span style="display: block; font-size: 0.75rem; color: var(--text-muted);">ID: {{ log.admin_id }}</span>
+                            {% endif %}
+                        </td>
+                        <td style="padding: 0.75rem 1rem;">
+                            <span class="badge" style="background: var(--background); border: 1px solid var(--border); color: var(--primary); font-size: 0.8rem; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 600;">
+                                {{ log.acao }}
+                            </span>
+                        </td>
+                        <td style="padding: 0.75rem 1rem; color: var(--text-main);">{{ log.detalhes or '' }}</td>
+                        <td style="padding: 0.75rem 1rem; color: var(--text-muted); font-family: monospace; font-size: 0.8rem;">{{ log.ip or '-' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" style="padding: 2rem; text-align: center; color: var(--text-muted);">
+                            Nenhum log de auditoria encontrado.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Paginação -->
+        {% if total_paginas > 1 %}
+        <div style="display: flex; align-items: center; justify-content: center; gap: 0.4rem; margin-top: 2rem; flex-wrap: wrap;">
+            {% if pagina > 1 %}
+            <a href="{{ url_for('admin.admin_auditoria', page=pagina-1, q=busca, data_inicio=data_inicio, data_fim=data_fim) }}"
+               class="btn btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;">
+                <i class="ph ph-caret-left"></i>
+            </a>
+            {% endif %}
+
+            {% for p in range(1, total_paginas + 1) %}
+                {% if p == pagina %}
+                <span class="btn btn-primary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem; cursor: default;">{{ p }}</span>
+                {% elif p == 1 or p == total_paginas or (p >= pagina - 2 and p <= pagina + 2) %}
+                <a href="{{ url_for('admin.admin_auditoria', page=p, q=busca, data_inicio=data_inicio, data_fim=data_fim) }}"
+                   class="btn btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;">{{ p }}</a>
+                {% elif p == pagina - 3 or p == pagina + 3 %}
+                <span style="color: var(--text-muted); padding: 0 0.25rem;">…</span>
+                {% endif %}
+            {% endfor %}
+
+            {% if pagina < total_paginas %}
+            <a href="{{ url_for('admin.admin_auditoria', page=pagina+1, q=busca, data_inicio=data_inicio, data_fim=data_fim) }}"
+               class="btn btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;">
+                <i class="ph ph-caret-right"></i>
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

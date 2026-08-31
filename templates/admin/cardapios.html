@@ -7,72 +7,310 @@
         <h1 style="margin-top: 1rem;"><i class="ph ph-calendar-plus"></i> Gerenciar Cardápios</h1>
     </div>
 
-    <div class="grid">
-        <div class="card">
-            <h2>Novo Cardápio</h2>
-            <form method="POST" action="{{ url_for('admin_cardapios') }}">
-                <div class="form-group">
-                    <label for="data">Data do Almoço</label>
-                    <input type="date" id="data" name="data" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="descricao">Descrição / Comida (Ex: Arroz, Feijão, Frango e Salada)</label>
-                    <input type="text" id="descricao" name="descricao" required>
-                </div>
-
-                <button type="submit" class="btn btn-primary" style="width: 100%;"><i class="ph ph-plus-circle" style="margin-right: 8px;"></i> Adicionar Cardápio</button>
-            </form>
-            
-            <div class="alert alert-info" style="margin-top: 1.5rem; font-size: 0.9rem;">
-                <strong>Dica:</strong> Uma vez cadastrado, alunos já visualizarão!
-            </div>
+    <div class="card">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+            <h2 style="margin:0;">Cardápios e Refeições <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: normal;">({{ total }} no total)</span></h2>
+            <button type="button" class="btn btn-primary" onclick="abrirNovoCardapio()">
+                <i class="ph ph-plus-circle" style="margin-right: 8px;"></i> Novo Cardápio
+            </button>
         </div>
-
-        <div class="card" style="grid-column: span 2;">
-            <h2>Cardápios e Refeições</h2>
-            <div class="table-responsive">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Data</th>
-                            <th>Descrição</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for c in cardapios %}
-                        <tr>
-                            <td style="vertical-align: middle;"><strong>{{ c.data | datetimeformat }}</strong></td>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Tipo</th>
+                        <th>Cardápio Detalhado</th>
+                        <th style="text-align: center;">Reserva</th>
+                        <th style="text-align: center;">Qtd. Fornecedor</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in cardapios %}
+                    <tr>
+                        <td style="vertical-align: middle; white-space: nowrap;"><strong>{{ c.data | datetimeformat }}</strong></td>
+                        <td style="vertical-align: middle;">{{ c.tipo_refeicao }}</td>
+                        <td style="vertical-align: middle; font-size: 0.85rem;">
+                            {{ c.descricao }}
+                        </td>
+                        <td style="vertical-align: middle; text-align: center;">
+                            {% if c.permitir_reserva %}
+                                <span class="badge badge-active">SIM</span>
+                            {% else %}
+                                <span class="badge badge-cancelled">NÃO</span>
+                            {% endif %}
+                        </td>
+                        <td style="vertical-align: middle; text-align: center; font-size: 0.85rem;">
+                            {% if c.qtd_solicitada is not none and c.qtd_solicitada > 0 %}
+                                <strong style="color: #0284c7;">{{ c.qtd_solicitada }}</strong> <span style="font-size:0.75rem; color:var(--text-muted); display:block;">(Manual)</span>
+                            {% else %}
+                                <span style="color: var(--text-muted); font-size: 0.8rem;">Automático <span style="display:block; font-size:0.7rem;">(Reservas)</span></span>
+                            {% endif %}
+                        </td>
+                        <td style="vertical-align: middle; white-space: nowrap;">
+                            <button type="button" class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; border-radius: 4px;" 
+                                onclick="abrirEdicaoCardapio(this)"
+                                data-id="{{ c.id }}"
+                                data-tipo="{{ c.tipo_refeicao }}"
+                                data-acompanhamento="{{ c.acompanhamento or '' }}"
+                                data-salada="{{ c.salada or '' }}"
+                                data-proteinas="{{ c.proteinas or '' }}"
+                                data-sobremesa="{{ c.sobremesa or '' }}"
+                                data-outros="{{ c.outros or '' }}"
+                                data-permitir="{{ c.permitir_reserva }}"
+                                data-qtd="{{ c.qtd_solicitada if c.qtd_solicitada is not none else '' }}">
+                                <i class="ph ph-pencil-simple"></i> Editar
+                            </button>
                             
-                            <!-- Formulário de Edição Inline -->
-                            <td style="vertical-align: middle;">
-                                <form method="POST" action="{{ url_for('admin_cardapios_editar', id=c.id) }}" style="display: flex; gap: 0.5rem;" id="form-edit-{{ c.id }}">
-                                    <input type="text" name="descricao" value="{{ c.descricao }}" required style="padding: 0.25rem 0.5rem; font-size: 0.9rem;">
-                                </form>
-                            </td>
-                            
-                            <td style="vertical-align: middle; white-space: nowrap;">
-                                <button type="submit" form="form-edit-{{ c.id }}" class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; border-radius: 4px;" title="Salvar Edição">
-                                    <i class="ph ph-floppy-disk"></i> Salvar
+                            <form method="POST" action="{{ url_for('admin_cardapios_excluir', id=c.id) }}" style="display: inline-block;">
+                                <button type="submit" class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; border-radius: 4px;" onclick="return confirm('Deseja realmente excluir este cardápio?');">
+                                    <i class="ph ph-trash"></i>
                                 </button>
-                                
-                                <form method="POST" action="{{ url_for('admin_cardapios_excluir', id=c.id) }}" style="display: inline-block;">
-                                    <button type="submit" class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; border-radius: 4px;" onclick="return confirm('Deseja realmente excluir este cardápio?');" title="Excluir">
-                                        <i class="ph ph-trash"></i> Excluir
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="3" style="text-align: center; color: var(--text-muted);">Nenhum cardápio cadastrado.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" style="text-align: center; padding: 2rem;">Nenhum cardápio cadastrado.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
+        
+        {% if total_paginas > 1 %}
+        <div style="display: flex; align-items: center; justify-content: center; gap: 0.4rem; margin-top: 1.5rem; flex-wrap: wrap;">
+            {% if pagina > 1 %}
+            <a href="{{ url_for('admin_cardapios', page=pagina-1) }}" class="btn btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;"><i class="ph ph-caret-left"></i></a>
+            {% endif %}
+            {% for p in range(1, total_paginas + 1) %}
+                {% if p == pagina %}
+                <span class="btn btn-primary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem; cursor: default;">{{ p }}</span>
+                {% elif p == 1 or p == total_paginas or (p >= pagina - 2 and p <= pagina + 2) %}
+                <a href="{{ url_for('admin_cardapios', page=p) }}" class="btn btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;">{{ p }}</a>
+                {% elif p == pagina - 3 or p == pagina + 3 %}
+                <span style="color: var(--text-muted); padding: 0 0.25rem;">…</span>
+                {% endif %}
+            {% endfor %}
+            {% if pagina < total_paginas %}
+            <a href="{{ url_for('admin_cardapios', page=pagina+1) }}" class="btn btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;"><i class="ph ph-caret-right"></i></a>
+            {% endif %}
+            <span style="font-size: 0.8rem; color: var(--text-muted); margin-left: 0.5rem;">Página {{ pagina }} de {{ total_paginas }}</span>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function toggleQtdSolicitada(checkbox, containerId) {
+    const container = document.getElementById(containerId);
+    if (container) {
+        container.style.display = checkbox.checked ? 'none' : 'block';
+        if (checkbox.checked) {
+            const input = container.querySelector('input[type="number"]');
+            if (input) input.value = '';
+        }
+    }
+}
+
+function abrirNovoCardapio() {
+    document.body.style.overflow = 'hidden';
+    document.getElementById('considerar_reservas_empresa').checked = true;
+    toggleQtdSolicitada(document.getElementById('considerar_reservas_empresa'), 'qtd_solicitada_container');
+    document.getElementById('modalNovoCardapio').classList.add('is-open');
+}
+
+function fecharNovoCardapio() {
+    document.getElementById('modalNovoCardapio').classList.remove('is-open');
+    document.body.style.overflow = '';
+}
+
+document.getElementById('modalNovoCardapio').addEventListener('click', function(e) {
+    if (e.target === this) fecharNovoCardapio();
+});
+
+function abrirEdicaoCardapio(btn) {
+    const id = btn.getAttribute('data-id');
+    document.getElementById('edit_form').action = `/admin/cardapios/editar/${id}`;
+    document.getElementById('edit_tipo').value = btn.getAttribute('data-tipo');
+    document.getElementById('edit_acompanhamento').value = btn.getAttribute('data-acompanhamento');
+    document.getElementById('edit_salada').value = btn.getAttribute('data-salada');
+    document.getElementById('edit_proteinas').value = btn.getAttribute('data-proteinas');
+    document.getElementById('edit_sobremesa').value = btn.getAttribute('data-sobremesa');
+    document.getElementById('edit_outros').value = btn.getAttribute('data-outros');
+    document.getElementById('edit_permitir').value = btn.getAttribute('data-permitir');
+    
+    const qtd = btn.getAttribute('data-qtd');
+    const checkConsiderar = document.getElementById('edit_considerar_reservas');
+    const inputQtd = document.getElementById('edit_qtd_solicitada');
+    const containerQtd = document.getElementById('edit_qtd_solicitada_container');
+
+    if (qtd && qtd.trim() !== '' && qtd !== 'None') {
+        checkConsiderar.checked = false;
+        containerQtd.style.display = 'block';
+        inputQtd.value = qtd;
+    } else {
+        checkConsiderar.checked = true;
+        containerQtd.style.display = 'none';
+        inputQtd.value = '';
+    }
+
+    document.body.style.overflow = 'hidden';
+    document.getElementById('modalEditCardapio').classList.add('is-open');
+}
+
+function fecharEdicaoCardapio() {
+    document.getElementById('modalEditCardapio').classList.remove('is-open');
+    document.body.style.overflow = '';
+}
+
+document.getElementById('modalEditCardapio').addEventListener('click', function(e) {
+    if (e.target === this) fecharEdicaoCardapio();
+});
+</script>
+{% endblock %}
+
+{% block modals %}
+<!-- Modal Novo Cardápio -->
+<div id="modalNovoCardapio" class="modal-overlay">
+    <div class="modal-box">
+        <h2 style="color: var(--primary); margin-bottom: 1.5rem;"><i class="ph ph-calendar-plus"></i> Novo Cardápio</h2>
+        <form method="POST" action="{{ url_for('admin_cardapios') }}">
+            <div class="form-group">
+                <label for="data">Data</label>
+                <input type="date" id="data" name="data" required>
+            </div>
+
+            <div class="form-group">
+                <label for="tipo_refeicao">Tipo de Refeição</label>
+                <select id="tipo_refeicao" name="tipo_refeicao" required>
+                    <option value="Café da Manhã">Café da Manhã</option>
+                    <option value="Almoço" selected>Almoço</option>
+                    <option value="Café da Tarde">Café da Tarde</option>
+                    <option value="Jantar">Jantar</option>
+                    <option value="Outro">Outro</option>
+                </select>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label for="acompanhamento">Acompanhamento</label>
+                    <input type="text" id="acompanhamento" name="acompanhamento" placeholder="Ex: Arroz e Feijão">
+                </div>
+                <div class="form-group">
+                    <label for="salada">Salada</label>
+                    <input type="text" id="salada" name="salada" placeholder="Ex: Alface e Tomate">
+                </div>
+                <div class="form-group">
+                    <label for="proteinas">Proteínas</label>
+                    <input type="text" id="proteinas" name="proteinas" placeholder="Ex: Frango Grelhado">
+                </div>
+                <div class="form-group">
+                    <label for="sobremesa">Sobremesa</label>
+                    <input type="text" id="sobremesa" name="sobremesa" placeholder="Ex: Gelatina">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="outros">Outros / Observações</label>
+                <input type="text" id="outros" name="outros" placeholder="Ex: Suco de uva">
+            </div>
+
+            <!-- Quantidade Solicitada ao Fornecedor (Opcional / Automático) -->
+            <div class="form-group" style="background: #f8fafc; padding: 0.85rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 1rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="checkbox" id="considerar_reservas_empresa" name="considerar_reservas_empresa" value="1" checked onchange="toggleQtdSolicitada(this, 'qtd_solicitada_container')" style="width: auto; margin: 0; cursor: pointer;">
+                    <label for="considerar_reservas_empresa" style="margin: 0; cursor: pointer; font-weight: 600; font-size: 0.9rem;">
+                        Considerar número de reservas como a quantidade solicitada à empresa
+                    </label>
+                </div>
+                <div id="qtd_solicitada_container" style="display: none; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px dashed var(--border);">
+                    <label for="qtd_solicitada" style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">Quantidade solicitada ao fornecedor:</label>
+                    <input type="number" id="qtd_solicitada" name="qtd_solicitada" min="0" placeholder="Ex: 250" style="width: 100%; margin-top: 4px;">
+                    <small style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 2px;">Informe a quantidade exata de refeições encomendadas para o fornecedor.</small>
+                </div>
+            </div>
+
+            <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem;">
+                <input type="checkbox" id="permitir_reserva" name="permitir_reserva" value="1" checked style="width: auto; margin: 0; cursor: pointer;">
+                <label for="permitir_reserva" style="margin: 0; cursor: pointer;">Disponibilizar para reserva (Alunos Regulares)</label>
+            </div>
+
+            <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="fecharNovoCardapio()">Cancelar</button>
+                <button type="submit" class="btn btn-primary" style="flex: 2;">Adicionar Cardápio</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Editar Cardápio -->
+<div id="modalEditCardapio" class="modal-overlay">
+    <div class="modal-box">
+        <h2 style="color: var(--primary); margin-bottom: 1.5rem;"><i class="ph ph-pencil-simple"></i> Editar Cardápio</h2>
+        <form id="edit_form" method="POST">
+            <div class="form-group">
+                <label>Tipo de Refeição</label>
+                <select id="edit_tipo" name="tipo_refeicao" required>
+                    <option value="Café da Manhã">Café da Manhã</option>
+                    <option value="Almoço">Almoço</option>
+                    <option value="Café da Tarde">Café da Tarde</option>
+                    <option value="Jantar">Jantar</option>
+                    <option value="Outro">Outro</option>
+                </select>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label>Acompanhamento</label>
+                    <input type="text" id="edit_acompanhamento" name="acompanhamento">
+                </div>
+                <div class="form-group">
+                    <label>Salada</label>
+                    <input type="text" id="edit_salada" name="salada">
+                </div>
+                <div class="form-group">
+                    <label>Proteínas</label>
+                    <input type="text" id="edit_proteinas" name="proteinas">
+                </div>
+                <div class="form-group">
+                    <label>Sobremesa</label>
+                    <input type="text" id="edit_sobremesa" name="sobremesa">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Outros / Observações</label>
+                <input type="text" id="edit_outros" name="outros">
+            </div>
+
+            <!-- Quantidade Solicitada ao Fornecedor (Editar) -->
+            <div class="form-group" style="background: #f8fafc; padding: 0.85rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 1rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="checkbox" id="edit_considerar_reservas" name="considerar_reservas_empresa" value="1" checked onchange="toggleQtdSolicitada(this, 'edit_qtd_solicitada_container')" style="width: auto; margin: 0; cursor: pointer;">
+                    <label for="edit_considerar_reservas" style="margin: 0; cursor: pointer; font-weight: 600; font-size: 0.9rem;">
+                        Considerar número de reservas como a quantidade solicitada à empresa
+                    </label>
+                </div>
+                <div id="edit_qtd_solicitada_container" style="display: none; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px dashed var(--border);">
+                    <label for="edit_qtd_solicitada" style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">Quantidade solicitada ao fornecedor:</label>
+                    <input type="number" id="edit_qtd_solicitada" name="qtd_solicitada" min="0" placeholder="Ex: 250" style="width: 100%; margin-top: 4px;">
+                    <small style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 2px;">Informe a quantidade exata de refeições encomendadas para o fornecedor.</small>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Disponibilizar para Reserva?</label>
+                <select id="edit_permitir" name="permitir_reserva">
+                    <option value="1">Sim</option>
+                    <option value="0">Não</option>
+                </select>
+            </div>
+
+            <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="fecharEdicaoCardapio()">Cancelar</button>
+                <button type="submit" class="btn btn-primary" style="flex: 2;">Salvar Alterações</button>
+            </div>
+        </form>
     </div>
 </div>
 {% endblock %}

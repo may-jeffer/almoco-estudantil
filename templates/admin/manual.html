@@ -1,0 +1,553 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="fade-in" style="max-width: 1250px; margin: 0 auto; padding-bottom: 5rem;">
+
+    <!-- Cabeçalho Principal -->
+    <div style="margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1.5rem;" class="no-print">
+        <a href="{{ url_for('admin_dashboard') }}" style="color: var(--text-muted); display: inline-flex; align-items: center; text-decoration: none; font-size: 0.9rem; margin-bottom: 0.75rem;">
+            <i class="ph ph-arrow-left" style="margin-right: 6px;"></i> Voltar ao Painel Principal
+        </a>
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+            <div>
+                <h1 style="margin: 0; display: flex; align-items: center; gap: 10px; font-size: 1.85rem; color: var(--text-main);">
+                    <i class="ph ph-book-open" style="color: var(--primary);"></i> Manual Operacional & Guia do Usuário
+                </h1>
+                <p style="color: var(--text-muted); margin: 0.35rem 0 0 0; font-size: 0.95rem;">
+                    Guia completo, detalhado e ilustrado de todos os módulos, rotinas operacionais e configurações do sistema.
+                </p>
+            </div>
+            <div style="display: flex; gap: 0.75rem; align-items: center;">
+                <button type="button" class="btn btn-secondary" onclick="window.print()" style="padding: 0.65rem 1.25rem; font-size: 0.9rem; background: white; border: 1px solid var(--border); color: var(--text-main); display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                    <i class="ph ph-printer" style="font-size: 1.1rem;"></i> Imprimir / Salvar PDF
+                </button>
+            </div>
+        </div>
+
+        <!-- Barra de Pesquisa Rápida -->
+        <div style="margin-top: 1.5rem; position: relative;">
+            <i class="ph ph-magnifying-glass" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 1.2rem;"></i>
+            <input type="text" id="buscaManual" oninput="filtrarManual(this.value)" placeholder="Pesquise por qualquer palavra-chave (ex: crachá, cardápio, fornecedor, alergia, sobras, excel, pesquisa, suap, senha, smtp)..."
+                   style="width: 100%; padding: 0.85rem 1.25rem 0.85rem 3rem; border-radius: 10px; border: 1.5px solid var(--border); font-size: 1rem; background: #f8fafc; transition: all 0.2s ease;">
+        </div>
+    </div>
+
+    <!-- Layout em 2 Colunas: Sumário Lateral Fixo + Conteúdo Exaustivo -->
+    <div style="display: grid; grid-template-columns: 290px 1fr; gap: 2.25rem; align-items: start;" class="manual-layout">
+
+        <!-- Sumário Lateral (Sticky Navigation) -->
+        <aside style="position: sticky; top: 20px; background: white; border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; box-shadow: 0 4px 12px rgba(0,0,0,0.03);" class="no-print">
+            <h3 style="margin-top: 0; font-size: 0.85rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.06em; margin-bottom: 0.85rem; display: flex; align-items: center; gap: 6px;">
+                <i class="ph ph-list-dashes"></i> Índice de Capítulos
+            </h3>
+            <nav style="display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.88rem;">
+                <a href="#cap1" class="manual-nav-link"><i class="ph ph-shield-check"></i> 1. Acesso & Permissões (ACL)</a>
+                <a href="#cap2" class="manual-nav-link"><i class="ph ph-student"></i> 2. Turmas, Alunos & Crachás</a>
+                <a href="#cap3" class="manual-nav-link"><i class="ph ph-fork-knife"></i> 3. Cardápios & Fornecedor</a>
+                <a href="#cap4" class="manual-nav-link"><i class="ph ph-qr-code"></i> 4. Modo Fila & Alergias</a>
+                <a href="#cap5" class="manual-nav-link"><i class="ph ph-ticket"></i> 5. Reservas & Reserva Manual</a>
+                <a href="#cap6" class="manual-nav-link"><i class="ph ph-calendar-star"></i> 6. Módulo de Eventos</a>
+                <a href="#cap7" class="manual-nav-link"><i class="ph ph-list-checks"></i> 7. Pesquisas & Formulários</a>
+                <a href="#cap8" class="manual-nav-link"><i class="ph ph-chart-line-up"></i> 8. Relatórios & Auditoria</a>
+                <a href="#cap9" class="manual-nav-link"><i class="ph ph-sliders"></i> 9. Configurações Globais</a>
+            </nav>
+            <hr style="border: 0; border-top: 1px solid var(--border); margin: 1rem 0;">
+            <div style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
+                <i class="ph ph-info"></i> Dica: Pressione <code>Ctrl + F</code> ou use a caixa de busca acima para localizar qualquer termo instantaneamente.
+            </div>
+        </aside>
+
+        <!-- Conteúdo dos Capítulos Detalhados -->
+        <main style="display: flex; flex-direction: column; gap: 2.5rem; min-width: 0;">
+
+            <!-- CAPÍTULO 1 -->
+            <section id="cap1" class="manual-chapter card" style="padding: 2.25rem; border-top: 5px solid #2563eb; margin: 0; border-radius: 12px;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.25rem;">
+                    <span class="badge" style="background: #eff6ff; color: #1d4ed8; font-weight: 700; font-size: 0.85rem; padding: 4px 10px;">Capítulo 1</span>
+                    <h2 style="margin: 0; font-size: 1.45rem; color: var(--text-main);">Acesso, Autenticação e Controle de Permissões (ACL)</h2>
+                </div>
+
+                <p style="font-size: 0.95rem; line-height: 1.65; color: var(--text-main);">
+                    O sistema foi projetado com controle de acesso robusto, separando a <strong>Área Administrativa</strong> (operadores, fiscais, nutricionistas e gestores) do <strong>Portal do Estudante</strong>.
+                </p>
+
+                <h3 style="font-size: 1.15rem; margin-top: 1.5rem; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                    <i class="ph ph-users-three" style="color: #2563eb;"></i> 1.1 Perfis de Administrador & Matriz de Permissões
+                </h3>
+                <p style="font-size: 0.92rem; line-height: 1.6;">
+                    O sistema adota o padrão de Controle de Acesso Baseado em Papéis e Permissões (ACL). Ao cadastrar um novo administrador em <em>Gestão de Acessos (Admins)</em>, você define o perfil:
+                </p>
+                <ul style="padding-left: 1.25rem; font-size: 0.92rem; line-height: 1.6;">
+                    <li><strong>Administrador Mestre (Acesso Total):</strong> Possui acesso irrestrito a todos os módulos, configurações de e-mail SMTP, logomarca institucional, criação de novos usuários administrativos e auditoria de logs.</li>
+                    <li><strong>Operador com Permissões Selecionadas:</strong> Possui acesso restrito apenas aos módulos expressamente marcados em sua conta.</li>
+                </ul>
+
+                <div class="table-responsive" style="margin: 1.25rem 0;">
+                    <table style="width: 100%; font-size: 0.88rem; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #f8fafc;">
+                                <th style="padding: 10px; border: 1px solid var(--border); width: 140px;">Chave da Permissão</th>
+                                <th style="padding: 10px; border: 1px solid var(--border); width: 180px;">Nome no Sistema</th>
+                                <th style="padding: 10px; border: 1px solid var(--border);">Ações Permitidas</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border);"><code>turmas</code></td>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border);"><strong>Gestão de Turmas</strong></td>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border);">Criar, editar e excluir turmas regulares do calendário letivo.</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border);"><code>alunos</code></td>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border);"><strong>Gestão de Alunos</strong></td>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border);">Cadastrar alunos, importar planilhas CSV, sincronizar via SUAP, emitir/imprimir crachás e resetar senhas.</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border);"><code>cardapios</code></td>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border);"><strong>Gestão de Cardápios</strong></td>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border);">Criar e publicar cardápios diários, definir composição de pratos e controlar quantidade contratada do fornecedor.</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border);"><code>fila</code></td>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border);"><strong>Modo Fila & Reservas</strong></td>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border);">Escanear tickets/crachás de alunos, visualizar contadores da refeição e gerenciar/cancelar reservas ativas.</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border);"><code>relatorios</code></td>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border);"><strong>Relatórios & Indicadores</strong></td>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border);">Consultar métricas de consumo, sobras, extras e exportar planilhas em Excel (.xlsx).</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border);"><code>eventos</code></td>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border);"><strong>Módulo de Eventos</strong></td>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border);">Criar eventos temporários, cadastrar participantes externos e emitir crachás de evento.</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border);"><code>pesquisas</code></td>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border);"><strong>Pesquisas & Formulários</strong></td>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border);">Construir enquetes (estilo Google Forms), gerar QR Code de resposta e exportar resultados em Excel.</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border);"><code>avisos</code></td>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border);"><strong>Mural de Avisos</strong></td>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border);">Publicar comunicados institucionais com destaque visual no portal dos estudantes.</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border);"><code>config</code> / <code>smtp</code></td>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border);"><strong>Configurações & SMTP</strong></td>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border);">Alterar logomarca institucional/favicon, horário limite de reserva e servidor de e-mail.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3 style="font-size: 1.15rem; margin-top: 1.5rem; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                    <i class="ph ph-shield-warning" style="color: #ea580c;"></i> 1.2 Mecanismos de Segurança e Proteção
+                </h3>
+                <ul style="padding-left: 1.25rem; font-size: 0.92rem; line-height: 1.6;">
+                    <li><strong>Hashing Criptográfico de Senhas:</strong> Todas as senhas utilizam algoritmo <code>pbkdf2:sha256</code> do Werkzeug com salt aleatório. Senhas antigas são migradas automaticamente no primeiro login.</li>
+                    <li><strong>Rate-Limiting (Anti-Força Bruta):</strong> O sistema monitora tentativas de login inválidas por IP. Se houver mais de 5 tentativas consecutivas de senha incorreta em 60 segundos, o IP é pausado automaticamente.</li>
+                    <li><strong>Sessões com Timeout de Inatividade:</strong> Alunos logados em terminais públicos/totens são desconectados automaticamente após o período de inatividade configurado em minutos.</li>
+                </ul>
+            </section>
+
+            <!-- CAPÍTULO 2 -->
+            <section id="cap2" class="manual-chapter card" style="padding: 2.25rem; border-top: 5px solid #059669; margin: 0; border-radius: 12px;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.25rem;">
+                    <span class="badge" style="background: #ecfdf5; color: #047857; font-weight: 700; font-size: 0.85rem; padding: 4px 10px;">Capítulo 2</span>
+                    <h2 style="margin: 0; font-size: 1.45rem; color: var(--text-main);">Gestão de Turmas, Estudantes e Impressão de Crachás</h2>
+                </div>
+
+                <h3 style="font-size: 1.15rem; margin-top: 1rem; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                    <i class="ph ph-user-plus" style="color: #059669;"></i> 2.1 Cadastro e Importação em Lote via Planilha CSV
+                </h3>
+                <p style="font-size: 0.92rem; line-height: 1.6;">
+                    Você pode cadastrar alunos manualmente ou importar centenas de estudantes em poucos segundos através de uma planilha <strong>CSV</strong>.
+                </p>
+                
+                <div style="background: #f8fafc; padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border); margin: 1rem 0;">
+                    <strong style="color: var(--text-main); font-size: 0.95rem; display: block; margin-bottom: 0.5rem;">
+                        <i class="ph ph-file-csv" style="color: #059669;"></i> Estrutura das Colunas da Planilha CSV:
+                    </strong>
+                    <div style="background: white; padding: 0.75rem 1rem; border-radius: 6px; border: 1px solid #e2e8f0; font-family: monospace; font-size: 0.85rem; color: #0f172a;">
+                        Nome,Matricula,CPF,DataNascimento,Restricoes,Turma
+                    </div>
+                    <ul style="margin: 0.75rem 0 0 0; padding-left: 1.25rem; font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;">
+                        <li><strong>Nome:</strong> Nome completo do estudante (ex: <code>MARIA SILVA SOUZA</code>).</li>
+                        <li><strong>Matrícula:</strong> Código único de identificação escolar (ex: <code>20261010045</code>).</li>
+                        <li><strong>CPF:</strong> CPF com ou sem pontuação (ex: <code>123.456.789-00</code> ou <code>12345678900</code>).</li>
+                        <li><strong>DataNascimento:</strong> Formato <code>YYYY-MM-DD</code> ou <code>DD/MM/YYYY</code> (usada como senha inicial do aluno).</li>
+                        <li><strong>Restricoes:</strong> Alergias e restrições alimentares (ex: <code>Intolerância a Lactose, Celíaco, Nenhuma</code>).</li>
+                        <li><strong>Turma:</strong> Nome da turma correspondente (se a turma não existir, o sistema criará automaticamente).</li>
+                    </ul>
+                </div>
+
+                <h3 style="font-size: 1.15rem; margin-top: 1.75rem; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                    <i class="ph ph-identification-card" style="color: #059669;"></i> 2.2 Impressão de Crachás de Identificação
+                </h3>
+                <p style="font-size: 0.92rem; line-height: 1.6;">
+                    O sistema conta com um motor gráfico de emissão de crachás estudantis com suporte a <strong>dois formatos de impressão física</strong>:
+                </p>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin: 1rem 0;">
+                    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 1.25rem; border-radius: 8px;">
+                        <strong style="color: #166534; font-size: 0.95rem; display: block; margin-bottom: 0.35rem;">
+                            <i class="ph ph-credit-card"></i> 1. Cartão PVC CR-80 (Fargo DTC1250e / Térmica)
+                        </strong>
+                        <p style="margin: 0; font-size: 0.85rem; color: #166534; line-height: 1.45;">
+                            Formato de cartão padrão (54mm × 86mm). Cada crachá é diagramado como uma página isolada com quebra automática (<code>page-break-after: always</code>), permitindo alimentar o lote diretamente na bandeja da impressora de cartões PVC (Fargo, Evolis, Zebra, Datacard) sem desalinhamentos.
+                        </p>
+                    </div>
+
+                    <div style="background: #f8fafc; border: 1px solid var(--border); padding: 1.25rem; border-radius: 8px;">
+                        <strong style="color: var(--text-main); font-size: 0.95rem; display: block; margin-bottom: 0.35rem;">
+                            <i class="ph ph-file-text"></i> 2. Grade Folha A4 (Impressora Comum)
+                        </strong>
+                        <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted); line-height: 1.45;">
+                            Distribui 8 crachás por folha A4 com guias de corte discretas para recorte em guilhotina e plastificação em polaseal ou papel couché.
+                        </p>
+                    </div>
+                </div>
+
+                <div style="background: #f8fafc; border-left: 4px solid #059669; padding: 0.85rem 1.25rem; border-radius: 6px;">
+                    <strong style="color: #065f46; font-size: 0.88rem;"><i class="ph ph-check-circle"></i> Memória Automática de Seleção:</strong>
+                    <span style="font-size: 0.85rem; color: #065f46; margin-left: 4px;">Ao alternar entre o modo Cartão Branco e Folha A4 na tela de impressão, sua escolha fica memorizada no navegador para as próximas impressões.</span>
+                </div>
+            </section>
+
+            <!-- CAPÍTULO 3 -->
+            <section id="cap3" class="manual-chapter card" style="padding: 2.25rem; border-top: 5px solid #d97706; margin: 0; border-radius: 12px;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.25rem;">
+                    <span class="badge" style="background: #fffbeb; color: #b45309; font-weight: 700; font-size: 0.85rem; padding: 4px 10px;">Capítulo 3</span>
+                    <h2 style="margin: 0; font-size: 1.45rem; color: var(--text-main);">Gestão de Cardápios e Controle de Fornecedor</h2>
+                </div>
+
+                <h3 style="font-size: 1.15rem; margin-top: 1rem; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                    <i class="ph ph-calendar-plus" style="color: #d97706;"></i> 3.1 Cadastro de Refeições
+                </h3>
+                <p style="font-size: 0.92rem; line-height: 1.6;">
+                    Ao cadastrar um cardápio, preencha: <strong>Data da Refeição</strong>, <strong>Tipo de Refeição</strong> (Almoço, Jantar, Lanche), <strong>Prato Principal (Proteína)</strong>, <strong>Acompanhamentos</strong>, <strong>Saladas</strong> e <strong>Sobremesa</strong>.
+                </p>
+
+                <h3 style="font-size: 1.15rem; margin-top: 1.5rem; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                    <i class="ph ph-truck" style="color: #d97706;"></i> 3.2 Quantidade Solicitada à Empresa Fornecedora
+                </h3>
+                <p style="font-size: 0.92rem; line-height: 1.6;">
+                    Para instituições que contratam empresas terceirizadas de refeições prontas, o sistema permite definir a meta da encomenda de duas formas:
+                </p>
+
+                <ul style="padding-left: 1.25rem; font-size: 0.92rem; line-height: 1.6;">
+                    <li>
+                        <strong>Modo Automático (Recomendado):</strong> Mantenha marcado o checkbox <em>"Considerar número de reservas como a quantidade solicitada à empresa"</em>. O número de refeições encomendadas será exatamente igual ao total de alunos que reservaram até o horário limite do dia.
+                    </li>
+                    <li>
+                        <strong>Modo Manual (Quantidade Fixa):</strong> Desmarque o checkbox e informe uma quantidade fixa de pratos (ex: <code>300</code>). O sistema usará este valor fixo na tela da fila e nos relatórios de faturamento.
+                    </li>
+                </ul>
+            </section>
+
+            <!-- CAPÍTULO 4 -->
+            <section id="cap4" class="manual-chapter card" style="padding: 2.25rem; border-top: 5px solid #dc2626; margin: 0; border-radius: 12px;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.25rem;">
+                    <span class="badge" style="background: #fef2f2; color: #b91c1c; font-weight: 700; font-size: 0.85rem; padding: 4px 10px;">Capítulo 4</span>
+                    <h2 style="margin: 0; font-size: 1.45rem; color: var(--text-main);">Operação da Fila de Refeições (Scanner & Baixas)</h2>
+                </div>
+
+                <p style="font-size: 0.95rem; line-height: 1.65;">
+                    O <strong>Modo Fila</strong> é a tela utilizada pelos fiscais e operadores na entrada do refeitório para conferência de tickets e crachás com leitor de código de barras USB ou QR Code.
+                </p>
+
+                <h3 style="font-size: 1.15rem; margin-top: 1.25rem; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                    <i class="ph ph-squares-four" style="color: #dc2626;"></i> 4.1 Os 4 Painéis de Contagem em Tempo Real
+                </h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin: 1.25rem 0;">
+                    <div style="background: #f8fafc; border-top: 4px solid #6366f1; padding: 1rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                        <span style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: #6366f1;">1. Solicitado Empresa</span>
+                        <strong style="display: block; font-size: 1.4rem; color: #1e293b; margin: 0.35rem 0;">Meta Contratada</strong>
+                        <small style="color: var(--text-muted); font-size: 0.78rem;">Fixo manual ou total de reservas.</small>
+                    </div>
+
+                    <div style="background: #f8fafc; border-top: 4px solid #10b981; padding: 1rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                        <span style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: #10b981;">2. Reservas Sistema</span>
+                        <strong style="display: block; font-size: 1.4rem; color: #1e293b; margin: 0.35rem 0;">Agendamentos</strong>
+                        <small style="color: var(--text-muted); font-size: 0.78rem;">Total de alunos que reservaram.</small>
+                    </div>
+
+                    <div style="background: #f8fafc; border-top: 4px solid #0ea5e9; padding: 1rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                        <span style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: #0ea5e9;">3. Extras Entregues</span>
+                        <strong style="display: block; font-size: 1.4rem; color: #1e293b; margin: 0.35rem 0;">Sem Reserva</strong>
+                        <small style="color: var(--text-muted); font-size: 0.78rem;">Refeições servidas como sobra/extra.</small>
+                    </div>
+
+                    <div style="background: #f8fafc; border-top: 4px solid #059669; padding: 1rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                        <span style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: #059669;">4. Total Entregue</span>
+                        <strong style="display: block; font-size: 1.4rem; color: #1e293b; margin: 0.35rem 0;">Soma Real</strong>
+                        <small style="color: var(--text-muted); font-size: 0.78rem;">Consumo Reserva + Extras servidos.</small>
+                    </div>
+                </div>
+
+                <h3 style="font-size: 1.15rem; margin-top: 1.75rem; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                    <i class="ph ph-warning-octagon" style="color: #dc2626;"></i> 4.2 Detecção de Alergias e Protocolo de Segurança Alimentar
+                </h3>
+                <div style="background: #fee2e2; border-left: 5px solid #dc2626; padding: 1.25rem; border-radius: 8px; margin-top: 0.75rem;">
+                    <strong style="color: #991b1b; font-size: 1rem; display: flex; align-items: center; gap: 6px;">
+                        <i class="ph ph-bell-ringing"></i> Alerta Sonoro & Modal Bloqueante:
+                    </strong>
+                    <p style="margin: 0.5rem 0 0 0; font-size: 0.88rem; color: #7f1d1d; line-height: 1.5;">
+                        Se o aluno escaneado tiver restrições cadastradas (ex: <em>Intolerância a Glúten, Alergia a Frutos do Mar, Ovo, Leite</em>), o sistema dispara um sinal sonoro e projeta na tela um modal vermelho em destaque com o <strong>Nome do Estudante</strong>, a <strong>Turma</strong> e a <strong>Restrição Específica</strong>, garantindo que o fiscal entregue o prato diferenciado preparado pela cozinha.
+                    </p>
+                </div>
+            </section>
+
+            <!-- CAPÍTULO 5 -->
+            <section id="cap5" class="manual-chapter card" style="padding: 2.25rem; border-top: 5px solid #7c3aed; margin: 0; border-radius: 12px;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.25rem;">
+                    <span class="badge" style="background: #f5f3ff; color: #6d28d9; font-weight: 700; font-size: 0.85rem; padding: 4px 10px;">Capítulo 5</span>
+                    <h2 style="margin: 0; font-size: 1.45rem; color: var(--text-main);">Gerenciar Reservas Ativas & Reserva Manual</h2>
+                </div>
+
+                <h3 style="font-size: 1.15rem; margin-top: 1rem; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                    <i class="ph ph-ticket" style="color: #7c3aed;"></i> 5.1 Cancelamento Preventivo de Reservas
+                </h3>
+                <p style="font-size: 0.92rem; line-height: 1.6;">
+                    Na tela de <em>Gerenciar Reservas Ativas</em>, os operadores podem pesquisar por Nome, Matrícula ou CPF e cancelar reservas de alunos que justificaram ausência antecipada, liberando a porção para contabilidade de sobras.
+                </p>
+
+                <h3 style="font-size: 1.15rem; margin-top: 1.5rem; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                    <i class="ph ph-plus-circle" style="color: #7c3aed;"></i> 5.2 Reserva Manual para Administradores (com Auditoria)
+                </h3>
+                <p style="font-size: 0.92rem; line-height: 1.6;">
+                    Caso um estudante precise de refeição mas não tenha reservado dentro do horário limite diário (por falta de internet, matrícula recente ou situação emergencial), o administrador pode realizar a reserva manualmente através do botão <strong>"+ Nova Reserva Manual"</strong>:
+                </p>
+                <ol style="padding-left: 1.25rem; font-size: 0.92rem; line-height: 1.6;">
+                    <li>Clique no botão <strong>Nova Reserva Manual</strong>.</li>
+                    <li>Selecione o <strong>Cardápio / Refeição</strong> desejada.</li>
+                    <li>No campo de busca, digite o <strong>Nome, Matrícula ou CPF</strong> do aluno (o sistema exibirá as sugestões instantaneamente via busca inteligente).</li>
+                    <li>Clique em <strong>Confirmar Reserva Manual</strong>.</li>
+                </ol>
+                <div style="background: #f8fafc; border-left: 4px solid #7c3aed; padding: 0.85rem 1.25rem; border-radius: 6px; margin-top: 0.75rem;">
+                    <strong style="color: #5b21b6; font-size: 0.88rem;"><i class="ph ph-shield-check"></i> Rastreabilidade em Auditoria:</strong>
+                    <span style="font-size: 0.85rem; color: #5b21b6; margin-left: 4px;">A ação gera um novo código de ticket único e registra no banco de auditoria o usuário administrador que realizou o procedimento.</span>
+                </div>
+            </section>
+
+            <!-- CAPÍTULO 6 -->
+            <section id="cap6" class="manual-chapter card" style="padding: 2.25rem; border-top: 5px solid #0891b2; margin: 0; border-radius: 12px;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.25rem;">
+                    <span class="badge" style="background: #ecfeff; color: #0e7490; font-weight: 700; font-size: 0.85rem; padding: 4px 10px;">Capítulo 6</span>
+                    <h2 style="margin: 0; font-size: 1.45rem; color: var(--text-main);">Módulo de Eventos & Participantes Externos</h2>
+                </div>
+
+                <p style="font-size: 0.95rem; line-height: 1.65;">
+                    Utilizado para gerenciar a alimentação de participantes de <strong>Seminários, Cursos de Extensão, Vestibulares, Olimpíadas Científicas ou Visitantes</strong> que utilizarão a cantina por período temporário.
+                </p>
+
+                <h3 style="font-size: 1.15rem; margin-top: 1.25rem; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                    <i class="ph ph-calendar-star" style="color: #0891b2;"></i> 6.1 Como Configurar um Evento
+                </h3>
+                <ul style="padding-left: 1.25rem; font-size: 0.92rem; line-height: 1.6;">
+                    <li><strong>Datas de Vigência:</strong> Defina a <em>Data de Início</em> e a <em>Data de Fim</em>. Fora deste intervalo, os crachás do evento ficam desativados na fila.</li>
+                    <li><strong>Cadastro de Participantes:</strong> Importe a lista via planilha CSV ou cadastre individualmente. Os participantes recebem matrículas com prefixo <code>EVT-...</code>.</li>
+                    <li><strong>Crachás de Evento:</strong> Impressão de crachás estilizados com o nome do evento e QR Code de acesso temporário.</li>
+                    <li><strong>Relatórios de Evento:</strong> Permite isolar o consumo do evento da cantina regular para prestação de contas.</li>
+                </ul>
+            </section>
+
+            <!-- CAPÍTULO 7 -->
+            <section id="cap7" class="manual-chapter card" style="padding: 2.25rem; border-top: 5px solid #4f46e5; margin: 0; border-radius: 12px;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.25rem;">
+                    <span class="badge" style="background: #eef2ff; color: #4338ca; font-weight: 700; font-size: 0.85rem; padding: 4px 10px;">Capítulo 7</span>
+                    <h2 style="margin: 0; font-size: 1.45rem; color: var(--text-main);">Pesquisas e Formulários Dinâmicos (Google Forms)</h2>
+                </div>
+
+                <p style="font-size: 0.95rem; line-height: 1.65;">
+                    O módulo de <strong>Pesquisas e Formulários</strong> permite criar pesquisas de satisfação sobre o cardápio, consultas estudantis e formulários de opinião com total flexibilidade.
+                </p>
+
+                <h3 style="font-size: 1.15rem; margin-top: 1.25rem; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                    <i class="ph ph-article" style="color: #4f46e5;"></i> 7.1 Tipos de Perguntas do Construtor
+                </h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1rem; margin: 1rem 0;">
+                    <div style="background: #f8fafc; border: 1px solid var(--border); padding: 1rem; border-radius: 8px;">
+                        <strong style="color: var(--text-main); font-size: 0.9rem; display: block; margin-bottom: 4px;">1. Múltipla Escolha</strong>
+                        <span style="font-size: 0.82rem; color: var(--text-muted);">Opções exclusivas com botões rádio (1 resposta).</span>
+                    </div>
+                    <div style="background: #f8fafc; border: 1px solid var(--border); padding: 1rem; border-radius: 8px;">
+                        <strong style="color: var(--text-main); font-size: 0.9rem; display: block; margin-bottom: 4px;">2. Caixas de Seleção</strong>
+                        <span style="font-size: 0.82rem; color: var(--text-muted);">Múltipla marcação com checkboxes.</span>
+                    </div>
+                    <div style="background: #f8fafc; border: 1px solid var(--border); padding: 1rem; border-radius: 8px;">
+                        <strong style="color: var(--text-main); font-size: 0.9rem; display: block; margin-bottom: 4px;">3. Resposta Curta</strong>
+                        <span style="font-size: 0.82rem; color: var(--text-muted);">Texto curto em linha única.</span>
+                    </div>
+                    <div style="background: #f8fafc; border: 1px solid var(--border); padding: 1rem; border-radius: 8px;">
+                        <strong style="color: var(--text-main); font-size: 0.9rem; display: block; margin-bottom: 4px;">4. Parágrafo</strong>
+                        <span style="font-size: 0.82rem; color: var(--text-muted);">Área de texto livre para críticas e sugestões.</span>
+                    </div>
+                </div>
+
+                <h3 style="font-size: 1.15rem; margin-top: 1.5rem; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                    <i class="ph ph-lock-key" style="color: #4f46e5;"></i> 7.2 Anonimato, Compartilhamento & Exportação em Excel
+                </h3>
+                <ul style="padding-left: 1.25rem; font-size: 0.92rem; line-height: 1.6;">
+                    <li><strong>Pesquisa 100% Anônima:</strong> Não solicita nenhum dado pessoal do estudante. Ideal para avaliações transparentes sem receio de exposição.</li>
+                    <li><strong>Pesquisa Identificada:</strong> Solicita CPF e Data de Nascimento / Senha (ou usa a sessão ativa do aluno), garantindo que cada estudante responda no máximo 1 vez.</li>
+                    <li><strong>QR Code de Compartilhamento:</strong> Cada pesquisa possui um botão para gerar o QR Code em alta definição, permitindo colar no mural ou projetar nas TVs da escola.</li>
+                    <li><strong>Exportação em Excel (.xlsx):</strong> Na tela de respostas da pesquisa, clique em <strong>"Exportar para Excel"</strong> para baixar uma planilha completa com todas as submissões tabuladas.</li>
+                </ul>
+            </section>
+
+            <!-- CAPÍTULO 8 -->
+            <section id="cap8" class="manual-chapter card" style="padding: 2.25rem; border-top: 5px solid #0d9488; margin: 0; border-radius: 12px;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.25rem;">
+                    <span class="badge" style="background: #f0fdfa; color: #0f766e; font-weight: 700; font-size: 0.85rem; padding: 4px 10px;">Capítulo 8</span>
+                    <h2 style="margin: 0; font-size: 1.45rem; color: var(--text-main);">Relatórios, Indicadores de Consumo & Auditoria</h2>
+                </div>
+
+                <h3 style="font-size: 1.15rem; margin-top: 1rem; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                    <i class="ph ph-calculator" style="color: #0d9488;"></i> 8.1 Fórmulas e Definição dos Indicadores
+                </h3>
+                <p style="font-size: 0.92rem; line-height: 1.6;">
+                    Os relatórios do sistema utilizam métricas auditáveis e transparentes:
+                </p>
+
+                <div class="table-responsive" style="margin: 1rem 0;">
+                    <table style="width: 100%; font-size: 0.88rem; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #f8fafc;">
+                                <th style="padding: 10px; border: 1px solid var(--border); width: 170px;">Quadro do Relatório</th>
+                                <th style="padding: 10px; border: 1px solid var(--border); width: 190px;">Fórmula / Origem</th>
+                                <th style="padding: 10px; border: 1px solid var(--border);">Significado Prático</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border); color: #2563eb;"><strong>Pratos Previstos</strong></td>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border);"><code>Total de Reservas Normais</code></td>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border);">Quantidade de alunos regulares que agendaram a refeição até o horário limite.</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border); color: #059669;"><strong>Consumo Reserva</strong></td>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border);"><code>Reservas Baixadas na Fila</code></td>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border);">Alunos que agendaram previamente e compareceram para retirar a refeição.</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border); color: #0284c7;"><strong>Extras</strong></td>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border);"><code>Baixas sem Reserva Prévia</code></td>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border);">Refeições servidas para alunos que não agendaram, autorizados a retirar no final da fila.</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border); color: #dc2626;"><strong>Sobras (Desperdício)</strong></td>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border);"><code>Pratos Previstos - Consumo Reserva</code></td>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border);">Alunos que reservaram mas não compareceram (impacta o custo e desperdício).</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border); color: #16a34a;"><strong>Total Entregue</strong></td>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border);"><code>Consumo Reserva + Extras</code></td>
+                                <td style="padding: 8px 10px; border: 1px solid var(--border);">Soma total real de pratos servidos no período. Utilizado para conferência de faturas.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3 style="font-size: 1.15rem; margin-top: 1.75rem; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                    <i class="ph ph-clock-counter-clockwise" style="color: #0d9488;"></i> 8.2 Logs de Auditoria do Sistema
+                </h3>
+                <p style="font-size: 0.92rem; line-height: 1.6;">
+                    Cada operação crítica (exclusão de registros, alterações em configurações, cancelamentos de refeições e criação de reservas manuais) é gravada na tabela <code>logs_auditoria</code>, contendo <strong>Data/Hora</strong>, <strong>Nome do Administrador</strong>, <strong>Tipo de Ação</strong>, <strong>Detalhes</strong> e <strong>Endereço IP</strong>.
+                </p>
+            </section>
+
+            <!-- CAPÍTULO 9 -->
+            <section id="cap9" class="manual-chapter card" style="padding: 2.25rem; border-top: 5px solid #475569; margin: 0; border-radius: 12px;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.25rem;">
+                    <span class="badge" style="background: #f1f5f9; color: #334155; font-weight: 700; font-size: 0.85rem; padding: 4px 10px;">Capítulo 9</span>
+                    <h2 style="margin: 0; font-size: 1.45rem; color: var(--text-main);">Configurações Globais, Marca & E-mail SMTP</h2>
+                </div>
+
+                <h3 style="font-size: 1.15rem; margin-top: 1rem; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                    <i class="ph ph-image" style="color: #475569;"></i> 9.1 Logomarca Institucional & Favicon
+                </h3>
+                <p style="font-size: 0.92rem; line-height: 1.6;">
+                    Em <em>Configurações do Sistema > Logomarca</em>, você pode enviar o arquivo da logo da sua escola (.PNG, .JPG, .WEBP). O sistema aplica a imagem dinamicamente:
+                </p>
+                <ul style="padding-left: 1.25rem; font-size: 0.92rem; line-height: 1.6;">
+                    <li>Na barra superior de todas as telas (área administrativa e dos alunos).</li>
+                    <li>No cabeçalho dos crachás térmicos (PVC) e nas folhas A4.</li>
+                    <li>No <strong>Favicon</strong> (ícone da aba do navegador) de todas as páginas da aplicação.</li>
+                </ul>
+
+                <h3 style="font-size: 1.15rem; margin-top: 1.5rem; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                    <i class="ph ph-envelope-simple" style="color: #475569;"></i> 9.2 Servidor SMTP de Notificações
+                </h3>
+                <p style="font-size: 0.92rem; line-height: 1.6;">
+                    Permite integrar sua conta de e-mail institucional para envio de tokens de recuperação de senha dos estudantes. Basta informar o Host SMTP (ex: <code>smtp.gmail.com</code> ou <code>smtp.office365.com</code>), porta (<code>587</code>), e-mail de envio e senha de aplicativo.
+                </p>
+            </section>
+
+        </main>
+    </div>
+</div>
+
+<script>
+function filtrarManual(termo) {
+    const busca = termo.toLowerCase().trim();
+    const chapters = document.querySelectorAll('.manual-chapter');
+
+    chapters.forEach(ch => {
+        const texto = ch.innerText.toLowerCase();
+        if (!busca || texto.includes(busca)) {
+            ch.style.display = 'block';
+        } else {
+            ch.style.display = 'none';
+        }
+    });
+}
+</script>
+
+<style>
+.manual-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0.55rem 0.75rem;
+    border-radius: 8px;
+    color: var(--text-main);
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.15s ease;
+}
+.manual-nav-link:hover {
+    background: #f1f5f9;
+    color: var(--primary);
+    transform: translateX(3px);
+}
+
+@media (max-width: 900px) {
+    .manual-layout {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+@media print {
+    .no-print, nav.navbar, footer, .alerts, #autologout-banner {
+        display: none !important;
+    }
+    body, main {
+        background: white !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    .manual-layout {
+        display: block !important;
+    }
+    .manual-chapter {
+        box-shadow: none !important;
+        border: 1px solid #e2e8f0 !important;
+        page-break-inside: avoid;
+        margin-bottom: 2rem !important;
+        padding: 1.5rem !important;
+    }
+}
+</style>
+{% endblock %}

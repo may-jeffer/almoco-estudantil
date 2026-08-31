@@ -1,35 +1,1211 @@
 {% extends "base.html" %}
 
 {% block content %}
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <div class="fade-in">
     <div style="margin-bottom: 2rem;">
         <a href="{{ url_for('admin_dashboard') }}" style="color: var(--text-muted); display: inline-flex; align-items: center;"><i class="ph ph-arrow-left" style="margin-right: 4px;"></i> Voltar ao Painel</a>
-        <h1 style="margin-top: 1rem;"><i class="ph ph-file-text"></i> Relatórios Pós-Fechamento</h1>
-        <p style="color: var(--text-muted);">Gere o arquivo consolidado contendo os alunos que vão almoçar num dia específico.</p>
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+            <div>
+                <h1 style="margin-top: 1rem; margin-bottom: 0.25rem;"><i class="ph ph-file-text"></i> Relatórios de Refeições</h1>
+                <p style="color: var(--text-muted); margin-top: 0;">Filtre por dia, mês, ano ou período personalizado.</p>
+            </div>
+            {% if session.get('admin_perfil') == 'admin_mestre' or 'eventos' in session.get('admin_permissoes', []) %}
+            <a href="{{ url_for('admin_relatorio_eventos') }}" class="btn btn-primary" style="text-decoration: none;">
+                <i class="ph ph-calendar-check"></i> Relatório de Eventos
+            </a>
+            {% endif %}
+        </div>
     </div>
 
-    <div class="card" style="max-width: 600px; margin: 0 auto;">
-        <h2>Selecione o Dia / Cardápio</h2>
-        
-        <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1.5rem;">
-            {% for c in cardapios %}
-                <a href="{{ url_for('admin_relatorio_dia', cardapio_id=c.id) }}" class="btn" style="background: #FFF; border: 1px solid var(--border); color: var(--text-main); justify-content: space-between; padding: 1rem; align-items: center;">
+    <!-- Painel de Filtros -->
+    <div class="card" style="margin-bottom: 1.5rem;">
+        <form id="formFiltro" method="GET" action="{{ url_for('admin_relatorios') }}">
+            <div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end;">
+
+                <!-- Tipo de Filtro -->
+                <div class="form-group" style="margin:0; min-width: 180px;">
+                    <label for="tipo" style="font-size: 0.85rem; font-weight: 600;">Filtrar por</label>
+                    <select id="tipo" name="tipo" onchange="atualizarCampos()" style="padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border); font-size: 0.9rem; width: 100%;">
+                        <option value="todos"   {% if tipo_filtro == 'todos'   %}selected{% endif %}>Todos os dias</option>
+                        <option value="dia"     {% if tipo_filtro == 'dia'     %}selected{% endif %}>Dia específico</option>
+                        <option value="mes"     {% if tipo_filtro == 'mes'     %}selected{% endif %}>Mês</option>
+                        <option value="ano"     {% if tipo_filtro == 'ano'     %}selected{% endif %}>Ano</option>
+                        <option value="periodo" {% if tipo_filtro == 'periodo' %}selected{% endif %}>Período personalizado</option>
+                    </select>
+                </div>
+
+                <!-- Campo: Dia -->
+                <div class="form-group campo-filtro" id="campo_dia" style="margin:0; min-width: 160px; display:none;">
+                    <label for="data_dia" style="font-size: 0.85rem; font-weight: 600;">Data</label>
+                    <input type="date" id="data_dia" name="data_dia" value="{{ data_dia }}"
+                           style="padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border); font-size: 0.9rem; width: 100%;">
+                </div>
+
+                <!-- Campo: Mês -->
+                <div class="form-group campo-filtro" id="campo_mes" style="margin:0; min-width: 160px; display:none;">
+                    <label for="data_mes" style="font-size: 0.85rem; font-weight: 600;">Mês / Ano</label>
+                    <input type="month" id="data_mes" name="data_mes" value="{{ data_mes }}"
+                           style="padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border); font-size: 0.9rem; width: 100%;">
+                </div>
+
+                <!-- Campo: Ano -->
+                <div class="form-group campo-filtro" id="campo_ano" style="margin:0; min-width: 100px; display:none;">
+                    <label for="data_ano" style="font-size: 0.85rem; font-weight: 600;">Ano</label>
+                    <input type="number" id="data_ano" name="data_ano" value="{{ data_ano }}"
+                           min="2020" max="2100" placeholder="2026"
+                           style="padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border); font-size: 0.9rem; width: 100%;">
+                </div>
+
+                <!-- Campo: Período -->
+                <div class="form-group campo-filtro" id="campo_periodo" style="margin:0; display:none; gap: 0.5rem;">
                     <div>
-                        <strong style="font-size: 1.1rem;">{{ c.data | datetimeformat }}</strong>
-                        <span style="display:block; font-size: 0.85rem; color: var(--text-muted); font-weight: 400;">{{ c.descricao }}</span>
+                        <label for="data_inicio" style="font-size: 0.85rem; font-weight: 600;">De</label>
+                        <input type="date" id="data_inicio" name="data_inicio" value="{{ data_inicio }}"
+                               style="padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border); font-size: 0.9rem;">
                     </div>
-                    <div style="text-align: right; display: flex; align-items: center; gap: 1rem;">
-                        <div style="font-size: 0.85rem; line-height: 1.2;">
-                            <span style="display:block; color: var(--secondary); font-weight: 600;">{{ c.total_consumidas }} Entregues</span>
-                            <span style="display:block; color: var(--text-muted);">de {{ c.total_reservas }} Pedidos</span>
+                    <div>
+                        <label for="data_fim" style="font-size: 0.85rem; font-weight: 600;">Até</label>
+                        <input type="date" id="data_fim" name="data_fim" value="{{ data_fim }}"
+                               style="padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border); font-size: 0.9rem;">
+                    </div>
+                </div>
+
+                <!-- Busca por texto (só aparece no modo "Todos") -->
+                <div class="form-group" id="campo_busca" style="margin:0; flex: 1; min-width: 200px; display:none;">
+                    <label for="q" style="font-size: 0.85rem; font-weight: 600;">Busca livre</label>
+                    <input type="text" id="q" name="q" value="{{ busca }}" placeholder="Filtrar por data ou cardápio…"
+                           style="padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid var(--border); font-size: 0.9rem; width: 100%;">
+                </div>
+
+                <!-- Botões -->
+                <div style="display: flex; gap: 0.5rem; align-items: flex-end;">
+                    <button type="submit" class="btn btn-primary" style="padding: 0.5rem 1rem;" id="btnFiltrar">
+                        <i class="ph ph-magnifying-glass"></i> <span id="btnLabel">Filtrar</span>
+                    </button>
+                    <a href="{{ url_for('admin_relatorios') }}" class="btn btn-secondary" style="padding: 0.5rem 1rem;" title="Limpar">
+                        <i class="ph ph-x"></i> Limpar
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- 🤖 IA Previsão de Demanda (Ponto 10) -->
+    {% if previsao is defined %}
+    <div class="card" style="background: linear-gradient(135deg, #1e1b4b 0%, #311042 100%); color: white; padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; border: none; box-shadow: 0 10px 25px rgba(30, 27, 75, 0.25); position: relative; overflow: hidden;">
+        <div style="position: absolute; right: -50px; top: -50px; width: 150px; height: 150px; background: rgba(147, 51, 234, 0.3); filter: blur(50px); border-radius: 50%;"></div>
+        <div style="position: absolute; left: -30px; bottom: -30px; width: 120px; height: 120px; background: rgba(59, 130, 246, 0.2); filter: blur(40px); border-radius: 50%;"></div>
+        
+        <div style="display: flex; gap: 1.5rem; align-items: center; position: relative; z-index: 2;" class="flex-mobile-column">
+            <div style="background: rgba(255, 255, 255, 0.1); padding: 1rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px); flex-shrink:0;">
+                <i class="ph ph-brain" style="font-size: 2.5rem; color: #a78bfa;"></i>
+            </div>
+            <div style="flex: 1; width: 100%;">
+                <h3 style="color: white; margin: 0 0 0.5rem 0; font-size: 1.25rem; display: flex; align-items: center; gap: 8px;">
+                    Previsão de Demanda IA <span style="background: #a78bfa; color: #1e1b4b; font-size: 0.7rem; padding: 2px 8px; border-radius: 20px; font-weight: bold; text-transform: uppercase;">BI Preditivo</span>
+                </h3>
+                {% if previsao.existe %}
+                    <p style="margin: 0; opacity: 0.9; font-size: 0.95rem; line-height: 1.5;">
+                        Com base nos últimos 5 cardápios, a próxima refeição (<strong>{{ previsao.tipo_refeicao }}</strong> em <strong>{{ previsao.data | datetimeformat }}</strong>) deve ter <strong>{{ previsao.taxa_esperada }}%</strong> de presença de reservas.
+                    </p>
+                    <div style="display: flex; gap: 2rem; margin-top: 1rem; flex-wrap: wrap;" class="flex-mobile-column">
+                        <div>
+                            <span style="display:block; opacity: 0.7; font-size: 0.75rem; text-transform: uppercase;">Reservas Atuais</span>
+                            <strong style="font-size: 1.25rem;">{{ previsao.reservas_atuais }} porções</strong>
                         </div>
-                        <i class="ph ph-arrow-circle-right" style="font-size: 1.5rem; color: var(--primary);"></i>
+                        <div style="border-left: 1px solid rgba(255,255,255,0.2); padding-left: 2rem;" class="no-border-mobile">
+                            <span style="display:block; opacity: 0.7; font-size: 0.75rem; text-transform: uppercase;">Estudantes Previstos</span>
+                            <strong style="font-size: 1.25rem; color: #34d399;">~{{ previsao.porcoes_normais }} porções</strong>
+                        </div>
+                        <div style="border-left: 1px solid rgba(255,255,255,0.2); padding-left: 2rem;" class="no-border-mobile">
+                            <span style="display:block; opacity: 0.7; font-size: 0.75rem; text-transform: uppercase;">Extras Estimados</span>
+                            <strong style="font-size: 1.25rem; color: #f59e0b;">+{{ previsao.porcoes_extras }} porções</strong>
+                        </div>
+                        <div style="border-left: 1px solid rgba(255,255,255,0.2); padding-left: 2rem; background: rgba(255,255,255,0.08); padding: 0.5rem 1.5rem; border-radius: 8px;" class="no-border-mobile">
+                            <span style="display:block; opacity: 0.7; font-size: 0.75rem; text-transform: uppercase;">Previsão de Produção Total</span>
+                            <strong style="font-size: 1.5rem; color: #60a5fa;">{{ previsao.porcoes_totais }} porções</strong>
+                        </div>
                     </div>
+                {% else %}
+                    <p style="margin: 0; opacity: 0.9; font-size: 0.95rem; line-height: 1.5;">
+                        Sem cardápios futuros agendados. Recomendamos basear novas refeições na média histórica geral:
+                    </p>
+                    <div style="display: flex; gap: 2rem; margin-top: 1rem; flex-wrap: wrap;" class="flex-mobile-column">
+                        <div>
+                            <span style="display:block; opacity: 0.7; font-size: 0.75rem; text-transform: uppercase;">Presença Média</span>
+                            <strong style="font-size: 1.25rem; color: #34d399;">{{ previsao.taxa_esperada }}%</strong>
+                        </div>
+                        <div style="border-left: 1px solid rgba(255,255,255,0.2); padding-left: 2rem;" class="no-border-mobile">
+                            <span style="display:block; opacity: 0.7; font-size: 0.75rem; text-transform: uppercase;">Consumo Normal Médio</span>
+                            <strong style="font-size: 1.25rem;">{{ previsao.baseline_normal }} porções</strong>
+                        </div>
+                        <div style="border-left: 1px solid rgba(255,255,255,0.2); padding-left: 2rem;" class="no-border-mobile">
+                            <span style="display:block; opacity: 0.7; font-size: 0.75rem; text-transform: uppercase;">Extras Médios</span>
+                            <strong style="font-size: 1.25rem; color: #f59e0b;">{{ previsao.baseline_extra }} porções</strong>
+                        </div>
+                        <div style="border-left: 1px solid rgba(255,255,255,0.2); padding-left: 2rem; background: rgba(255,255,255,0.08); padding: 0.5rem 1.5rem; border-radius: 8px;" class="no-border-mobile">
+                            <span style="display:block; opacity: 0.7; font-size: 0.75rem; text-transform: uppercase;">Sugestão de Produção</span>
+                            <strong style="font-size: 1.5rem; color: #60a5fa;">{{ previsao.baseline_normal + previsao.baseline_extra }} porções</strong>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Sistema de Abas do Dashboard BI (Ponto 15) -->
+    <div style="display: flex; gap: 0.5rem; border-bottom: 2px solid var(--border); margin-bottom: 1.5rem; flex-wrap: wrap;">
+        <button class="tab-btn active" onclick="switchTab('tab-charts')" id="btn-tab-charts" style="background:none; border:none; padding: 1rem 1.5rem; font-weight: 600; cursor:pointer; color:var(--primary); border-bottom: 3px solid var(--primary); font-size:1rem; transition: var(--transition);">
+            <i class="ph ph-chart-bar"></i> Métricas de Consumo
+        </button>
+        <button class="tab-btn" onclick="switchTab('tab-feedback')" id="btn-tab-feedback" style="background:none; border:none; padding: 1rem 1.5rem; font-weight: 600; cursor:pointer; color:var(--text-muted); border-bottom: 3px solid transparent; font-size:1rem; transition: var(--transition);">
+            <i class="ph ph-heart-straight"></i> Opinião do Estudante
+        </button>
+        <button class="tab-btn" onclick="switchTab('tab-nutrition')" id="btn-tab-nutrition" style="background:none; border:none; padding: 1rem 1.5rem; font-weight: 600; cursor:pointer; color:var(--text-muted); border-bottom: 3px solid transparent; font-size:1rem; transition: var(--transition);">
+            <i class="ph ph-first-aid"></i> Perfil Nutricional
+        </button>
+        <button class="tab-btn" onclick="switchTab('tab-students')" id="btn-tab-students" style="background:none; border:none; padding: 1rem 1.5rem; font-weight: 600; cursor:pointer; color:var(--text-muted); border-bottom: 3px solid transparent; font-size:1rem; transition: var(--transition);">
+            <i class="ph ph-users"></i> Frequência de Estudantes
+        </button>
+    </div>
+
+    <!-- Conteúdo da Aba 1: Gráficos de Consumo -->
+    <div id="tab-charts" class="tab-content">
+        {% if chart_data is defined and chart_data %}
+        <div style="display: flex; gap: 1.5rem; margin-bottom: 2rem; flex-wrap: wrap;">
+            <!-- Card 1: Comparativo Reservas vs Consumidos -->
+            <div class="card" style="flex: 1; min-width: 320px; padding: 1.5rem; box-shadow: 0 4px 20px rgba(0,0,0,0.05); border-radius: 12px; border: 1px solid var(--border); margin-bottom: 0;">
+                <h3 style="margin-top: 0; margin-bottom: 1.25rem; font-size: 1.1rem; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                    <i class="ph ph-chart-bar" style="color: var(--primary); font-size: 1.3rem;"></i> Consumo de Refeições (Últimos 7 Dias)
+                </h3>
+                <div style="position: relative; height: 260px; width: 100%;">
+                    <canvas id="chartConsumo"></canvas>
+                </div>
+            </div>
+
+            <!-- Card 2: Taxa de Absenteísmo e Extras -->
+            <div class="card" style="flex: 1; min-width: 320px; padding: 1.5rem; box-shadow: 0 4px 20px rgba(0,0,0,0.05); border-radius: 12px; border: 1px solid var(--border); margin-bottom: 0;">
+                <h3 style="margin-top: 0; margin-bottom: 1.25rem; font-size: 1.1rem; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                    <i class="ph ph-chart-line" style="color: var(--secondary); font-size: 1.3rem;"></i> Ocorrências & Tipos de Consumo
+                </h3>
+                <div style="position: relative; height: 260px; width: 100%;">
+                    <canvas id="chartTipos"></canvas>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Resultados (só aparece no modo "Todos" ou "Dia") -->
+        {% if cardapios is defined %}
+        <div class="card" id="secaoResultados">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                <h2 style="margin:0;">
+                    Cardápios encontrados
+                    <span style="font-size: 0.9rem; color: var(--text-muted); font-weight: 400;">({{ total }} resultado{{ 's' if total != 1 else '' }})</span>
+                </h2>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                {% for c in cardapios %}
+                    <a href="{{ url_for('admin_relatorio_dia', cardapio_id=c.id) }}" class="btn"
+                       style="background: #FFF; border: 1px solid var(--border); color: var(--text-main); justify-content: space-between; padding: 1rem; align-items: center; transition: all 0.2s ease;">
+                        <div>
+                            <strong style="font-size: 1.1rem;">{{ c.data | datetimeformat }}</strong>
+                            <span style="display:block; font-size: 0.85rem; color: var(--text-muted); font-weight: 400;">{{ c.descricao }}</span>
+                        </div>
+                        <div style="text-align: right; display: flex; align-items: center; gap: 1rem;">
+                            <div style="font-size: 0.85rem; line-height: 1.4; display: flex; gap: 1rem; text-align: left; background: var(--background); padding: 0.5rem 1rem; border-radius: 8px;">
+                                <div>
+                                    <span style="display:block; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">Total</span>
+                                    <strong style="color: var(--secondary); font-size: 1rem;">{{ c.total_consumidas }}</strong> / {{ c.total_reservas }}
+                                </div>
+                                <div style="border-left: 1px solid var(--border); padding-left: 1rem;">
+                                    <span style="display:block; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">Regulares</span>
+                                    <strong style="font-size: 1rem;">{{ c.consumo_normal }}</strong>
+                                </div>
+                                <div style="border-left: 1px solid var(--border); padding-left: 1rem;">
+                                    <span style="display:block; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">Extras</span>
+                                    <strong style="font-size: 1rem;">{{ c.consumo_extra }}</strong>
+                                </div>
+                                <div style="border-left: 1px solid var(--border); padding-left: 1rem;">
+                                    <span style="display:block; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">Eventos</span>
+                                    <strong style="font-size: 1rem;">{{ c.consumo_evento }}</strong>
+                                </div>
+                            </div>
+                            <i class="ph ph-arrow-circle-right" style="font-size: 1.5rem; color: var(--primary);"></i>
+                        </div>
+                    </a>
+                {% else %}
+                    <div class="alert alert-info">Nenhum cardápio encontrado para os filtros aplicados.</div>
+                {% endfor %}
+            </div>
+
+            <!-- Paginação -->
+            {% if total_paginas > 1 %}
+            <div style="display: flex; align-items: center; justify-content: center; gap: 0.4rem; margin-top: 2rem; flex-wrap: wrap;">
+                {% if pagina > 1 %}
+                <a href="{{ url_for('admin_relatorios', page=pagina-1, q=busca, tipo=tipo_filtro, data_dia=data_dia, data_mes=data_mes, data_ano=data_ano, data_inicio=data_inicio, data_fim=data_fim) }}"
+                   class="btn btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;">
+                    <i class="ph ph-caret-left"></i>
                 </a>
-            {% else %}
-                <div class="alert alert-info">Nenhum cardápio cadastrado para gerar relatórios.</div>
-            {% endfor %}
+                {% endif %}
+
+                {% for p in range(1, total_paginas + 1) %}
+                    {% if p == pagina %}
+                    <span class="btn btn-primary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem; cursor: default;">{{ p }}</span>
+                    {% elif p == 1 or p == total_paginas or (p >= pagina - 2 and p <= pagina + 2) %}
+                    <a href="{{ url_for('admin_relatorios', page=p, q=busca, tipo=tipo_filtro, data_dia=data_dia, data_mes=data_mes, data_ano=data_ano, data_inicio=data_inicio, data_fim=data_fim) }}"
+                       class="btn btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;">{{ p }}</a>
+                    {% elif p == pagina - 3 or p == pagina + 3 %}
+                    <span style="color: var(--text-muted); padding: 0 0.25rem;">…</span>
+                    {% endif %}
+                {% endfor %}
+
+                {% if pagina < total_paginas %}
+                <a href="{{ url_for('admin_relatorios', page=pagina+1, q=busca, tipo=tipo_filtro, data_dia=data_dia, data_mes=data_mes, data_ano=data_ano, data_inicio=data_inicio, data_fim=data_fim) }}"
+                   class="btn btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;">
+                    <i class="ph ph-caret-right"></i>
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Conteúdo da Aba 2: Opinião do Estudante (Ponto 11) -->
+    <div id="tab-feedback" class="tab-content" style="display: none;">
+
+        <!-- Resumo de Satisfação Geral (mantido) -->
+        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 1.5rem; margin-bottom: 2rem;" class="flex-mobile-column">
+            <!-- Resumo e Nota Média -->
+            <div class="card" style="padding: 1.5rem; border: 1px solid var(--border); margin-bottom: 0;">
+                <h3 style="margin-top:0; font-size:1.1rem;"><i class="ph ph-star-half" style="color:#f59e0b;"></i> Satisfação Geral</h3>
+                <div style="text-align: center; margin: 1.5rem 0;">
+                    <h2 style="font-size: 4rem; color: var(--text-main); margin: 0; font-weight: 700;">{{ avaliacoes.media }}</h2>
+                    <div style="font-size: 1.5rem; color: #f59e0b; margin: 0.5rem 0;">
+                        {% for i in range(1, 6) %}
+                            {% if i <= avaliacoes.media|int %}
+                                <i class="ph ph-star-fill" style="color: #f59e0b;"></i>
+                            {% else %}
+                                <i class="ph ph-star" style="color: #d1d5db;"></i>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    <span style="color: var(--text-muted); font-size: 0.85rem;">Baseado em {{ avaliacoes.total }} avaliação(ões)</span>
+                </div>
+                
+                <div style="border-top: 1px solid var(--border); padding-top: 1rem; display: flex; flex-direction: column; gap: 8px;">
+                    {% for estrelas, qtd in avaliacoes.distribuicao.items()|sort(reverse=True) %}
+                    <div style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem;">
+                        <span style="width: 55px; text-align: right; font-weight: 600;">{{ estrelas }} estrelas</span>
+                        <div style="flex:1; background: #e5e7eb; height: 8px; border-radius: 4px; overflow:hidden;">
+                            <div style="background: #f59e0b; height: 100%; width: {% if avaliacoes.total > 0 %}{{ (qtd / avaliacoes.total * 100)|int }}{% else %}0{% endif %}%;"></div>
+                        </div>
+                        <span style="width: 25px; color: var(--text-muted);">{{ qtd }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Feedbacks Recentes (últimos 15) -->
+            <div class="card" style="padding: 1.5rem; border: 1px solid var(--border); margin-bottom: 0;">
+                <h3 style="margin-top:0; font-size:1.1rem;"><i class="ph ph-chat-text" style="color:var(--primary);"></i> Feedbacks Recentes</h3>
+                <div style="display: flex; flex-direction: column; gap: 1rem; max-height: 330px; overflow-y: auto; padding-right: 0.5rem;">
+                    {% for av in avaliacoes.comentarios %}
+                    <div style="background: var(--background); padding: 1rem; border-radius: 8px; border: 1px solid var(--border);">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                            <div>
+                                <strong style="font-size: 0.95rem; display: block;">{{ av.aluno_nome }}</strong>
+                                <span style="font-size: 0.8rem; color: var(--text-muted);">Refeição: {{ av.tipo_refeicao }} ({{ av.data | datetimeformat }})</span>
+                            </div>
+                            <div style="color: #f59e0b; font-size: 0.9rem;">
+                                {% for i in range(1, 6) %}
+                                    <i class="ph ph-star{% if i <= av.avaliacao_nota %}-fill{% endif %}"></i>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% if av.avaliacao_comentario %}
+                            <p style="margin: 0; font-size: 0.9rem; color: var(--text-main); font-style: italic;">"{{ av.avaliacao_comentario }}"</p>
+                        {% else %}
+                            <span style="font-size: 0.85rem; color: var(--text-muted); font-style: italic;">Sem comentário escrito</span>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                        <div style="text-align: center; padding: 2rem; color: var(--text-muted); font-style: italic;">Nenhum comentário recebido ainda.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- ─── Histórico Completo com Filtros ──────────────────────────────── -->
+        <div class="card" style="padding: 1.5rem; border: 1px solid var(--border); margin-bottom: 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+                <div>
+                    <h3 style="margin:0; font-size:1.1rem;"><i class="ph ph-list-magnifying-glass" style="color:var(--primary);"></i> Histórico Completo de Opiniões</h3>
+                    <span style="font-size:0.85rem; color:var(--text-muted);">{{ op_total }} registro(s) encontrado(s)</span>
+                </div>
+                <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                    <a id="btn-export-op-excel"
+                       href="{{ url_for('admin.admin_relatorios_opinioes_excel', op_nota=op_nota, op_turma=op_turma, op_data_inicio=op_data_inicio, op_data_fim=op_data_fim, op_q=op_busca) }}"
+                       class="btn btn-secondary" style="font-size:0.85rem; padding:0.5rem 0.9rem; text-decoration:none;">
+                        <i class="ph ph-file-xls"></i> Exportar Excel
+                    </a>
+                    <button onclick="window.print()" class="btn btn-secondary" style="font-size:0.85rem; padding:0.5rem 0.9rem;">
+                        <i class="ph ph-printer"></i> Imprimir / PDF
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filtros de opiniões -->
+            <form method="GET" action="{{ url_for('admin.admin_relatorios') }}" id="form-opinioes-filtro" style="margin-bottom:1.25rem;">
+                <input type="hidden" name="aba" value="feedback">
+                <!-- Preservar filtros de cardápios -->
+                <input type="hidden" name="tipo" value="{{ tipo_filtro }}">
+                <input type="hidden" name="data_dia" value="{{ data_dia }}">
+                <input type="hidden" name="data_mes" value="{{ data_mes }}">
+                <input type="hidden" name="data_ano" value="{{ data_ano }}">
+                <input type="hidden" name="data_inicio" value="{{ data_inicio }}">
+                <input type="hidden" name="data_fim" value="{{ data_fim }}">
+
+                <div style="display:flex; flex-wrap:wrap; gap:0.75rem; align-items:flex-end;">
+                    <!-- Nota -->
+                    <div style="min-width:130px;">
+                        <label style="font-size:0.8rem; font-weight:600; display:block; margin-bottom:4px;">Nota</label>
+                        <select name="op_nota" style="padding:0.45rem 0.6rem; border-radius:6px; border:1px solid var(--border); font-size:0.9rem; width:100%; background:var(--surface); color:var(--text-main);">
+                            <option value="">⭐ Todas</option>
+                            {% for n in [5,4,3,2,1] %}
+                            <option value="{{ n }}" {% if op_nota == n|string %}selected{% endif %}>{{ '★' * n }}{% if n == 5 %} (Ótimo){% elif n == 1 %} (Ruim){% endif %}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <!-- Turma -->
+                    <div style="min-width:160px;">
+                        <label style="font-size:0.8rem; font-weight:600; display:block; margin-bottom:4px;">Turma</label>
+                        <select name="op_turma" style="padding:0.45rem 0.6rem; border-radius:6px; border:1px solid var(--border); font-size:0.9rem; width:100%; background:var(--surface); color:var(--text-main);">
+                            <option value="">Todas as turmas</option>
+                            {% for t in turmas %}
+                            <option value="{{ t.id }}" {% if op_turma == t.id|string %}selected{% endif %}>{{ t.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <!-- Período -->
+                    <div style="min-width:130px;">
+                        <label style="font-size:0.8rem; font-weight:600; display:block; margin-bottom:4px;">De</label>
+                        <input type="date" name="op_data_inicio" value="{{ op_data_inicio }}" style="padding:0.45rem 0.6rem; border-radius:6px; border:1px solid var(--border); font-size:0.9rem; width:100%;">
+                    </div>
+                    <div style="min-width:130px;">
+                        <label style="font-size:0.8rem; font-weight:600; display:block; margin-bottom:4px;">Até</label>
+                        <input type="date" name="op_data_fim" value="{{ op_data_fim }}" style="padding:0.45rem 0.6rem; border-radius:6px; border:1px solid var(--border); font-size:0.9rem; width:100%;">
+                    </div>
+                    <!-- Busca -->
+                    <div style="flex:1; min-width:180px;">
+                        <label style="font-size:0.8rem; font-weight:600; display:block; margin-bottom:4px;">Busca</label>
+                        <input type="text" name="op_q" value="{{ op_busca }}" placeholder="Nome ou comentário..." style="padding:0.45rem 0.6rem; border-radius:6px; border:1px solid var(--border); font-size:0.9rem; width:100%;">
+                    </div>
+                    <!-- Botões -->
+                    <div style="display:flex; gap:0.5rem; align-items:flex-end;">
+                        <button type="submit" class="btn btn-primary" style="padding:0.5rem 1rem; font-size:0.9rem;">
+                            <i class="ph ph-magnifying-glass"></i> Filtrar
+                        </button>
+                        {% if op_nota or op_turma or op_data_inicio or op_data_fim or op_busca %}
+                        <a href="{{ url_for('admin.admin_relatorios', aba='feedback') }}" class="btn btn-secondary" style="padding:0.5rem 0.75rem; font-size:0.9rem;" title="Limpar filtros">
+                            <i class="ph ph-x"></i>
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </form>
+
+            <!-- Tabela de opiniões -->
+            <div class="table-responsive" id="opinioes-print-area">
+                {% if op_nota or op_turma or op_data_inicio or op_data_fim or op_busca %}
+                <div style="font-size:0.82rem; color:var(--text-muted); margin-bottom:0.75rem;">
+                    <i class="ph ph-funnel"></i> Filtros ativos:
+                    {% if op_nota %}<strong>{{ op_nota }}★</strong>{% endif %}
+                    {% if op_turma %} &middot; Turma selecionada{% endif %}
+                    {% if op_data_inicio or op_data_fim %} &middot; Período: {{ op_data_inicio or '...' }} a {{ op_data_fim or '...' }}{% endif %}
+                    {% if op_busca %} &middot; Busca: "{{ op_busca }}"{% endif %}
+                </div>
+                {% endif %}
+
+                {% if opinioes_lista %}
+                <table style="width:100%; border-collapse:collapse;">
+                    <thead>
+                        <tr style="background: var(--background); font-size:0.8rem;">
+                            <th style="padding:0.6rem 0.5rem; text-align:left;">Estudante</th>
+                            <th style="padding:0.6rem 0.5rem; text-align:left;">Turma</th>
+                            <th style="padding:0.6rem 0.5rem; text-align:center;">Data</th>
+                            <th style="padding:0.6rem 0.5rem; text-align:center;">Refeição</th>
+                            <th style="padding:0.6rem 0.5rem; text-align:center;">Nota</th>
+                            <th style="padding:0.6rem 0.5rem; text-align:left;">Comentário</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for av in opinioes_lista %}
+                        <tr style="border-bottom:1px solid var(--border); {% if loop.index is even %}background:var(--background);{% endif %}">
+                            <td style="padding:0.6rem 0.5rem; font-size:0.9rem; font-weight:600;">{{ av.aluno_nome }}</td>
+                            <td style="padding:0.6rem 0.5rem; font-size:0.85rem; color:var(--text-muted);">{{ av.turma_nome or '—' }}</td>
+                            <td style="padding:0.6rem 0.5rem; font-size:0.85rem; text-align:center; white-space:nowrap;">{{ av.data | datetimeformat }}</td>
+                            <td style="padding:0.6rem 0.5rem; font-size:0.85rem; text-align:center;">{{ av.tipo_refeicao or '—' }}</td>
+                            <td style="padding:0.6rem 0.5rem; text-align:center; color:#f59e0b; font-size:0.9rem; white-space:nowrap;">
+                                {% for i in range(1, 6) %}
+                                    <i class="ph ph-star{% if i <= av.avaliacao_nota %}-fill{% endif %}"></i>
+                                {% endfor %}
+                            </td>
+                            <td style="padding:0.6rem 0.5rem; font-size:0.85rem; font-style:{% if av.avaliacao_comentario %}italic{% else %}normal{% endif %}; color:{% if av.avaliacao_comentario %}var(--text-main){% else %}var(--text-muted){% endif %};">
+                                {% if av.avaliacao_comentario %}"{{ av.avaliacao_comentario }}"{% else %}Sem comentário{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                <!-- Paginação das opiniões -->
+                {% if op_total_paginas > 1 %}
+                <div style="display:flex; align-items:center; justify-content:center; gap:0.4rem; margin-top:1.5rem; flex-wrap:wrap;">
+                    {% if op_pagina > 1 %}
+                    <a href="{{ url_for('admin.admin_relatorios', aba='feedback', op_page=op_pagina-1, op_nota=op_nota, op_turma=op_turma, op_data_inicio=op_data_inicio, op_data_fim=op_data_fim, op_q=op_busca) }}"
+                       class="btn btn-secondary" style="padding:0.4rem 0.75rem; font-size:0.85rem;">
+                        <i class="ph ph-caret-left"></i>
+                    </a>
+                    {% endif %}
+                    {% for p in range(1, op_total_paginas + 1) %}
+                        {% if p == op_pagina %}
+                        <span class="btn btn-primary" style="padding:0.4rem 0.75rem; font-size:0.85rem; cursor:default;">{{ p }}</span>
+                        {% elif p == 1 or p == op_total_paginas or (p >= op_pagina - 2 and p <= op_pagina + 2) %}
+                        <a href="{{ url_for('admin.admin_relatorios', aba='feedback', op_page=p, op_nota=op_nota, op_turma=op_turma, op_data_inicio=op_data_inicio, op_data_fim=op_data_fim, op_q=op_busca) }}"
+                           class="btn btn-secondary" style="padding:0.4rem 0.75rem; font-size:0.85rem;">{{ p }}</a>
+                        {% elif p == op_pagina - 3 or p == op_pagina + 3 %}
+                        <span style="color:var(--text-muted); padding:0 0.25rem;">…</span>
+                        {% endif %}
+                    {% endfor %}
+                    {% if op_pagina < op_total_paginas %}
+                    <a href="{{ url_for('admin.admin_relatorios', aba='feedback', op_page=op_pagina+1, op_nota=op_nota, op_turma=op_turma, op_data_inicio=op_data_inicio, op_data_fim=op_data_fim, op_q=op_busca) }}"
+                       class="btn btn-secondary" style="padding:0.4rem 0.75rem; font-size:0.85rem;">
+                        <i class="ph ph-caret-right"></i>
+                    </a>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                {% else %}
+                <div style="text-align:center; padding:3rem; color:var(--text-muted); font-style:italic;">
+                    <i class="ph ph-smiley-sad" style="font-size:2.5rem; display:block; margin-bottom:0.5rem;"></i>
+                    Nenhuma opinião encontrada para os filtros aplicados.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Conteúdo da Aba 3: Perfil Nutricional (Ponto 18) -->
+    <div id="tab-nutrition" class="tab-content" style="display: none; margin-bottom: 2rem;">
+        <div class="card" style="padding: 1.5rem; border: 1px solid var(--border); margin-bottom: 0;">
+            <h3 style="margin-top:0; font-size:1.1rem;"><i class="ph ph-first-aid-kit" style="color:var(--secondary);"></i> Perfil Alimentar / Restrições Ativas</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">Estatísticas consolidadas de restrições alimentares informadas pelos estudantes regulares cadastrados.</p>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem;">
+                {% for r in perfil_nutricional %}
+                <div onclick='abrirModalRestricao({{ r.restricoes | tojson }}, {{ r.total }})'
+                     style="background: var(--background); padding: 1.25rem; border-radius: 8px; border-left: 4px solid var(--secondary); display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: box-shadow 0.2s, transform 0.15s;"
+                     onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.12)'; this.style.transform='translateY(-2px)';"
+                     onmouseout="this.style.boxShadow='none'; this.style.transform='none';">
+                    <div>
+                        <strong style="display: block; font-size: 1rem; color: var(--text-main);">{{ r.restricoes }}</strong>
+                        <span style="font-size: 0.8rem; color: var(--text-muted);">Estudantes cadastrados</span>
+                        <span style="font-size: 0.75rem; color: var(--secondary); display:block; margin-top:2px;"><i class="ph ph-magnifying-glass"></i> Clique para ver a lista</span>
+                    </div>
+                    <div style="font-size: 1.75rem; font-weight: 700; color: var(--secondary);">
+                        {{ r.total }}
+                    </div>
+                </div>
+                {% else %}
+                <div class="alert alert-info" style="grid-column: span 100%;">Nenhuma restrição registrada no sistema.</div>
+                {% endfor %}
+            </div>
+
+            <!-- Modal de Detalhes da Restrição -->
+            <div id="modal-restricao" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:9998; align-items:center; justify-content:center;" onclick="fecharModalRestricao(event)">
+                <div style="background:var(--surface); border-radius:14px; padding:2rem; max-width:560px; width:94%; max-height:85vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3); position:relative;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1.25rem;">
+                        <div>
+                            <h3 id="modal-restricao-titulo" style="margin:0; font-size:1.2rem; color:var(--text-main);"></h3>
+                            <span id="modal-restricao-subtitulo" style="font-size:0.85rem; color:var(--text-muted);"></span>
+                        </div>
+                        <button onclick="document.getElementById('modal-restricao').style.display='none'" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--text-muted); line-height:1; padding:0 0.25rem;" title="Fechar">&times;</button>
+                    </div>
+                    <div id="modal-restricao-body">
+                        <div style="text-align:center; padding:2rem; color:var(--text-muted);"><i class="ph ph-spinner" style="font-size:2rem;"></i><p>Carregando...</p></div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+
+    <!-- Conteúdo da Aba 4: Frequência de Estudantes -->
+    <div id="tab-students" class="tab-content" style="display: none; margin-bottom: 2rem;">
+        <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 1.5rem;" class="flex-mobile-column">
+            <!-- Coluna de Busca -->
+            <div class="card" style="padding: 1.5rem; border: 1px solid var(--border); margin-bottom: 0;">
+                <h3 style="margin-top:0; font-size:1.1rem;"><i class="ph ph-magnifying-glass" style="color:var(--primary);"></i> Consultar Frequência</h3>
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">Digite o nome, matrícula ou CPF do estudante.</p>
+                <div class="form-group" style="margin-bottom: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <input type="text" id="student-freq-search" placeholder="Buscar aluno..." style="flex: 2; min-width: 150px; padding: 0.6rem 0.8rem; border: 1px solid var(--border); border-radius: 6px; font-size:0.95rem;">
+                    <select id="student-freq-turma" style="flex: 1; min-width: 120px; padding: 0.6rem 0.8rem; border: 1px solid var(--border); border-radius: 6px; font-size:0.95rem; background: var(--surface); color: var(--text-main);">
+                        <option value="">Filtrar por Turma...</option>
+                        {% for t in turmas %}
+                            <option value="{{ t.id }}">{{ t.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div id="student-freq-results" style="max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;">
+                    <div style="text-align: center; color: var(--text-muted); font-style: italic; padding: 1rem; font-size: 0.9rem;">
+                        Digite algo para iniciar a busca...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Painel de Detalhes -->
+            <div class="card" id="student-freq-detail-card" style="padding: 1.5rem; border: 1px solid var(--border); margin-bottom: 0; display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--border); padding-bottom: 1rem; margin-bottom: 1rem;">
+                    <div>
+                        <h3 id="detail-student-name" style="margin:0; font-size: 1.25rem; color: var(--text-main);"></h3>
+                        <span id="detail-student-info" style="color: var(--text-muted); font-size: 0.85rem;"></span>
+                    </div>
+                    <span id="detail-student-turma" class="badge badge-consumed" style="font-size: 0.85rem; font-weight: bold;"></span>
+                </div>
+
+                <!-- Estatísticas Rápidas -->
+                <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;" class="flex-mobile-column">
+                    <div style="flex:1; background: var(--background); padding: 0.75rem; border-radius: 8px; text-align: center; border-bottom: 3px solid var(--primary);">
+                        <span style="display:block; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Total Reservas</span>
+                        <strong id="stat-total-reservas" style="font-size: 1.3rem; color: var(--primary);">0</strong>
+                    </div>
+                    <div style="flex:1; background: var(--background); padding: 0.75rem; border-radius: 8px; text-align: center; border-bottom: 3px solid #059669;">
+                        <span style="display:block; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Presenças (Comeu)</span>
+                        <strong id="stat-total-consumidas" style="font-size: 1.3rem; color: #059669;">0</strong>
+                    </div>
+                    <div style="flex:1; background: var(--background); padding: 0.75rem; border-radius: 8px; text-align: center; border-bottom: 3px solid var(--danger);">
+                        <span style="display:block; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Faltas (Ausente)</span>
+                        <strong id="stat-total-ausencias" style="font-size: 1.3rem; color: var(--danger);">0</strong>
+                    </div>
+                </div>
+
+                <!-- Histórico de Refeições -->
+                <h4 style="font-size: 1rem; margin-bottom: 0.75rem;"><i class="ph ph-clock-counter-clockwise"></i> Histórico de Refeições Ativas</h4>
+                <div style="max-height: 200px; overflow-y: auto;">
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 0;">
+                        <thead>
+                            <tr style="font-size: 0.8rem; background: var(--background);">
+                                <th style="padding: 0.5rem; text-align: left;">Data</th>
+                                <th style="padding: 0.5rem; text-align: left;">Refeição</th>
+                                <th style="padding: 0.5rem; text-align: left;">Tipo</th>
+                                <th style="padding: 0.5rem; text-align: left;">Situação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detail-history-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Painel Placeholder quando não selecionou ninguém -->
+            <div class="card" id="student-freq-placeholder-card" style="padding: 1.5rem; border: 1px dashed var(--border); margin-bottom: 0; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-style: italic; min-height: 250px;">
+                <div style="text-align: center;">
+                    <i class="ph ph-user-focus" style="font-size: 3rem; color: var(--text-muted); margin-bottom: 0.5rem;"></i>
+                    <p>Selecione um estudante na busca ao lado para ver o histórico detalhado.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estudantes Inativos (Quem nunca comeu ou reservou) -->
+        <div class="card" style="margin-top: 1.5rem; padding: 1.5rem; border: 1px solid var(--border); margin-bottom: 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+                <h3 style="margin: 0; font-size: 1.1rem;"><i class="ph ph-warning-circle" style="color:#ef4444;"></i> Alunos Inativos / Sem Consumo</h3>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <button class="btn btn-secondary btn-sm" id="btn-load-sem-consumo" onclick="carregarSemAtividade('consumo')" style="font-size:0.8rem; padding: 0.4rem 0.8rem;">Nunca Consumiram</button>
+                    <button class="btn btn-secondary btn-sm" id="btn-load-sem-reserva" onclick="carregarSemAtividade('reserva')" style="font-size:0.8rem; padding: 0.4rem 0.8rem;">Nunca Reservaram</button>
+                    <a href="#" id="btn-exportar-inativos" class="btn btn-primary btn-sm" style="font-size:0.8rem; padding: 0.4rem 0.8rem; display: none; align-items: center; gap: 4px; text-decoration: none;">
+                        <i class="ph ph-file-xls"></i> Exportar Excel
+                    </a>
+                </div>
+            </div>
+            
+            <div id="inativos-lista-container" style="display: none; max-height: 250px; overflow-y: auto; background: var(--background); border: 1px solid var(--border); border-radius: 8px; padding: 1rem;">
+                <table style="width: 100%; border-collapse: collapse; margin-top: 0; background: transparent;">
+                    <thead>
+                        <tr style="font-size: 0.8rem;">
+                            <th style="padding: 0.5rem; text-align: left; background: transparent;">Nome</th>
+                            <th style="padding: 0.5rem; text-align: left; background: transparent;">Matrícula</th>
+                            <th style="padding: 0.5rem; text-align: left; background: transparent;">Turma</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inativos-lista-tbody"></tbody>
+                </table>
+            </div>
+            <div id="inativos-placeholder" style="text-align: center; color: var(--text-muted); font-style: italic; padding: 1rem; border: 1px dashed var(--border); border-radius: 8px;">
+                Selecione uma opção acima para carregar a lista de alunos inativos.
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function atualizarCampos() {
+    const tipo = document.getElementById('tipo').value;
+    // Esconde todos
+    document.querySelectorAll('.campo-filtro').forEach(el => el.style.display = 'none');
+    document.getElementById('campo_busca').style.display = 'none';
+
+    const map = { dia: 'campo_dia', mes: 'campo_mes', ano: 'campo_ano', periodo: 'campo_periodo' };
+    if (map[tipo]) {
+        document.getElementById(map[tipo]).style.display = 'flex';
+    }
+
+    // Mostrar busca livre só em "Todos" e "Dia"
+    if (tipo === 'todos' || tipo === 'dia') {
+        document.getElementById('campo_busca').style.display = 'block';
+    }
+
+    // Atualizar label do botão
+    const label = document.getElementById('btnLabel');
+    if (tipo === 'todos' || tipo === 'dia') {
+        label.textContent = 'Filtrar';
+    } else {
+        label.textContent = 'Ver Relatório';
+    }
+}
+
+// Interceptar submit: para mês/ano/período, redirecionar para a rota de relatório consolidado
+document.getElementById('formFiltro').addEventListener('submit', function(e) {
+    const tipo = document.getElementById('tipo').value;
+
+    if (tipo === 'todos' || tipo === 'dia') {
+        // Comportamento padrão: filtra cardápios e mostra a listagem nesta mesma página
+        return true;
+    }
+
+    e.preventDefault();
+
+    let dataInicio = '';
+    let dataFim = '';
+
+    if (tipo === 'mes') {
+        const mesVal = document.getElementById('data_mes').value; // YYYY-MM
+        if (!mesVal) { alert('Selecione um mês.'); return; }
+        const [ano, mes] = mesVal.split('-');
+        dataInicio = `${ano}-${mes}-01`;
+        // Último dia do mês
+        const ultimo = new Date(parseInt(ano), parseInt(mes), 0).getDate();
+        dataFim = `${ano}-${mes}-${String(ultimo).padStart(2, '0')}`;
+    } else if (tipo === 'ano') {
+        const anoVal = document.getElementById('data_ano').value;
+        if (!anoVal) { alert('Informe o ano.'); return; }
+        dataInicio = `${anoVal}-01-01`;
+        dataFim = `${anoVal}-12-31`;
+    } else if (tipo === 'periodo') {
+        dataInicio = document.getElementById('data_inicio').value;
+        dataFim = document.getElementById('data_fim').value;
+        if (!dataInicio || !dataFim) { alert('Informe as duas datas do período.'); return; }
+        if (dataInicio > dataFim) { alert('A data inicial não pode ser maior que a final.'); return; }
+    }
+
+    // Redirecionar para a rota de relatório consolidado
+    window.location.href = `/admin/relatorios/periodo?data_inicio=${dataInicio}&data_fim=${dataFim}`;
+});
+
+atualizarCampos();
+
+function switchTab(tabId) {
+    // Esconder todas as abas
+    document.querySelectorAll('.tab-content').forEach(el => {
+        el.style.display = 'none';
+    });
+    // Desativar estilo ativo de todos os botões de aba
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+        btn.style.color = 'var(--text-muted)';
+        btn.style.borderBottomColor = 'transparent';
+    });
+    // Mostrar a aba selecionada
+    const targetContent = document.getElementById(tabId);
+    if (targetContent) {
+        targetContent.style.display = 'block';
+    }
+    // Ativar estilo do botão selecionado
+    const targetBtn = document.getElementById('btn-' + tabId);
+    if (targetBtn) {
+        targetBtn.classList.add('active');
+        targetBtn.style.color = 'var(--primary)';
+        targetBtn.style.borderBottomColor = 'var(--primary)';
+    }
+}
+
+// Ativar aba correta baseada no parâmetro URL (ex: ?aba=feedback)
+(function() {
+    const abaAtiva = '{{ aba_ativa | default("charts") }}';
+    const tabMap = {
+        'charts': 'tab-charts',
+        'feedback': 'tab-feedback',
+        'nutrition': 'tab-nutrition',
+        'students': 'tab-students'
+    };
+    const tabId = tabMap[abaAtiva] || 'tab-charts';
+    if (abaAtiva !== 'charts') {
+        switchTab(tabId);
+    }
+})();
+
+// Inicialização dos gráficos de BI
+{% if chart_data is defined and chart_data %}
+(function() {
+    const rawChartData = {{ chart_data | safe }};
+    
+    // Formatar datas para exibição (DD/MM)
+    const labels = rawChartData.map(d => {
+        try {
+            const parts = d.data.split('-');
+            return `${parts[2]}/${parts[1]}`;
+        } catch(e) {
+            return d.data;
+        }
+    });
+
+    const reservas = rawChartData.map(d => d.reservas);
+    const consumidas = rawChartData.map(d => d.consumidas);
+    const wasted = rawChartData.map(d => d.wasted);
+    const extras = rawChartData.map(d => d.extras);
+    const eventos = rawChartData.map(d => d.eventos);
+
+    // Gráfico 1: Consumo Geral (Reservas vs Consumidas vs Extras)
+    const ctxConsumo = document.getElementById('chartConsumo').getContext('2d');
+    new Chart(ctxConsumo, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Reservas Agendadas',
+                    data: reservas,
+                    backgroundColor: 'rgba(79, 70, 229, 0.25)', // Indigo
+                    borderColor: 'rgba(79, 70, 229, 1)',
+                    borderWidth: 1.5,
+                    borderRadius: 4
+                },
+                {
+                    label: 'Entregue (Reserva)',
+                    data: consumidas,
+                    backgroundColor: 'rgba(16, 185, 129, 0.25)', // Green
+                    borderColor: 'rgba(16, 185, 129, 1)',
+                    borderWidth: 1.5,
+                    borderRadius: 4
+                },
+                {
+                    label: 'Extras (Sem Reserva)',
+                    data: extras,
+                    backgroundColor: 'rgba(14, 165, 233, 0.25)', // Sky
+                    borderColor: 'rgba(14, 165, 233, 1)',
+                    borderWidth: 1.5,
+                    borderRadius: 4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { boxWidth: 12, font: { family: 'Outfit, sans-serif' } }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { stepSize: 5 }
+                }
+            }
+        }
+    });
+
+    // Gráfico 2: Detalhamento de Ocorrências e Extras
+    const ctxTipos = document.getElementById('chartTipos').getContext('2d');
+    new Chart(ctxTipos, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Absenteísmo (Desperdício)',
+                    data: wasted,
+                    borderColor: 'rgba(239, 68, 68, 1)', // Red
+                    backgroundColor: 'rgba(239, 68, 68, 0.05)',
+                    tension: 0.3,
+                    borderWidth: 2,
+                    fill: true
+                },
+                {
+                    label: 'Refeições Extras',
+                    data: extras,
+                    borderColor: 'rgba(245, 158, 11, 1)', // Orange
+                    backgroundColor: 'rgba(245, 158, 11, 0.05)',
+                    tension: 0.3,
+                    borderWidth: 2,
+                    fill: true
+                },
+                {
+                    label: 'Refeições Eventos',
+                    data: eventos,
+                    borderColor: 'rgba(6, 182, 212, 1)', // Cyan
+                    backgroundColor: 'rgba(6, 182, 212, 0.05)',
+                    tension: 0.3,
+                    borderWidth: 2,
+                    fill: true
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { boxWidth: 12, font: { family: 'Outfit, sans-serif' } }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { stepSize: 5 }
+                }
+            }
+        }
+    });
+})();
+{% endif %}
+
+// Scripts para a Aba de Frequência de Estudantes
+(function() {
+    const searchInput = document.getElementById('student-freq-search');
+    const turmaSelect = document.getElementById('student-freq-turma');
+    const resultsDiv = document.getElementById('student-freq-results');
+    const detailCard = document.getElementById('student-freq-detail-card');
+    const placeholderCard = document.getElementById('student-freq-placeholder-card');
+    let debounceTimer = null;
+
+    async function triggerSearch() {
+        const q = searchInput.value.trim();
+        const turmaId = turmaSelect ? turmaSelect.value : '';
+
+        if (!q && !turmaId) {
+            resultsDiv.innerHTML = '<div style="text-align: center; color: var(--text-muted); font-style: italic; padding: 1rem; font-size: 0.9rem;">Digite algo ou filtre por turma para iniciar...</div>';
+            return;
+        }
+
+        resultsDiv.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 1rem; font-size: 0.9rem;"><i class="ph ph-circle-notch animate-spin"></i> Buscando...</div>';
+        try {
+            const response = await fetch(`/admin/api/relatorios/estudantes/buscar?q=${encodeURIComponent(q)}&turma_id=${encodeURIComponent(turmaId)}`);
+            const data = await response.json();
+
+            if (data.success && data.alunos && data.alunos.length > 0) {
+                resultsDiv.innerHTML = '';
+                data.alunos.forEach(aluno => {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn';
+                    btn.style.width = '100%';
+                    btn.style.textAlign = 'left';
+                    btn.style.padding = '0.75rem';
+                    btn.style.border = '1px solid var(--border)';
+                    btn.style.borderRadius = '8px';
+                    btn.style.background = 'var(--surface)';
+                    btn.style.display = 'flex';
+                    btn.style.justifyContent = 'space-between';
+                    btn.style.alignItems = 'center';
+                    btn.style.color = 'var(--text-main)';
+                    btn.style.transition = 'var(--transition)';
+                    btn.style.cursor = 'pointer';
+                    btn.style.marginBottom = '6px';
+
+                    btn.innerHTML = `
+                        <div>
+                            <strong style="display:block; font-size:0.95rem;">${aluno.nome}</strong>
+                            <span style="font-size:0.8rem; color:var(--text-muted);">Matrícula: ${aluno.matricula} • ${aluno.turma_nome}</span>
+                        </div>
+                        <div style="font-size:0.85rem; font-weight:bold; color:var(--primary); background:rgba(47,158,65,0.1); padding:2px 8px; border-radius:12px;">
+                            ${aluno.total_consumidas}/${aluno.total_reservas}
+                        </div>
+                    `;
+
+                    btn.addEventListener('mouseenter', () => {
+                        btn.style.borderColor = 'var(--primary)';
+                        btn.style.background = 'rgba(47,158,65,0.02)';
+                    });
+                    btn.addEventListener('mouseleave', () => {
+                        btn.style.borderColor = 'var(--border)';
+                        btn.style.background = 'var(--surface)';
+                    });
+
+                    btn.addEventListener('click', () => carregarDetalhesEstudante(aluno.id));
+                    resultsDiv.appendChild(btn);
+                });
+            } else {
+                resultsDiv.innerHTML = '<div style="text-align: center; color: var(--text-muted); font-style: italic; padding: 1rem; font-size: 0.9rem;">Nenhum estudante encontrado com esse filtro.</div>';
+            }
+        } catch (err) {
+            resultsDiv.innerHTML = '<div style="text-align: center; color: var(--danger); font-style: italic; padding: 1rem; font-size: 0.9rem;">Erro ao conectar com o servidor.</div>';
+        }
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(triggerSearch, 300);
+        });
+    }
+
+    if (turmaSelect) {
+        turmaSelect.addEventListener('change', function() {
+            clearTimeout(debounceTimer);
+            // Limpar painel de detalhes do estudante anterior ao mudar de turma
+            if (detailCard && placeholderCard) {
+                detailCard.style.display = 'none';
+                placeholderCard.style.display = 'flex';
+            }
+            triggerSearch();
+        });
+    }
+
+    async function carregarDetalhesEstudante(alunoId) {
+        placeholderCard.style.display = 'none';
+        detailCard.style.display = 'block';
+        detailCard.innerHTML = '<div style="text-align:center; padding:3rem; color:var(--text-muted);"><p>Carregando histórico...</p></div>';
+
+        try {
+            const response = await fetch(`/admin/api/relatorios/estudante/${alunoId}`);
+            const data = await response.json();
+
+            if (data.success) {
+                // Montar HTML de histórico
+                let historicoHtml = '';
+                if (data.historico && data.historico.length > 0) {
+                    data.historico.forEach(item => {
+                        let badgeStyle = 'background:#fee2e2; color:#991b1b;'; // Ausente/Outro
+                        let statusTxt = 'Ausente';
+                        if (item.status === 'CONSUMIDA') {
+                            badgeStyle = 'background:#d1fae5; color:#065f46;';
+                            statusTxt = 'Consumida';
+                        } else if (item.status === 'ATIVA') {
+                            badgeStyle = 'background:#fef3c7; color:#92400e;';
+                            statusTxt = 'Pendente';
+                        }
+                        
+                        let tipoConsumoTxt = 'Reserva Normal';
+                        if (item.tipo_consumo === 'EXTRA') {
+                            tipoConsumoTxt = 'Sobra / Extra';
+                        } else if (item.tipo_consumo === 'EVENTO') {
+                            tipoConsumoTxt = 'Evento';
+                        }
+
+                        // Formatar data de YYYY-MM-DD para DD/MM/YYYY
+                        let dataFmt = item.data;
+                        try {
+                            const p = item.data.split('-');
+                            dataFmt = `${p[2]}/${p[1]}/${p[0]}`;
+                        } catch(e) {}
+
+                        historicoHtml += `
+                            <tr style="border-bottom: 1px solid var(--border);">
+                                <td style="padding:0.5rem; font-size:0.9rem;">${dataFmt}</td>
+                                <td style="padding:0.5rem; font-size:0.9rem; font-weight:600;">${item.tipo_refeicao}</td>
+                                <td style="padding:0.5rem; font-size:0.85rem; color:var(--text-muted);">${tipoConsumoTxt}</td>
+                                <td style="padding:0.5rem;">
+                                    <span class="badge" style="padding:2px 8px; font-size:0.8rem; ${badgeStyle}">${statusTxt}</span>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                } else {
+                    historicoHtml = '<tr><td colspan="4" style="text-align:center; padding:1.5rem; color:var(--text-muted); font-style:italic;">Nenhuma refeição registrada para este estudante.</td></tr>';
+                }
+
+                // Injetar dados
+                detailCard.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--border); padding-bottom: 1rem; margin-bottom: 1rem;">
+                        <div>
+                            <h3 style="margin:0; font-size: 1.25rem; color: var(--text-main);">${data.nome}</h3>
+                            <span style="color: var(--text-muted); font-size: 0.85rem;">Matrícula: ${data.matricula} • CPF: ${data.cpf}</span>
+                        </div>
+                        <span class="badge badge-consumed" style="font-size: 0.85rem; font-weight: bold; background:#dbeafe; color:#1e40af;">${data.turma_nome}</span>
+                    </div>
+
+                    <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;" class="flex-mobile-column">
+                        <div style="flex:1; background: var(--background); padding: 0.75rem; border-radius: 8px; text-align: center; border-bottom: 3px solid var(--primary);">
+                            <span style="display:block; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Total Reservas</span>
+                            <strong style="font-size: 1.3rem; color: var(--primary);">${data.stats.total_reservas}</strong>
+                        </div>
+                        <div style="flex:1; background: var(--background); padding: 0.75rem; border-radius: 8px; text-align: center; border-bottom: 3px solid #059669;">
+                            <span style="display:block; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Presenças (Comeu)</span>
+                            <strong style="font-size: 1.3rem; color: #059669;">${data.stats.total_consumidas}</strong>
+                        </div>
+                        <div style="flex:1; background: var(--background); padding: 0.75rem; border-radius: 8px; text-align: center; border-bottom: 3px solid var(--danger);">
+                            <span style="display:block; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Faltas (Ausente)</span>
+                            <strong style="font-size: 1.3rem; color: var(--danger);">${data.stats.total_ausencias}</strong>
+                        </div>
+                    </div>
+
+                    <h4 style="font-size: 1rem; margin-bottom: 0.75rem;"><i class="ph ph-clock-counter-clockwise"></i> Histórico de Refeições Ativas</h4>
+                    <div style="max-height: 200px; overflow-y: auto;">
+                        <table style="width: 100%; border-collapse: collapse; margin-top: 0; background:transparent;">
+                            <thead>
+                                <tr style="font-size: 0.8rem; background: var(--background);">
+                                    <th style="padding: 0.5rem; text-align: left;">Data</th>
+                                    <th style="padding: 0.5rem; text-align: left;">Refeição</th>
+                                    <th style="padding: 0.5rem; text-align: left;">Tipo</th>
+                                    <th style="padding: 0.5rem; text-align: left;">Situação</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${historicoHtml}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            } else {
+                detailCard.innerHTML = `<div style="text-align:center; padding:3rem; color:var(--danger); font-style:italic;">${data.message}</div>`;
+            }
+        } catch(err) {
+            detailCard.innerHTML = '<div style="text-align:center; padding:3rem; color:var(--danger); font-style:italic;">Erro ao carregar detalhes.</div>';
+        }
+    }
+})();
+
+// Função para Carregar Alunos Inativos / Sem Consumo
+let cacheInativos = null;
+async function carregarSemAtividade(tipo) {
+    const placeholder = document.getElementById('inativos-placeholder');
+    const container = document.getElementById('inativos-lista-container');
+    const tbody = document.getElementById('inativos-lista-tbody');
+    const btnConsumo = document.getElementById('btn-load-sem-consumo');
+    const btnReserva = document.getElementById('btn-load-sem-reserva');
+    const btnExportar = document.getElementById('btn-exportar-inativos');
+
+    // Mudar estilos de botões
+    if (tipo === 'consumo') {
+        btnConsumo.style.background = 'var(--primary)';
+        btnConsumo.style.color = 'white';
+        btnReserva.style.background = 'var(--secondary)';
+        btnReserva.style.color = 'white';
+    } else {
+        btnReserva.style.background = 'var(--primary)';
+        btnReserva.style.color = 'white';
+        btnConsumo.style.background = 'var(--secondary)';
+        btnConsumo.style.color = 'white';
+    }
+
+    placeholder.style.display = 'none';
+    container.style.display = 'block';
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:2rem; color:var(--text-muted);"><p>Carregando estudantes...</p></td></tr>';
+
+    if (btnExportar) {
+        btnExportar.style.display = 'inline-flex';
+        btnExportar.href = `/admin/relatorios/inativos/exportar?tipo=${tipo}`;
+        btnExportar.setAttribute('download', tipo === 'consumo' ? 'Estudantes_Sem_Consumo.xlsx' : 'Estudantes_Sem_Reserva.xlsx');
+        btnExportar.onclick = null;
+    }
+
+    try {
+        if (!cacheInativos) {
+            const response = await fetch('/admin/api/relatorios/sem_atividade');
+            cacheInativos = await response.json();
+        }
+
+        if (cacheInativos.success) {
+            const lista = (tipo === 'consumo') ? cacheInativos.nunca_consumiram : cacheInativos.nunca_reservaram;
+            
+            if (lista && lista.length > 0) {
+                let html = '';
+                lista.forEach(aluno => {
+                    html += `
+                        <tr style="border-bottom:1px dashed var(--border);">
+                            <td style="padding:0.5rem; font-size:0.9rem; font-weight:600; text-align: left;">${aluno.nome}</td>
+                            <td style="padding:0.5rem; font-size:0.85rem; color:var(--text-muted); text-align: left;">${aluno.matricula}</td>
+                            <td style="padding:0.5rem; font-size:0.85rem; color:var(--text-muted); text-align: left;">${aluno.turma_nome || 'Sem turma'}</td>
+                        </tr>
+                    `;
+                });
+                tbody.innerHTML = html;
+            } else {
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:2rem; color:var(--text-muted); font-style:italic;">Nenhum estudante nesta condição.</td></tr>';
+            }
+        } else {
+            tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding:2rem; color:var(--danger); font-style:italic;">${cacheInativos.message}</td></tr>`;
+        }
+    } catch(err) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:2rem; color:var(--danger); font-style:italic;">Erro ao se conectar ao servidor.</td></tr>';
+    }
+}
+
+// ─── Modal de Restrições Alimentares ────────────────────────────────────────
+async function abrirModalRestricao(tipo, total) {
+    const modal = document.getElementById('modal-restricao');
+    const titulo = document.getElementById('modal-restricao-titulo');
+    const subtitulo = document.getElementById('modal-restricao-subtitulo');
+    const body = document.getElementById('modal-restricao-body');
+
+    titulo.textContent = '🥗 Restrição: ' + tipo;
+    subtitulo.textContent = total + ' estudante(s) cadastrado(s)';
+    body.innerHTML = '<div style="text-align:center; padding:2rem; color:var(--text-muted);"><p>Carregando lista...</p></div>';
+    modal.style.display = 'flex';
+
+    try {
+        const resp = await fetch('/admin/api/relatorios/restricao?tipo=' + encodeURIComponent(tipo));
+        const data = await resp.json();
+        if (data.success && data.alunos.length > 0) {
+            let rows = data.alunos.map(a => `
+                <tr style="border-bottom:1px solid var(--border);">
+                    <td style="padding:0.6rem 0.5rem; font-size:0.9rem; font-weight:600;">${a.nome}</td>
+                    <td style="padding:0.6rem 0.5rem; font-size:0.85rem; color:var(--text-muted);">${a.matricula}</td>
+                    <td style="padding:0.6rem 0.5rem; font-size:0.85rem;">
+                        <span style="background:var(--background); border-radius:4px; padding:2px 8px; font-size:0.8rem;">${a.turma_nome || 'Sem turma'}</span>
+                    </td>
+                </tr>
+            `).join('');
+            body.innerHTML = `
+                <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.75rem;">
+                    <i class="ph ph-info"></i> Lista de estudantes regulares com esta restrição
+                </div>
+                <div style="overflow-x:auto;">
+                <table style="width:100%; border-collapse:collapse;">
+                    <thead>
+                        <tr style="background:var(--background); font-size:0.8rem; text-transform:uppercase;">
+                            <th style="padding:0.5rem; text-align:left;">Nome</th>
+                            <th style="padding:0.5rem; text-align:left;">Matrícula</th>
+                            <th style="padding:0.5rem; text-align:left;">Turma</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+                </div>
+            `;
+        } else if (data.success) {
+            body.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-muted);font-style:italic;">Nenhum estudante encontrado para esta restrição.</div>';
+        } else {
+            body.innerHTML = `<div style="text-align:center;padding:2rem;color:var(--danger);">${data.message}</div>`;
+        }
+    } catch(e) {
+        body.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--danger);">Erro ao carregar dados. Verifique sua conexão.</div>';
+    }
+}
+
+function fecharModalRestricao(event) {
+    const modal = document.getElementById('modal-restricao');
+    if (event.target === modal) modal.style.display = 'none';
+}
+</script>
 {% endblock %}

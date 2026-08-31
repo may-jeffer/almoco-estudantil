@@ -5,12 +5,14 @@
     <div style="margin-bottom: 1.5rem; text-align: center;">
         <div style="text-align: left; margin-bottom: 1rem; clear: both; overflow: hidden;">
             {% if session.get('admin_perfil') == 'admin_mestre' %}
-            <a href="{{ url_for('admin_dashboard') }}" style="color: var(--text-muted); display: inline-flex; align-items: center; text-decoration: none; float: left;">
+            <a href="{{ url_for('admin_dashboard') }}"
+                style="color: var(--text-muted); display: inline-flex; align-items: center; text-decoration: none; float: left;">
                 <i class="ph ph-arrow-left" style="margin-right: 4px;"></i> Voltar ao Painel
             </a>
             {% endif %}
-            
-            <a href="{{ url_for('admin_logout') }}" style="color: var(--danger); display: inline-flex; align-items: center; text-decoration: none; float: right;">
+
+            <a href="{{ url_for('admin_logout') }}"
+                style="color: var(--danger); display: inline-flex; align-items: center; text-decoration: none; float: right;">
                 <i class="ph ph-sign-out" style="margin-right: 4px;"></i> Sair da Contra
             </a>
         </div>
@@ -27,57 +29,161 @@
     </div>
     {% endif %}
 
-    {% if cardapio_hoje %}
-    <!-- Container para Mensagens Flutuantes (AJAX) -->
-    <div id="liveAlertPlaceholder" style="position: fixed; top: 20px; right: 20px; z-index: 9999; max-width: 350px;"></div>
-
-    <!-- 1. BLOCO DA CÂMERA -->
-    <div class="card" style="display: flex; flex-direction: column; align-items: center; border: 2px solid var(--primary); padding-bottom: 1rem;">
-        <h2 style="font-size: 1.25rem;"><i class="ph ph-camera"></i> Escanear Ticket (QR Code)</h2>
-        <div id="reader" style="width: 100%; max-width: 400px; border-radius: 8px; overflow: hidden; margin-top: 0.5rem;"></div>
-    </div>
-    
-    <!-- 2. BLOCO CÓDIGO MANUAL -->
-    <div class="card" style="padding: 1rem 2rem;">
-        <form id="form-baixa-ajax" style="display: flex; gap: 0.5rem; align-items: flex-end;">
-            <input type="hidden" id="cardapio_id" value="{{ cardapio_hoje.id }}">
-            <div class="form-group" style="flex: 1; margin: 0;">
-                <label for="codigo_unico" style="font-size: 0.85rem;">Ou digite o Código Manual</label>
-                <input type="text" id="codigo_unico" style="text-transform: uppercase; font-size: 1.2rem; letter-spacing: 0.1em;" required placeholder="XXXXXX">
-            </div>
-            <button type="submit" class="btn btn-primary" style="padding: 0.8rem 1rem;"><i class="ph ph-arrow-right"></i> Baixar</button>
+    {% if cardapios_hoje %}
+    <!-- Seletor de Refeição Ativa -->
+    <div class="card" style="padding: 1rem; background: #f8fafc; border: 1px solid var(--border); margin-bottom: 1.5rem;">
+        <form method="GET" action="{{ url_for('admin_entrega') }}" id="form-refeicao">
+            <label for="cardapio_id_select" style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.5rem;">
+                <i class="ph ph-bowl-food"></i> REFEIÇÃO SENDO SERVIDA AGORA:
+            </label>
+            <select name="cardapio_id" id="cardapio_id_select" onchange="this.form.submit()" 
+                    style="width: 100%; font-size: 1.2rem; font-weight: bold; padding: 0.75rem; border-radius: 8px; border: 2px solid var(--primary); color: var(--primary); background: white;">
+                {% for c in cardapios_hoje %}
+                <option value="{{ c.id }}" {% if cardapio_hoje and c.id == cardapio_hoje.id %}selected{% endif %}>
+                    {{ c.tipo_refeicao }} ({{ c.data | datetimeformat }})
+                </option>
+                {% endfor %}
+            </select>
         </form>
     </div>
-    
-    <!-- 2.5 BLOCO ADICIONAR SOBRA MANUALMENTE -->
-    <div class="card" style="padding: 1rem 2rem; background: #e0f2fe; border: 1px solid #bae6fd;">
-        <h3 style="font-size: 1rem; color: #0369a1; margin-bottom: 0.5rem;"><i class="ph ph-plus-circle"></i> Repassar Sobra (Aluno sem Reserva)</h3>
-        <form id="form-extra-ajax" style="display: flex; gap: 0.5rem; align-items: flex-end;">
-            <div class="form-group" style="flex: 1; margin: 0;">
-                <label for="aluno_busca" style="font-size: 0.85rem; color: #0284c7;">Matrícula ou CPF do Estudante</label>
-                <input type="text" id="aluno_busca" style="font-size: 1.1rem;" required placeholder="Digite a matrícula...">
+
+    <!-- Estatísticas do Dia (4 Indicadores) -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.75rem; margin-bottom: 1.5rem;">
+        <div class="card" style="padding: 0.9rem; text-align: center; border-bottom: 4px solid #6366f1; margin-bottom: 0;">
+            <p style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; margin-bottom: 0.25rem; font-weight: 600;">Solicitado Empresa</p>
+            <h3 style="font-size: 1.6rem; color: #6366f1; margin: 0;">{{ qtd_solicitada_empresa }}</h3>
+            <small style="color: var(--text-muted); font-size: 0.7rem;">{% if cardapio_hoje.qtd_solicitada %}Manual{% else %}Automático{% endif %}</small>
+        </div>
+        
+        <div class="card" style="padding: 0.9rem; text-align: center; border-bottom: 4px solid var(--primary); margin-bottom: 0;">
+            <p style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; margin-bottom: 0.25rem; font-weight: 600;">Reservas Sistema</p>
+            <h3 id="contador-reservas-sistema" style="font-size: 1.6rem; color: var(--primary); margin: 0;">{{ total_reservas_sistema }}</h3>
+            <small style="color: var(--text-muted); font-size: 0.7rem;">Agendadas</small>
+        </div>
+
+        <div class="card" style="padding: 0.9rem; text-align: center; border-bottom: 4px solid #0ea5e9; margin-bottom: 0;">
+            <p style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; margin-bottom: 0.25rem; font-weight: 600;">Extras Entregues</p>
+            <h3 id="contador-extras" style="font-size: 1.6rem; color: #0ea5e9; margin: 0;">{{ total_extras }}</h3>
+            <small style="color: var(--text-muted); font-size: 0.7rem;">Sem Reserva</small>
+        </div>
+
+        <div class="card" id="contador-entregues-card" style="padding: 0.9rem; text-align: center; border-bottom: 4px solid #059669; margin-bottom: 0;">
+            <p style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; margin-bottom: 0.25rem; font-weight: 600;">Total Entregue</p>
+            <h3 id="contador-total-entregue" style="font-size: 1.6rem; color: #059669; margin: 0;">{{ total_entregues }}</h3>
+            <small style="color: var(--text-muted); font-size: 0.7rem;">Reservas + Extras</small>
+        </div>
+    </div>
+
+    <!-- Container para Mensagens Flutuantes (AJAX) -->
+    <div id="liveAlertPlaceholder" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 350px; z-index: 9999; text-align: center; background: rgba(255,255,255,0.95); padding: 0.5rem 1rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);"></div>
+
+    <!-- Modal customizado para avisos / confirmações de liberação -->
+    <div id="confirm-modal" class="modal-overlay">
+        <div class="modal-box" style="border-top: 5px solid #f59e0b;">
+            <div style="display:flex; align-items:center; gap:12px; margin-bottom:1rem;">
+                <i class="ph ph-warning" style="font-size:2rem; color:#f59e0b;"></i>
+                <h2 style="margin:0; font-size:1.4rem;">Confirmação de Liberação</h2>
             </div>
-            <button type="submit" class="btn" style="background: #0284c7; color: white; padding: 0.8rem 1rem;"><i class="ph ph-check"></i> Adicionar & Entregar</button>
+            <p id="confirm-modal-message" style="font-size:1.05rem; margin-bottom:1.5rem; color:var(--text-main); line-height:1.5;"></p>
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+                <button type="button" class="btn btn-secondary" onclick="cancelConfirmModal()" style="background:#6b7280;">
+                    Cancelar (Esc)
+                </button>
+                <button type="button" class="btn btn-primary" id="btn-confirm-modal-ok" onclick="confirmConfirmModal()" style="background:#f59e0b; color:white;">
+                    Liberar Mesmo Assim (Enter)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal customizado para Alerta Médico / Restrições Críticas -->
+    <div id="allergy-modal" class="modal-overlay">
+        <div class="modal-box" style="border-top: 5px solid #ef4444; text-align: center; max-width: 480px;">
+            <div style="margin: 0 auto 1.5rem auto; width: 80px; height: 80px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; animation: pulse 1.5s infinite;">
+                <i class="ph ph-first-aid"></i>
+            </div>
+            <h2 style="margin-top: 0; color: #ef4444; font-size: 1.6rem; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em;">
+                Alergia / Restrição!
+            </h2>
+            <p style="font-size: 1.1rem; color: var(--text-muted); margin-bottom: 1rem;">O estudante possui a seguinte especificidade:</p>
+            <div style="background: #fee2e2; border: 1px solid #fecaca; border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem;">
+                <strong id="allergy-modal-restricao" style="font-size: 1.4rem; color: #991b1b;"></strong>
+            </div>
+            <button type="button" class="btn btn-primary" onclick="closeAllergyModal()" style="background:#ef4444; width:100%; font-size:1.1rem;">
+                Ciente / Fechar (Enter)
+            </button>
+        </div>
+    </div>
+	
+    <!-- 1. BLOCO DA CÂMERA -->
+    <div class="card"
+        style="display: flex; flex-direction: column; align-items: center; border: 2px solid var(--primary); padding-bottom: 1rem;">
+        <h2 style="font-size: 1.25rem;"><i class="ph ph-camera"></i> Escanear Ticket (QR Code)</h2>
+        <div id="reader"
+            style="width: 100%; max-width: 400px; border-radius: 8px; overflow: hidden; margin-top: 0.5rem;"></div>
+        <button type="button" id="btn-restart-camera" class="btn btn-secondary" style="margin-top: 1rem; font-size: 0.9rem;">
+            <i class="ph ph-arrows-clockwise"></i> Reiniciar Câmera
+        </button>
+    </div>
+
+    <!-- 2. BLOCO CÓDIGO MANUAL -->
+    <div class="card" style="padding: 1rem 1.5rem;">
+        <form id="form-baixa-ajax" style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: flex-end;">
+            <input type="hidden" id="cardapio_id" value="{{ cardapio_hoje.id }}">
+            <div class="form-group" style="flex: 1; min-width: 200px; margin: 0;">
+                <label for="codigo_unico" style="font-size: 0.85rem;">Ou digite o Código Manual</label>
+                <input type="text" id="codigo_unico"
+                    style="text-transform: uppercase; font-size: 1.3rem; letter-spacing: 0.15em; width: 100%;" required
+                    placeholder="XXXXXX" autocomplete="off" autocapitalize="characters">
+            </div>
+            <button type="submit" class="btn btn-primary"
+                style="padding: 0.8rem 1.4rem; font-size: 1rem; white-space: nowrap; flex-shrink: 0;">
+                <i class="ph ph-arrow-right"></i> Baixar
+            </button>
+        </form>
+    </div>
+
+    <!-- 2.5 BLOCO ADICIONAR SOBRA MANUALMENTE -->
+    <div class="card" style="padding: 1rem 1.5rem; background: #e0f2fe; border: 1px solid #bae6fd;">
+        <h3 style="font-size: 1rem; color: #0369a1; margin-bottom: 0.75rem;"><i class="ph ph-plus-circle"></i> Repassar Sobra (Aluno sem Reserva)</h3>
+        <form id="form-extra-ajax" style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <div class="form-group" style="margin: 0; position: relative;">
+                <label for="aluno_busca" style="font-size: 0.85rem; color: #0284c7;">Nome, Matrícula ou CPF do Estudante</label>
+                <input type="text" id="aluno_busca" autocomplete="off" style="font-size: 1.1rem; width: 100%;" required
+                    placeholder="Digite a matrícula ou nome...">
+                <div id="busca-resultados"
+                    style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #bae6fd; border-radius: 0 0 8px 8px; z-index: 100; display: none; max-height: 200px; overflow-y: auto; box-shadow: var(--shadow-md);">
+                </div>
+            </div>
+            <button type="submit" class="btn" style="background: #0284c7; color: white; padding: 0.8rem 1rem; width: 100%;"><i
+                    class="ph ph-check" style="margin-right: 6px;"></i> Adicionar & Entregar</button>
         </form>
     </div>
 
     <!-- 3. BLOCO BUSCA LISTA AO VIVO -->
     <div class="card">
-        <h2 style="font-size: 1.25rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;"><i class="ph ph-magnifying-glass"></i> Busca Rápida na Lista do Dia</h2>
-        <input type="text" id="searchBox" placeholder="Digite o nome do aluno ou matrícula..." style="margin-top: 1rem; margin-bottom: 1rem; font-size: 1.1rem; padding: 1rem; border-radius: 12px; background: #FAFAFA;">
-        
+        <h2 style="font-size: 1.25rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;"><i
+                class="ph ph-magnifying-glass"></i> Busca Rápida na Lista do Dia</h2>
+        <input type="text" id="searchBox" placeholder="Digite o nome do aluno ou matrícula..."
+            style="margin-top: 1rem; margin-bottom: 1rem; font-size: 1.1rem; padding: 1rem; border-radius: 12px; background: #FAFAFA;">
+
         <div id="studentListContainer" style="max-height: 400px; overflow-y: auto;">
             {% for r in reservas_hoje %}
-            <div class="aluno-fila-item" id="item-{{ r.codigo_unico }}" data-nome="{{ r.nome.lower() }}" data-mat="{{ r.matricula.lower() }}" style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px dashed var(--border);">
+            <div class="aluno-fila-item" id="item-{{ r.codigo_unico }}" data-nome="{{ r.nome.lower() }}"
+                data-mat="{{ r.matricula.lower() }}"
+                style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px dashed var(--border);">
                 <div style="flex: 1;">
                     <strong style="display: block; font-size: 1.1rem;">{{ r.nome }}</strong>
-                    <span style="color: var(--text-muted); font-size: 0.85rem;">Mat: {{ r.matricula }} • Cód: {{ r.codigo_unico }}</span>
+                    <span style="color: var(--text-muted); font-size: 0.85rem;">{{ (r.turma_nome ~ ' • ') if r.turma_nome else '' }}Mat: {{ r.matricula }} • Cód: {{ r.codigo_unico }}</span>
                 </div>
                 <div class="status-col">
                     {% if r.status == 'CONSUMIDA' %}
-                        <span class="badge" style="background: #E5E7EB; color: #374151;">Entregue <i class="ph ph-check"></i></span>
+                    <span class="badge" style="background: #E5E7EB; color: #374151;">Entregue <i
+                            class="ph ph-check"></i></span>
                     {% else %}
-                        <button onclick="submitManualCode('{{ r.codigo_unico }}')" class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.85rem;"><i class="ph ph-check-square"></i> Dar Baixa</button>
+                    <button onclick="submitManualCode('{{ r.codigo_unico }}')" class="btn btn-secondary"
+                        style="padding: 0.5rem 1rem; font-size: 0.85rem;"><i class="ph ph-check-square"></i> Dar
+                        Baixa</button>
                     {% endif %}
                 </div>
             </div>
@@ -101,37 +207,137 @@
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 <script>
     function showAlert(message, type) {
-        const wrapper = document.createElement('div');
-        wrapper.innerHTML = `
-            <div class="alert alert-${type} fade-in" style="box-shadow: var(--shadow-lg);">
-                <div>${message}</div>
-                <button type="button" onclick="this.parentElement.remove()" style="background:none; border:none; margin-left:10px; cursor:pointer;">&times;</button>
-            </div>
-        `;
+		const wrapper = document.createElement('div');
+		wrapper.innerHTML = `
+			<div class="alert alert-${type} fade-in" style="box-shadow: var(--shadow-lg);">
+				<div>${message}</div>
+				<button type="button" onclick="closeAlert(this)" style="background:none; border:none; margin-left:10px; cursor:pointer;">&times;</button>
+			</div>
+		`;
+		const container = document.getElementById('liveAlertPlaceholder');
+		container.style.display = 'block';
+		container.append(wrapper);
+		setTimeout(() => {
+			if (wrapper) { wrapper.remove(); }
+			if (container.children.length === 0) { container.style.display = 'none'; }
+		}, 4000);
+	}
+
+	function closeAlert(btn) {
+		const alertDiv = btn.closest('.alert');
+		if (alertDiv) { alertDiv.remove(); }
         const container = document.getElementById('liveAlertPlaceholder');
-        container.append(wrapper);
-        setTimeout(() => { if(wrapper) wrapper.remove(); }, 5000);
+        if (container.children.length === 0) { container.style.display = 'none'; }
+	}
+
+    function submitManualCode(code) {
+        document.getElementById('codigo_unico').value = code;
+        processarBaixa(code);
+        document.getElementById('codigo_unico').value = '';
     }
 
-    async function processarBaixa(codigo) {
+    let currentConfirmPromise = null;
+    function showConfirmModal(message) {
+        return new Promise((resolve) => {
+            document.getElementById('confirm-modal-message').innerText = message;
+            document.getElementById('confirm-modal').classList.add('is-open');
+            currentConfirmPromise = resolve;
+        });
+    }
+    function confirmConfirmModal() {
+        document.getElementById('confirm-modal').classList.remove('is-open');
+        if (currentConfirmPromise) currentConfirmPromise(true);
+    }
+    function cancelConfirmModal() {
+        document.getElementById('confirm-modal').classList.remove('is-open');
+        if (currentConfirmPromise) currentConfirmPromise(false);
+    }
+
+    function showAllergyModal(restricao) {
+        document.getElementById('allergy-modal-restricao').innerText = restricao;
+        document.getElementById('allergy-modal').classList.add('is-open');
+        const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/951/951-preview.mp3');
+        audio.volume = 0.6;
+        audio.play().catch(() => {});
+    }
+    function closeAllergyModal() {
+        document.getElementById('allergy-modal').classList.remove('is-open');
+    }
+
+    function stripAccents(str) {
+        if (!str) return '';
+        return str.normalize('NFD').replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    }
+
+    async function processarBaixa(codigo, confirmado = false) {
         const cardapioId = document.getElementById('cardapio_id').value;
         try {
             const response = await fetch('/admin/api/baixar', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ codigo_unico: codigo, cardapio_id: cardapioId })
+                body: JSON.stringify({ codigo_unico: codigo, cardapio_id: cardapioId, confirmado: confirmado })
             });
             const result = await response.json();
-            
+
             if (result.success) {
                 showAlert(result.message, 'success');
-                // Atualizar a lista visual sem reload
-                const item = document.getElementById('item-' + codigo);
-                if(item){
+                
+                const item = document.getElementById('item-' + (result.codigo_unico || codigo));
+                if (item) {
                     item.querySelector('.status-col').innerHTML = '<span class="badge" style="background: #E5E7EB; color: #374151;">Entregue <i class="ph ph-check"></i></span>';
+                } else {
+                    const container = document.getElementById('studentListContainer');
+                    if (container) {
+                        const div = document.createElement('div');
+                        div.className = 'aluno-fila-item';
+                        div.id = 'item-' + (result.codigo_unico || codigo);
+                        div.style = 'display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px dashed var(--border);';
+                        div.setAttribute('data-nome', stripAccents(result.aluno));
+                        div.setAttribute('data-mat', '');
+                        
+                        const turmaSpan = result.turma ? `${result.turma} • ` : '';
+                        div.innerHTML = `
+                            <div style="flex: 1;">
+                                <strong style="display: block; font-size: 1.1rem;">${result.aluno}</strong>
+                                <span style="color: var(--text-muted); font-size: 0.85rem;">${turmaSpan}Cód: ${result.codigo_unico || codigo} • Tipo: ${result.tipo_consumo || 'EXTRA'}</span>
+                            </div>
+                            <div class="status-col">
+                                <span class="badge" style="background: #E5E7EB; color: #374151;">Entregue <i class="ph ph-check"></i></span>
+                            </div>
+                        `;
+                        container.insertBefore(div, container.firstChild);
+                    }
                 }
-                const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-                audio.play().catch(()=>{});
+                
+                if (result.tipo_consumo === 'EXTRA') {
+                    const contadorExtras = document.getElementById('contador-extras');
+                    if (contadorExtras) {
+                        const currentExtras = parseInt(contadorExtras.textContent) || 0;
+                        contadorExtras.textContent = currentExtras + 1;
+                    }
+                }
+
+                const contadorTotal = document.getElementById('contador-total-entregue');
+                if (contadorTotal) {
+                    const currentTotal = parseInt(contadorTotal.textContent) || 0;
+                    contadorTotal.textContent = currentTotal + 1;
+                }
+                
+                const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3');
+                audio.volume = 0.4;
+                audio.play().catch(() => { });
+
+                if (result.restricoes) {
+                    setTimeout(() => {
+                        showAllergyModal(result.restricoes);
+                    }, 600);
+                }
+                
+            } else if (result.requires_confirmation) {
+                const confirmed = await showConfirmModal(result.message);
+                if (confirmed) {
+                    await processarBaixa(codigo, true);
+                }
             } else {
                 showAlert(result.message, result.type || 'error');
             }
@@ -140,81 +346,272 @@
         }
     }
 
-    // 1. Script Câmera
-    document.addEventListener("DOMContentLoaded", function() {
-        if(document.getElementById('reader')){
-            function onScanSuccess(decodedText, decodedResult) {
-                processarBaixa(decodedText);
-            }
+    let lastScannedCode = null;
+    let lastScanTime = 0;
 
-            let html5QrcodeScanner = new Html5QrcodeScanner(
-                "reader",
-                { fps: 10, qrbox: {width: 250, height: 250}, rememberLastUsedCamera: true },
-                false
-            );
-            html5QrcodeScanner.render(onScanSuccess, function(error){});
+    function onScanSuccess(decodedText, decodedResult) {
+        const now = Date.now();
+        if (decodedText === lastScannedCode && (now - lastScanTime < 4000)) { return; }
+        lastScannedCode = decodedText;
+        lastScanTime = now;
+        processarBaixa(decodedText);
+    }
+
+    let html5QrCode;
+    const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+    function startCamera() {
+        if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
+        html5QrCode.start(
+            { facingMode: "environment" },
+            config,
+            onScanSuccess
+        ).catch(err => {
+            console.error("Erro ao iniciar câmera traseira:", err);
+            showAlert("Não foi possível fixar a câmera traseira. Verifique permissões.", "warning");
+        });
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        if (document.getElementById('reader')) {
+            startCamera();
+            const btnRestart = document.getElementById('btn-restart-camera');
+            if(btnRestart) {
+                btnRestart.addEventListener('click', () => {
+                    if (html5QrCode && html5QrCode.isScanning) {
+                        html5QrCode.stop().then(() => startCamera()).catch(() => startCamera());
+                    } else {
+                        startCamera();
+                    }
+                });
+            }
+            document.addEventListener("visibilitychange", () => {
+                if (document.visibilityState === 'visible') {
+                    if (html5QrCode && !html5QrCode.isScanning) startCamera();
+                } else {
+                    if (html5QrCode && html5QrCode.isScanning) {
+                        html5QrCode.stop().catch(e => console.log(e));
+                    }
+                }
+            });
         }
-        
-        // Form Manual
+
         const formManual = document.getElementById('form-baixa-ajax');
-        if(formManual){
-            formManual.addEventListener('submit', function(e){
+        if (formManual) {
+            formManual.addEventListener('submit', function (e) {
                 e.preventDefault();
-                const code = document.getElementById('codigo_unico').value.toUpperCase();
+                const code = document.getElementById('codigo_unico').value.toUpperCase().trim();
                 processarBaixa(code);
                 document.getElementById('codigo_unico').value = '';
             });
         }
 
-        // Form Extra Sobra
         const formExtra = document.getElementById('form-extra-ajax');
         if (formExtra) {
-            formExtra.addEventListener('submit', async function(e) {
+            formExtra.addEventListener('submit', async function (e) {
                 e.preventDefault();
+                await enviarExtra(false);
+            });
+
+            async function enviarExtra(confirmado) {
                 const busca = document.getElementById('aluno_busca').value.trim();
                 const cardapioId = document.getElementById('cardapio_id').value;
                 if (!busca) return;
-                
+
                 try {
                     const response = await fetch('/admin/api/adicionar_extra', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ aluno_busca: busca, cardapio_id: cardapioId })
+                        body: JSON.stringify({
+                            aluno_busca: busca,
+                            cardapio_id: cardapioId,
+                            confirmado_bloqueado: confirmado
+                        })
                     });
                     const result = await response.json();
+
                     if (result.success) {
                         showAlert(result.message, 'success');
-                        const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-                        audio.play().catch(()=>{});
+                        
+                        const container = document.getElementById('studentListContainer');
+                        if (container) {
+                            const div = document.createElement('div');
+                            div.className = 'aluno-fila-item';
+                            div.id = 'item-' + result.codigo_unico;
+                            div.style = 'display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px dashed var(--border);';
+                            div.setAttribute('data-nome', stripAccents(result.aluno));
+                            div.setAttribute('data-mat', '');
+                            const turmaSpan = result.turma ? `${result.turma} • ` : '';
+                            div.innerHTML = `
+                                <div style="flex: 1;">
+                                    <strong style="display: block; font-size: 1.1rem;">${result.aluno}</strong>
+                                    <span style="color: var(--text-muted); font-size: 0.85rem;">${turmaSpan}Cód: ${result.codigo_unico} • Tipo: EXTRA</span>
+                                </div>
+                                <div class="status-col">
+                                    <span class="badge" style="background: #E5E7EB; color: #374151;">Entregue <i class="ph ph-check"></i></span>
+                                </div>
+                            `;
+                            container.insertBefore(div, container.firstChild);
+                        }
+
+                        if (result.tipo_consumo === 'EXTRA') {
+                            const contadorExtras = document.getElementById('contador-extras');
+                            if (contadorExtras) {
+                                const currentExtras = parseInt(contadorExtras.textContent) || 0;
+                                contadorExtras.textContent = currentExtras + 1;
+                            }
+                        }
+
+                        const contadorTotal = document.getElementById('contador-total-entregue');
+                        if (contadorTotal) {
+                            const currentTotal = parseInt(contadorTotal.textContent) || 0;
+                            contadorTotal.textContent = currentTotal + 1;
+                        }
+
+                        const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3');
+                        audio.volume = 0.4;
+                        audio.play().catch(() => { });
+                        document.getElementById('aluno_busca').value = '';
+
+                        // Alerta de restrição
+                        if (result.restricoes) {
+                            setTimeout(() => {
+                                showAllergyModal(result.restricoes);
+                            }, 600);
+                        }
+                    } else if (result.requires_confirmation) {
+                        const confirmed = await showConfirmModal(result.message);
+                        if (confirmed) {
+                            await enviarExtra(true);
+                        }
                     } else {
                         showAlert(result.message, result.type || 'error');
                     }
                 } catch (error) {
                     showAlert('Erro de conexão.', 'error');
                 }
-                document.getElementById('aluno_busca').value = '';
+            }
+
+            // Busca Dinâmica de Alunos para Repassar Sobra (Custom UI para Mobile)
+            const alunoBuscaInput = document.getElementById('aluno_busca');
+            const resultadosDiv = document.getElementById('busca-resultados');
+            let searchTimer = null;
+
+            alunoBuscaInput.addEventListener('input', function (e) {
+                const q = e.target.value;
+
+                // Limpa o timer anterior (Debounce)
+                clearTimeout(searchTimer);
+
+                if (q.length < 2) {
+                    resultadosDiv.style.display = 'none';
+                    resultadosDiv.innerHTML = '';
+                    return;
+                }
+
+                // Inicia busca após 300ms de pausa na digitação
+                searchTimer = setTimeout(async () => {
+                    try {
+                        const response = await fetch(`/admin/api/alunos/buscar?q=${encodeURIComponent(q)}`);
+                        const data = await response.json();
+
+                        if (data.alunos && data.alunos.length > 0) {
+                            resultadosDiv.innerHTML = '';
+                            data.alunos.forEach(aluno => {
+                                const item = document.createElement('div');
+                                item.style.padding = '0.75rem';
+                                item.style.borderBottom = '1px solid #f0f9ff';
+                                item.style.cursor = 'pointer';
+                                item.innerHTML = `
+                                    <strong style="display:block; color:var(--text-main);">${aluno.nome}</strong>
+                                    <span style="font-size:0.8rem; color:var(--text-muted);">Matrícula: ${aluno.matricula}</span>
+                                `;
+
+                                item.addEventListener('click', function () {
+                                    alunoBuscaInput.value = aluno.matricula;
+                                    resultadosDiv.style.display = 'none';
+                                    resultadosDiv.innerHTML = '';
+                                });
+
+                                resultadosDiv.appendChild(item);
+                            });
+                            resultadosDiv.style.display = 'block';
+                        } else {
+                            resultadosDiv.style.display = 'none';
+                            resultadosDiv.innerHTML = '';
+                        }
+                    } catch (err) {
+                        console.error("Erro na busca dinâmica:", err);
+                    }
+                }, 300);
+            });
+
+            // Fecha resultados ao clicar fora
+            document.addEventListener('click', function (e) {
+                if (e.target !== alunoBuscaInput && e.target !== resultadosDiv) {
+                    resultadosDiv.style.display = 'none';
+                }
             });
         }
 
-        // 2. Script Busca ao Vivo
+        // 2. Script Busca ao Vivo (Case-insensitive e Accent-insensitive)
         const searchBox = document.getElementById('searchBox');
-        if(searchBox){
-            searchBox.addEventListener('input', function(e) {
-                const termo = e.target.value.toLowerCase().trim();
+        if (searchBox) {
+            searchBox.addEventListener('input', function (e) {
+                const termo = stripAccents(e.target.value.trim());
                 const itens = document.querySelectorAll('.aluno-fila-item');
                 itens.forEach(item => {
-                    const nome = item.getAttribute('data-nome');
-                    const mat = item.getAttribute('data-mat');
+                    const nome = stripAccents(item.getAttribute('data-nome'));
+                    const mat = stripAccents(item.getAttribute('data-mat'));
                     item.style.display = (nome.includes(termo) || mat.includes(termo)) ? 'flex' : 'none';
                 });
             });
         }
     });
-    
-    function submitManualCode(codigo) {
-        if(confirm('Confirmar a entrega do almoço para este aluno?')) {
-            processarBaixa(codigo);
+
+    // Captura global de atalhos de teclado (Ponto 2)
+    document.addEventListener('keydown', function(e) {
+        // Esc fecha qualquer modal ativo ou limpa inputs
+        if (e.key === 'Escape') {
+            if (document.getElementById('confirm-modal').classList.contains('is-open')) {
+                cancelConfirmModal();
+            } else if (document.getElementById('allergy-modal').classList.contains('is-open')) {
+                closeAllergyModal();
+            } else {
+                const codeInput = document.getElementById('codigo_unico');
+                if (codeInput) { codeInput.value = ''; codeInput.blur(); }
+                const searchBox = document.getElementById('searchBox');
+                if (searchBox) { searchBox.value = ''; searchBox.dispatchEvent(new Event('input')); }
+                const alunoBusca = document.getElementById('aluno_busca');
+                if (alunoBusca) { alunoBusca.value = ''; document.getElementById('busca-resultados').style.display = 'none'; }
+            }
         }
+        
+        // Enter confirma confirmação ou fecha alerta de alergias
+        if (e.key === 'Enter') {
+            if (document.getElementById('confirm-modal').classList.contains('is-open')) {
+                e.preventDefault();
+                confirmConfirmModal();
+            } else if (document.getElementById('allergy-modal').classList.contains('is-open')) {
+                e.preventDefault();
+                closeAllergyModal();
+            }
+        }
+
+        // Espaço foca o input de código manual se o usuário não estiver em algum campo de digitação
+        if (e.key === ' ' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA' && document.activeElement.tagName !== 'SELECT') {
+            e.preventDefault();
+            const codeInput = document.getElementById('codigo_unico');
+            if (codeInput) codeInput.focus();
+        }
+    });
+
+    function submitManualCode(codigo) {
+        showConfirmModal('Confirmar a entrega do almoço para este aluno?').then(confirmed => {
+            if (confirmed) {
+                processarBaixa(codigo);
+            }
+        });
     }
 </script>
 {% endblock %}

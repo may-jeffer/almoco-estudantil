@@ -2,126 +2,305 @@
 
 {% block content %}
 <div class="fade-in">
-    <!-- Aviso Importante -->
+    <!-- Aviso Importante 
     <div class="alert alert-warning" style="margin-bottom: 2rem;">
         <i class="ph ph-warning" style="font-size: 1.5rem;"></i>
         <div>
             <strong>Aviso Padrão:</strong><br>
             Caso você não reserve ou cancele dentro do prazo (dia anterior!), você só comerá se sobrar comida no final.
         </div>
-    </div>
+    </div>-->
 
     <!-- Avisos Extras do ADM -->
     {% if avisos %}
-        {% for a in avisos %}
-        <div class="alert alert-{{ a.tipo }}" style="margin-bottom: 1.5rem;">
-            {% if a.tipo == 'danger' %}<i class="ph ph-warning-circle" style="font-size: 1.5rem;"></i>{% endif %}
-            {% if a.tipo == 'warning' %}<i class="ph ph-warning" style="font-size: 1.5rem;"></i>{% endif %}
-            {% if a.tipo == 'info' %}<i class="ph ph-info" style="font-size: 1.5rem;"></i>{% endif %}
-            <div>
-                <strong>{{ a.titulo }}</strong><br>
-                <span style="white-space: pre-wrap;">{{ a.mensagem }}</span>
-            </div>
-        </div>
-        {% endfor %}
-    {% endif %}
-
-    <div class="grid">
-        <!-- Card: Almoço de Hoje -->
-        <div class="card" style="border-top: 4px solid var(--secondary);">
-            <h2><i class="ph ph-bowl-food" style="margin-right: 8px; vertical-align: middle;"></i> Almoço de Hoje</h2>
-            
-            {% if cardapio_hoje %}
-                <div style="background: var(--background); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
-                    <h3 style="margin: 0; color: var(--secondary);">Data: {{ cardapio_hoje.data | datetimeformat }}</h3>
-                    <p style="margin-top: 0.5rem; font-size: 1.1rem;"><strong>Cardápio:</strong> {{ cardapio_hoje.descricao }}</p>
-                </div>
-                
-                {% if reserva_hoje %}
-                    {% if reserva_hoje['status'] == 'ATIVA' %}
-                        <div style="text-align: center; margin-bottom: 1.5rem;">
-                            <span class="badge badge-active" style="font-size: 1rem; padding: 0.5rem 1rem;">
-                                <i class="ph ph-check-circle"></i> Liberado para Comer
-                            </span>
-                        </div>
-                        
-                        <div class="qr-container" style="border-color: var(--secondary);">
-                            <p style="color: var(--text-muted); margin-bottom: 1rem;">Apresente este código na cantina HOJE:</p>
-                            <img src="data:image/png;base64,{{ qr_code_hoje }}" alt="QR Code">
-                            <div class="qr-code-text" style="color: var(--secondary);">{{ reserva_hoje.codigo_unico }}</div>
-                        </div>
-                    {% elif reserva_hoje['status'] == 'CONSUMIDA' %}
-                        <div style="text-align: center; padding: 2rem; background: #D1FAE5; border-radius: 12px; border: 2px solid #059669;">
-                            <i class="ph ph-check-circle" style="font-size: 3rem; color: #059669; margin-bottom: 1rem;"></i>
-                            <h3 style="color: #065F46; margin: 0;">Refeição Recebida!</h3>
-                            <p style="color: #065F46; opacity: 0.8; margin-top: 0.5rem;">Bom apetite, {{ session.aluno_nome.split(' ')[0] }}!</p>
-                        </div>
-                    {% endif %}
-                {% else %}
-                    <div class="alert alert-error" style="width: 100%; justify-content: center; text-align: center;">
-                        <i class="ph ph-lock"></i> Você não reservou e o prazo de hoje encerrou ontem.<br>Acesso restrito a sobras.
-                    </div>
-                {% endif %}
-            {% else %}
-                <div style="text-align: center; padding: 3rem; color: var(--text-muted);">
-                    <i class="ph ph-calendar-x" style="font-size: 3rem; margin-bottom: 1rem;"></i>
-                    <p>Mural fechado. Não há almoço agendado para o dia de hoje.</p>
-                </div>
-            {% endif %}
-        </div>
-
-        <!-- Card: Próximo Almoço Aberto para Reserva -->
-        <div class="card" style="border-top: 4px solid var(--primary);">
-            <h2><i class="ph ph-calendar-check" style="margin-right: 8px; vertical-align: middle;"></i> Agendar Próximo Almoço</h2>
-            
-            {% if cardapio_aberto %}
-                <div style="background: var(--background); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
-                    <h3 style="margin: 0; color: var(--primary);">Data: {{ cardapio_aberto.data | datetimeformat }}</h3>
-                    <p style="margin-top: 0.5rem; font-size: 1.1rem;"><strong>Cardápio:</strong> {{ cardapio_aberto.descricao }}</p>
-                </div>
-                
-                {% if reserva_aberto %}
-                    <div style="text-align: center; margin-bottom: 1.5rem;">
-                        <span class="badge badge-active" style="font-size: 1rem; padding: 0.5rem 1rem;">
-                            <i class="ph ph-check-circle"></i> Almoço Reservado
-                        </span>
-                    </div>
-                    
-                    <div class="qr-container">
-                        <p style="color: var(--text-muted); margin-bottom: 1rem;">Apresente este código na cantina no dia {{ cardapio_aberto.data | datetimeformat }}:</p>
-                        <img src="data:image/png;base64,{{ qr_code_aberto }}" alt="QR Code">
-                        <div class="qr-code-text">{{ reserva_aberto.codigo_unico }}</div>
-                    </div>
-                {% endif %}
-                
-                <div style="margin-top: 2rem; display: flex; flex-direction: column; align-items: center; gap: 1rem;">
-                    {% if not reserva_aberto or reserva_aberto.status != 'ATIVA' %}
-                    <form method="POST" action="/aluno/reservar/{{ cardapio_aberto.id }}" style="width: 100%;">
-                        <button type="submit" class="btn btn-primary" style="padding: 1rem; width: 100%; font-size: 1.1rem;">
-                            <i class="ph ph-plus-circle" style="margin-right: 8px;"></i> Quero Reservar!
-                        </button>
-                    </form>
-                    {% else %}
-                    <form method="POST" action="/aluno/cancelar/{{ cardapio_aberto.id }}" style="width: 100%;">
-                        <button type="submit" class="btn btn-danger" style="padding: 1rem; width: 100%; font-size: 1.1rem;">
-                            <i class="ph ph-x-circle" style="margin-right: 8px;"></i> Cancelar Reserva
-                        </button>
-                    </form>
-                    {% endif %}
-                    
-                    <p style="text-align: center; color: var(--secondary); font-size: 0.85rem; margin-top: 0.5rem;">
-                        <i class="ph ph-clock"></i> Prazo para alterações aberto.
-                    </p>
-                </div>
-            {% else %}
-                <div style="text-align: center; padding: 3rem; color: var(--text-muted);">
-                    <i class="ph ph-check-square-offset" style="font-size: 3rem; margin-bottom: 1rem;"></i>
-                    <p>Não há almoços futuros abertos para reserva no momento.</p>
-                </div>
-            {% endif %}
+    {% for a in avisos %}
+    <div class="alert alert-{{ a.tipo }}" style="margin-bottom: 1.5rem;">
+        {% if a.tipo == 'danger' %}<i class="ph ph-warning-circle" style="font-size: 1.5rem;"></i>{% endif %}
+        {% if a.tipo == 'warning' %}<i class="ph ph-warning" style="font-size: 1.5rem;"></i>{% endif %}
+        {% if a.tipo == 'info' %}<i class="ph ph-info" style="font-size: 1.5rem;"></i>{% endif %}
+        <div>
+            <strong>{{ a.titulo }}</strong><br>
+            <span style="white-space: pre-wrap;">{{ a.mensagem }}</span>
         </div>
     </div>
-    
+    {% endfor %}
+    {% endif %}
+
+    <!-- Contexto Atual -->
+    <div class="flex-mobile-column"
+        style="background: white; padding: 1rem 1.5rem; border-radius: 12px; box-shadow: var(--shadow-sm); margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border);">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <div style="background: #f0f9ff; color: var(--primary); padding: 0.5rem; border-radius: 8px;">
+                <i class="ph ph-buildings" style="font-size: 1.5rem;"></i>
+            </div>
+            <div>
+                <span
+                    style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em;">Acesso
+                    atual</span>
+                <h3 style="margin: 0; font-size: 1.1rem; color: var(--text);">{{ session.get('contexto_nome', 'Turma
+                    Padrão') }}</h3>
+            </div>
+        </div>
+        {% if tem_multiplos %}
+        <a href="{{ url_for('aluno.aluno_trocar_contexto') }}" class="btn btn-secondary"
+            style="font-size: 0.85rem; padding: 0.5rem 1rem;">
+            <i class="ph ph-arrows-left-right"></i> Trocar Evento
+        </a>
+        {% endif %}
+    </div>
+
+    <div class="grid">
+        {% if contexto_is_evento %}
+        <!-- Card: Crachá Fixo do Evento -->
+        <div class="card card-full" style="border-top: 4px solid var(--primary); text-align: center; padding: 2rem;">
+            <h2 style="margin-bottom: 1.5rem;"><i class="ph ph-identification-badge"></i> Seu Crachá de Acesso</h2>
+            <p style="color: var(--text-muted); margin-bottom: 2rem;">Este é seu QR Code fixo para todas as refeições
+                deste evento. Não é necessário reservar!</p>
+
+            {% if qr_code_cracha %}
+            <div
+                style="background: white; padding: 1.5rem; border-radius: 12px; display: inline-block; box-shadow: var(--shadow-md); border: 1px solid var(--border);">
+                <img id="qr-code-img" src="data:image/png;base64,{{ qr_code_cracha }}" alt="QR Code Crachá"
+                    style="width: 180px; height: 180px;">
+                <div
+                    style="margin-top: 1rem; font-weight: bold; font-family: monospace; letter-spacing: 2px; color: var(--text);">
+                    {{ aluno_ativo.cpf }}
+                </div>
+            </div>
+            <div style="margin-top: 1.5rem; display: flex; justify-content: center; gap: 0.5rem; flex-wrap: wrap;">
+                <button onclick="downloadQRCode('data:image/png;base64,{{ qr_code_cracha }}', 'cracha_evento.png')" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.5rem 1rem; display: inline-flex; align-items: center; gap: 6px;">
+                    <i class="ph ph-download-simple"></i> Salvar na Galeria (Acesso Offline)
+                </button>
+            </div>
+            <div style="margin-top: 2rem; color: var(--primary); font-weight: 600;">
+                <i class="ph ph-check-circle"></i> Válido de
+                {% if contexto_evento and contexto_evento.data_inicio and contexto_evento.data_fim %}
+                {{ contexto_evento.data_inicio[-2:] }}/{{ contexto_evento.data_inicio[5:7] }}/{{
+                contexto_evento.data_inicio[:4] }} até {{ contexto_evento.data_fim[-2:] }}/{{
+                contexto_evento.data_fim[5:7] }}/{{ contexto_evento.data_fim[:4] }}
+                {% else %}
+                todo o evento
+                {% endif %}
+            </div>
+            {% else %}
+            <div class="alert alert-danger">
+                Erro ao gerar seu código de crachá. Procure a organização.
+            </div>
+            {% endif %}
+        </div>
+        {% else %}
+        <!-- Card: Crachá Fixo Aluno Regular -->
+        <div class="card card-full" style="border-top: 4px solid var(--success); text-align: center; padding: 2rem;">
+            <h2 style="margin-bottom: 1rem;"><i class="ph ph-identification-card"></i> Seu Crachá Permanente</h2>
+            <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.95rem;">
+                Apresente este QR Code único em todas as refeições que você reservar.<br>
+                <span style="color: var(--primary); font-weight: 600;">O crachá só funcionará se houver uma reserva
+                    ativa para o horário.</span>
+            </p>
+
+            {% if qr_code_cracha_std %}
+            <div
+                style="background: white; padding: 1.5rem; border-radius: 12px; display: inline-block; box-shadow: var(--shadow-md); border: 2px solid var(--success);">
+                <img id="qr-code-img-std" src="data:image/png;base64,{{ qr_code_cracha_std }}" alt="QR Code Crachá Fixo"
+                    style="width: 180px; height: 180px;">
+                <div
+                    style="margin-top: 1rem; font-weight: bold; font-family: monospace; letter-spacing: 2px; color: var(--text);">
+                    {{ aluno_ativo.matricula }}
+                </div>
+            </div>
+            <div style="margin-top: 1.5rem; display: flex; justify-content: center; gap: 0.5rem; flex-wrap: wrap;">
+                <button onclick="downloadQRCode('data:image/png;base64,{{ qr_code_cracha_std }}', 'cracha_permanente.png')" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.5rem 1rem; display: inline-flex; align-items: center; gap: 6px;">
+                    <i class="ph ph-download-simple"></i> Salvar na Galeria (Acesso Offline)
+                </button>
+            </div>
+            <div style="margin-top: 1.5rem; color: var(--success); font-weight: 600; font-size: 0.9rem;">
+                <i class="ph ph-shield-check"></i> Identificador Digital Institucional
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Card: Refeições de Hoje -->
+        <div class="card" style="border-top: 4px solid var(--secondary);">
+            <h2><i class="ph ph-bowl-food" style="margin-right: 8px; vertical-align: middle;"></i> Refeições de Hoje
+            </h2>
+
+            {% for item in refeicoes_hoje %}
+            <div
+                style="background: var(--background); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid var(--border);">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="margin: 0; color: var(--secondary); font-size: 1.1rem;">{{ item.cardapio.tipo_refeicao }}
+                    </h3>
+                    <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">{{ item.cardapio.data
+                        | datetimeformat }}</span>
+                </div>
+
+                <div style="margin-top: 0.75rem; font-size: 0.95rem; color: var(--text-main); line-height: 1.5;">
+                    {% if item.cardapio.acompanhamento %}
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                        <span><b>• Acompanhamento:</b> {{ item.cardapio.acompanhamento }}</span>
+                        <span><b>• Proteína:</b> {{ item.cardapio.proteinas }}</span>
+                        <span><b>• Salada:</b> {{ item.cardapio.salada }}</span>
+                        <span><b>• Sobremesa:</b> {{ item.cardapio.sobremesa }}</span>
+                    </div>
+                    {% if item.cardapio.outros %}
+                    <p
+                        style="margin-top: 0.5rem; border-top: 1px solid var(--border); padding-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">
+                        <i>Obs: {{ item.cardapio.outros }}</i>
+                    </p>
+                    {% endif %}
+                    {% else %}
+                    <p>{{ item.cardapio.descricao }}</p>
+                    {% endif %}
+                </div>
+
+                {% if item.reserva %}
+                <div style="text-align: center; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border);">
+                    {% if item.reserva['status'] == 'ATIVA' %}
+                    <div style="padding: 1.25rem; background: #dcfce7; border-radius: 12px; color: #15803d; font-weight: 800; font-size: 1.2rem; border: 2px solid #86efac; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                        <i class="ph ph-check-circle" style="font-size: 1.5rem; vertical-align: middle;"></i> VOCÊ POSSUI RESERVA
+                        <p style="font-weight: 500; font-size: 0.95rem; margin-top: 0.5rem; color: #166534;">
+                            Sua refeição está garantida. Use seu crachá para retirar.
+                        </p>
+                    </div>
+                    {% else %}
+                    <div style="padding: 1rem; background: #f3f4f6; border-radius: 10px; color: #4b5563; font-weight: 700; font-size: 1.1rem; border: 1px solid #d1d5db;">
+                        <i class="ph ph-check-square-offset" style="font-size: 1.3rem; vertical-align: middle;"></i> Refeição Já Consumida
+                    </div>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div style="text-align: center; padding: 1.25rem; border: 2px dashed #fca5a5; background: #fef2f2; border-radius: 12px; margin-top: 1.5rem;">
+                    <i class="ph ph-warning-circle" style="color: #ef4444; font-size: 2rem;"></i>
+                    <h3 style="color: #b91c1c; font-size: 1.1rem; margin: 0.5rem 0;">SEM RESERVA PARA HOJE</h3>
+                    <p style="color: #991b1b; font-size: 0.9rem; font-weight: 500;">Você não solicitou esta refeição a tempo.</p>
+                </div>
+                {% endif %}
+            </div>
+            {% else %}
+            <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                <i class="ph ph-calendar-x" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+                <p>Nenhuma refeição agendada para hoje.</p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Card: Agendar Próximas Refeições -->
+        <div class="card" style="border-top: 4px solid var(--primary);">
+            <h2><i class="ph ph-calendar-check" style="margin-right: 8px; vertical-align: middle;"></i> Agendar
+                Refeições</h2>
+
+            <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1.5rem;">
+                Você pode ter até <strong>{{ max_reservas }}</strong> reservas ativas simultaneamente.
+                (Atuais: <strong>{{ reservas_ativas_count }}</strong>)
+            </p>
+
+            {% if aluno_ativo and aluno_ativo.permitido_almoco == 0 %}
+            <div class="alert alert-danger" style="text-align: center; padding: 1.5rem;">
+                <i class="ph ph-lock-key" style="font-size: 2rem; margin-bottom: 0.5rem;"></i><br>
+                <strong>Acesso Restrito:</strong> Você não possui permissão para reservar pelo portal.<br>
+                Aguarde o chamado extra (sobras) na cantina.
+            </div>
+            {% else %}
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                {% for item in cardapios_abertos %}
+                <div
+                    style="padding: 1rem; border: 1px solid var(--border); border-radius: 8px; background: {% if item.reserva %}#f0fdf4{% else %}white{% endif %};">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                        <div>
+                            <strong style="display: block; color: var(--primary);">{{ item.cardapio.data |
+                                datetimeformat }}</strong>
+                            <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">
+                                <span style="font-weight: 600; color: var(--text-main);">{{ item.cardapio.tipo_refeicao
+                                    }}</span>
+                                {% if item.cardapio.acompanhamento %}
+                                <div style="margin-top: 4px; line-height: 1.4;">
+                                    {% if item.cardapio.acompanhamento %}• <b>Acomp:</b> {{ item.cardapio.acompanhamento
+                                    }}<br>{% endif %}
+                                    {% if item.cardapio.salada %}• <b>Salada:</b> {{ item.cardapio.salada }}<br>{% endif
+                                    %}
+                                    {% if item.cardapio.proteinas %}• <b>Proteína:</b> {{ item.cardapio.proteinas
+                                    }}<br>{% endif %}
+                                    {% if item.cardapio.sobremesa %}• <b>Sobremesa:</b> {{ item.cardapio.sobremesa }}{%
+                                    endif %}
+                                </div>
+                                {% else %}
+                                : {{ item.cardapio.descricao }}
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        {% if item.reserva %}
+                        <div style="text-align: right;">
+                            <span class="badge"
+                                style="background: #22c55e; color: white; margin-bottom: 0.5rem; display: inline-block;">Reservado</span>
+                            <form method="POST" action="{{ url_for('aluno.cancelar_reserva', cardapio_id=item.cardapio.id) }}"
+                                onsubmit="return confirm('Deseja realmente cancelar esta reserva?')">
+                                <button type="submit" class="btn btn-sm btn-danger"
+                                    style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">Cancelar</button>
+                            </form>
+                        </div>
+                        {% elif item.perdeu_prazo %}
+                        <div style="text-align: center; background: #fef2f2; border: 2px dashed #fca5a5; padding: 0.75rem 1rem; border-radius: 10px; min-width: 150px;">
+                            <span style="font-size: 1rem; color: #b91c1c; font-weight: 800; display: block; margin-bottom: 4px;"><i class="ph ph-warning-octagon" style="font-size: 1.2rem; vertical-align: middle;"></i> PRAZO ENCERRADO</span>
+                            <span style="font-size: 0.85rem; color: #991b1b; font-weight: 500;">Você não reservou.</span>
+                        </div>
+                        {% else %}
+                        {% if reservas_ativas_count < max_reservas %} <form method="POST"
+                            action="{{ url_for('aluno.reservar', cardapio_id=item.cardapio.id) }}">
+                            <button type="submit" class="btn btn-primary btn-sm">Reservar</button>
+                            </form>
+                            {% else %}
+                            <span style="font-size: 0.8rem; color: var(--text-muted);"><i class="ph ph-warning"></i> Limite de reservas ativas atingido.</span>
+                            {% endif %}
+                            {% endif %}
+                    </div>
+                </div>
+                {% else %}
+                <p style="text-align: center; color: var(--text-muted); padding: 1rem;">Nenhum dia disponível para
+                    reserva.</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- 🌟 Opinião do Aluno: Avaliar Refeições Consumidas -->
+    {% if refeicoes_para_avaliar %}
+    <div class="card card-full" style="border-top: 4px solid var(--primary); margin-top: 2rem;">
+        <h2><i class="ph ph-star" style="color: #f59e0b; margin-right: 8px;"></i> Avalie suas últimas refeições</h2>
+        <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.95rem;">Sua avaliação nos ajuda a melhorar a qualidade das refeições servidas diariamente.</p>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
+            {% for r in refeicoes_para_avaliar %}
+            <div style="background: var(--background); border: 1px solid var(--border); padding: 1.25rem; border-radius: 8px; display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                    <strong style="font-size: 1rem; color: var(--primary);">{{ r.tipo_refeicao }} ({{ r.data | datetimeformat }})</strong>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; margin-bottom: 1rem; line-height: 1.4;">{{ r.descricao }}</p>
+                </div>
+                
+                <form method="POST" action="{{ url_for('aluno.avaliar_refeicao', reserva_id=r.reserva_id) }}" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <!-- Estrelas clicáveis -->
+                    <div style="display: flex; gap: 6px; align-items: center; justify-content: center; font-size: 1.8rem; color: #d1d5db;">
+                        {% for i in range(1, 6) %}
+                        <i class="ph ph-star star-btn" data-value="{{ i }}" data-reserva="{{ r.reserva_id }}" style="cursor: pointer; transition: all 0.15s ease;"></i>
+                        {% endfor %}
+                        <input type="hidden" name="nota" id="nota-{{ r.reserva_id }}" required>
+                    </div>
+                    
+                    <textarea name="comentario" placeholder="Deixe seu comentário (Opcional)..." rows="2" style="font-size: 0.85rem; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border); outline: none; resize: none; width: 100%;"></textarea>
+                    
+                    <button type="submit" class="btn btn-primary btn-sm" style="width: 100%; font-size: 0.8rem; padding: 0.4rem !important;">
+                        Submeter Avaliação
+                    </button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Calendário -->
     <div class="card" style="margin-top: 2rem;">
         <h3>Calendário Completo (Apenas Leitura)</h3>
@@ -141,7 +320,8 @@
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="2" style="text-align: center; color: var(--text-muted);">Chegou ao fim do calendário.</td>
+                        <td colspan="2" style="text-align: center; color: var(--text-muted);">Chegou ao fim do
+                            calendário.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -149,4 +329,62 @@
         </div>
     </div>
 </div>
+
+<script>
+function downloadQRCode(base64Data, filename) {
+    const link = document.createElement('a');
+    link.href = base64Data;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// Script de Estrelas Interativas (Ponto 11)
+document.querySelectorAll('.star-btn').forEach(star => {
+    star.addEventListener('click', function() {
+        const val = parseInt(this.getAttribute('data-value'), 10);
+        const resId = this.getAttribute('data-reserva');
+        
+        // Define o input correspondente
+        document.getElementById('nota-' + resId).value = val;
+        
+        // Pega todas as estrelas do mesmo bloco
+        const container = this.parentElement;
+        const stars = container.querySelectorAll('.star-btn');
+        
+        stars.forEach(s => {
+            const sVal = parseInt(s.getAttribute('data-value'), 10);
+            if (sVal <= val) {
+                s.classList.remove('ph');
+                s.classList.add('ph-fill');
+                s.style.color = '#f59e0b'; // Gold
+            } else {
+                s.classList.remove('ph-fill');
+                s.classList.add('ph');
+                s.style.color = '#d1d5db'; // Grey
+            }
+        });
+    });
+});
+
+// Wake Lock API para impedir que a tela do aluno apague na fila (Ponto 6)
+let wakeLock = null;
+async function requestWakeLock() {
+    try {
+        if ('wakeLock' in navigator) {
+            wakeLock = await navigator.wakeLock.request('screen');
+            console.log('[WakeLock] Tela ativa mantida com sucesso.');
+        }
+    } catch (err) {
+        console.warn('[WakeLock] Não foi possível ativar bloqueio de hibernação:', err.message);
+    }
+}
+document.addEventListener('visibilitychange', async () => {
+    if (wakeLock !== null && document.visibilityState === 'visible') {
+        await requestWakeLock();
+    }
+});
+requestWakeLock();
+</script>
 {% endblock %}

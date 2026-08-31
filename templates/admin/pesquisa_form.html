@@ -1,0 +1,432 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="fade-in" style="max-width: 900px; margin: 0 auto;">
+    <div style="margin-bottom: 1.5rem;">
+        <a href="{{ url_for('admin_pesquisas') }}"
+            style="color: var(--text-muted); display: inline-flex; align-items: center; text-decoration: none;">
+            <i class="ph ph-arrow-left" style="margin-right: 6px;"></i> Voltar para Pesquisas
+        </a>
+        <h1 style="margin-top: 0.75rem; display: flex; align-items: center; gap: 10px;">
+            <i class="ph ph-note-pencil" style="color: #6366f1;"></i>
+            {% if formulario %}Editar Pesquisa{% else %}Nova Pesquisa / Formulário{% endif %}
+        </h1>
+    </div>
+
+    <form id="formPesquisa" method="POST"
+        action="{% if formulario %}{{ url_for('admin_pesquisa_editar', id=formulario.id) }}{% else %}{{ url_for('admin_pesquisa_novo') }}{% endif %}">
+        <input type="hidden" id="perguntas_json" name="perguntas_json" value="[]">
+
+        <!-- Bloco de Informações Gerais do Formulário -->
+        <div class="card"
+            style="border-top: 6px solid #6366f1; padding: 2rem; margin-bottom: 1.5rem; border-radius: 12px;">
+            <div class="form-group" style="margin-bottom: 1.25rem;">
+                <label for="titulo"
+                    style="font-size: 0.9rem; font-weight: 700; color: var(--text-main); text-transform: uppercase;">Título
+                    do Formulário *</label>
+                <input type="text" id="titulo" name="titulo" value="{{ formulario.titulo if formulario else '' }}"
+                    required placeholder="Ex: Pesquisa de Satisfação"
+                    style="font-size: 1.3rem; font-weight: bold; padding: 0.75rem 1rem; border-radius: 8px; border: 1.5px solid var(--border); width: 100%;">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label for="descricao"
+                    style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Descrição
+                    / Instruções aos Estudantes</label>
+                <textarea id="descricao" name="descricao" rows="3" placeholder="Descição do formulario."
+                    style="font-size: 0.95rem; padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border); width: 100%;">{{ formulario.descricao if formulario else '' }}</textarea>
+            </div>
+
+            <!-- 1. Tipo de Identificação (Cards clicáveis) -->
+            <div style="margin-bottom: 1.5rem;">
+                <label
+                    style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.6rem; text-transform: uppercase;">
+                    <i class="ph ph-shield-check" style="color: #6366f1;"></i> Tipo de Identificação do Estudante
+                </label>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+                    <label class="tipo-ident-card"
+                        style="display: flex; align-items: flex-start; gap: 12px; padding: 1rem 1.25rem; border-radius: 10px; border: 2px solid var(--border); background: #f8fafc; cursor: pointer; margin: 0; transition: all 0.2s ease;">
+                        <input type="radio" name="is_anonimo" value="1" {% if not formulario or formulario.is_anonimo==1
+                            %}checked{% endif %}
+                            style="width: 18px; height: 18px; margin-top: 3px; flex-shrink: 0; cursor: pointer;">
+                        <div>
+                            <strong
+                                style="display: block; font-size: 1rem; color: var(--text-main); margin-bottom: 2px;">
+                                <i class="ph ph-mask-happy" style="color: #64748b;"></i> 100% Anônimo
+                            </strong>
+                            <span
+                                style="font-size: 0.82rem; color: var(--text-muted); display: block; line-height: 1.35;">
+                                Sem solicitação de login. O estudante responde de forma sigilosa sem vincular CPF ou
+                                nome.
+                            </span>
+                        </div>
+                    </label>
+
+                    <label class="tipo-ident-card"
+                        style="display: flex; align-items: flex-start; gap: 12px; padding: 1rem 1.25rem; border-radius: 10px; border: 2px solid var(--border); background: #f8fafc; cursor: pointer; margin: 0; transition: all 0.2s ease;">
+                        <input type="radio" name="is_anonimo" value="0" {% if formulario and formulario.is_anonimo==0
+                            %}checked{% endif %}
+                            style="width: 18px; height: 18px; margin-top: 3px; flex-shrink: 0; cursor: pointer;">
+                        <div>
+                            <strong
+                                style="display: block; font-size: 1rem; color: var(--text-main); margin-bottom: 2px;">
+                                <i class="ph ph-identification-badge" style="color: #6366f1;"></i> Identificado (1 por
+                                Aluno)
+                            </strong>
+                            <span
+                                style="font-size: 0.82rem; color: var(--text-muted); display: block; line-height: 1.35;">
+                                Usa o login ativo ou valida CPF + Nascimento/Senha. Garante uma única resposta por
+                                aluno.
+                            </span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- 2. Período de Validade e Status em Grid Equilibrado -->
+            <div
+                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem; background: #f8fafc; padding: 1.25rem; border-radius: 10px; border: 1px solid var(--border);">
+                <!-- Validade -->
+                <div>
+                    <label
+                        style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.4rem;">
+                        <i class="ph ph-calendar"></i> Período de Vigência
+                    </label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; align-items: center;">
+                        <div>
+                            <span
+                                style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 2px;">Data
+                                Inicial</span>
+                            <input type="date" id="data_inicio" name="data_inicio"
+                                value="{{ formulario.data_inicio if formulario and formulario.data_inicio else '' }}"
+                                style="font-size: 0.85rem; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border); width: 100%; background: white;">
+                        </div>
+                        <div>
+                            <span
+                                style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 2px;">Data
+                                Término</span>
+                            <input type="date" id="data_fim" name="data_fim"
+                                value="{{ formulario.data_fim if formulario and formulario.data_fim else '' }}"
+                                style="font-size: 0.85rem; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border); width: 100%; background: white;">
+                        </div>
+                    </div>
+                    <small style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 5px;">
+                        Opcional. Deixe vazio para não limitar o prazo.
+                    </small>
+                </div>
+
+                <!-- Status de Publicação -->
+                <div>
+                    <label
+                        style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.4rem;">
+                        <i class="ph ph-toggle-left"></i> Status do Formulário
+                    </label>
+                    <label class="status-box"
+                        style="display: flex; align-items: center; gap: 10px; padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border); background: white; cursor: pointer; margin-top: 0.35rem;">
+                        <input type="checkbox" id="ativo" name="ativo" value="1" {% if not formulario or
+                            formulario.ativo==1 %}checked{% endif %}
+                            style="width: 20px; height: 20px; cursor: pointer;">
+                        <div>
+                            <strong style="font-size: 0.95rem; display: block; color: var(--text-main);">Formulário
+                                Ativo</strong>
+                            <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">Permite receber
+                                respostas normalmente</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Seção de Perguntas (Builder Google Forms) -->
+        <div style="margin-bottom: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h2
+                    style="margin: 0; font-size: 1.25rem; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                    <i class="ph ph-question"></i> Perguntas do Formulário
+                </h2>
+                <button type="button" class="btn btn-primary" onclick="adicionarPergunta()"
+                    style="font-size: 0.9rem; padding: 0.5rem 1rem;">
+                    <i class="ph ph-plus-circle"></i> Adicionar Pergunta
+                </button>
+            </div>
+
+            <!-- Container das Perguntas -->
+            <div id="perguntasContainer" style="display: flex; flex-direction: column; gap: 1.25rem;"></div>
+        </div>
+
+        <!-- Botão inferior de Adicionar Pergunta e Salvar -->
+        <div
+            style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-top: 2rem; padding: 1.5rem 0; border-top: 1px solid var(--border);">
+            <button type="button" class="btn btn-secondary" onclick="adicionarPergunta()"
+                style="padding: 0.75rem 1.25rem; font-size: 0.95rem;">
+                <i class="ph ph-plus-circle" style="margin-right: 6px;"></i> Adicionar Nova Pergunta
+            </button>
+            <div style="display: flex; gap: 0.75rem;">
+                <a href="{{ url_for('admin_pesquisas') }}" class="btn btn-secondary"
+                    style="padding: 0.75rem 1.25rem;">Cancelar</a>
+                <button type="submit" class="btn btn-primary"
+                    style="padding: 0.75rem 2rem; font-size: 1.05rem; font-weight: bold; background: #6366f1; border-color: #4f46e5;">
+                    <i class="ph ph-floppy-disk" style="margin-right: 6px;"></i> {% if formulario %}Salvar Alterações{%
+                    else %}Publicar Formulário{% endif %}
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+    let perguntasData = {{ perguntas | tojson | safe }} || [];
+    let perguntaIdCounter = 100;
+
+    // Inicializa com as perguntas existentes ou adiciona uma pergunta padrão
+    document.addEventListener("DOMContentLoaded", function () {
+        if (perguntasData.length > 0) {
+            perguntasData.forEach((p, idx) => {
+                criarCardPergunta(p, idx);
+            });
+        } else {
+            adicionarPergunta(); // Pergunta inicial padrão
+        }
+    });
+
+    function criarCardPergunta(dados = null, index = null) {
+        const container = document.getElementById('perguntasContainer');
+        const pId = dados && dados.id ? dados.id : ++perguntaIdCounter;
+        const qIndex = index !== null ? index + 1 : container.children.length + 1;
+
+        const card = document.createElement('div');
+        card.className = 'card pergunta-card fade-in';
+        card.id = `pergunta_card_${pId}`;
+        card.style = 'border-radius: 10px; padding: 1.5rem; border: 1.5px solid var(--border); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); position: relative; margin: 0; background: white;';
+
+        const tituloVal = dados ? dados.titulo : '';
+        const tipoVal = dados ? dados.tipo : 'multipla_escolha';
+        const obrigatoriaVal = dados ? dados.obrigatoria : true;
+        const opcoesVal = (dados && dados.opcoes && dados.opcoes.length > 0) ? dados.opcoes : ['Opção 1', 'Opção 2'];
+
+        card.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem;">
+            <span class="badge" style="background: #eef2ff; color: #4338ca; font-weight: bold; font-size: 0.85rem;" id="badge_index_${pId}">
+                Pergunta ${qIndex}
+            </span>
+            <div style="display: flex; gap: 6px; align-items: center;">
+                <button type="button" class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;" onclick="moverPergunta(${pId}, -1)" title="Mover para cima">
+                    <i class="ph ph-arrow-up"></i>
+                </button>
+                <button type="button" class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;" onclick="moverPergunta(${pId}, 1)" title="Mover para baixo">
+                    <i class="ph ph-arrow-down"></i>
+                </button>
+                <button type="button" class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;" onclick="removerPergunta(${pId})" title="Excluir Pergunta">
+                    <i class="ph ph-trash"></i>
+                </button>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr auto; gap: 1rem; margin-bottom: 1.25rem; align-items: flex-start;" class="flex-mobile-column">
+            <div style="flex: 1;">
+                <input type="text" class="input-pergunta-titulo" value="${escapeHtml(tituloVal)}" placeholder="Digite a pergunta aqui..." required
+                       style="width: 100%; font-size: 1.1rem; font-weight: 600; padding: 0.6rem 0.85rem; border-radius: 6px; border: 1px solid var(--border);">
+            </div>
+            <div style="min-width: 200px;">
+                <select class="select-pergunta-tipo" onchange="alternarTipoPergunta(${pId}, this.value)" style="width: 100%; padding: 0.6rem; border-radius: 6px; border: 1px solid var(--border); font-size: 0.9rem; font-weight: 500; background: #f8fafc;">
+                    <option value="multipla_escolha" ${tipoVal === 'multipla_escolha' ? 'selected' : ''}>🔘 Múltipla Escolha (1 opção)</option>
+                    <option value="checkbox" ${tipoVal === 'checkbox' ? 'selected' : ''}>☑️ Caixas de Seleção (várias)</option>
+                    <option value="texto_curto" ${tipoVal === 'texto_curto' ? 'selected' : ''}>📝 Resposta Curta (Texto)</option>
+                    <option value="texto_longo" ${tipoVal === 'texto_longo' ? 'selected' : ''}>📄 Parágrafo (Texto Longo)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Área de Opções (para múltipla escolha e checkbox) -->
+        <div id="opcoes_container_${pId}" style="display: ${(tipoVal === 'multipla_escolha' || tipoVal === 'checkbox') ? 'block' : 'none'}; margin-bottom: 1.25rem; background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px dashed var(--border);">
+            <div class="opcoes-lista" id="opcoes_lista_${pId}" style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.75rem;">
+                <!-- Opções renderizadas aqui -->
+            </div>
+            <button type="button" class="btn btn-secondary" onclick="adicionarOpcao(${pId})" style="font-size: 0.85rem; padding: 0.35rem 0.75rem;">
+                <i class="ph ph-plus"></i> Adicionar Alternativa
+            </button>
+        </div>
+
+        <!-- Pré-visualização de campo de texto -->
+        <div id="preview_texto_${pId}" style="display: ${(tipoVal === 'texto_curto' || tipoVal === 'texto_longo') ? 'block' : 'none'}; margin-bottom: 1.25rem; background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px dashed var(--border); color: var(--text-muted); font-size: 0.9rem; font-style: italic;">
+            <i class="ph ph-text-t"></i> Campo de texto livre para o estudante responder.
+        </div>
+
+        <!-- Rodapé do Card da Pergunta -->
+        <div style="display: flex; justify-content: flex-end; align-items: center; gap: 1rem; border-top: 1px solid #f1f5f9; padding-top: 0.75rem;">
+            <label style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 600; cursor: pointer; margin: 0;">
+                <input type="checkbox" class="chk-obrigatoria" ${obrigatoriaVal ? 'checked' : ''} style="width: 16px; height: 16px;">
+                <span>Resposta Obrigatória</span>
+            </label>
+        </div>
+    `;
+
+        container.appendChild(card);
+
+        // Renderiza as alternativas se for tipo de escolha
+        if (tipoVal === 'multipla_escolha' || tipoVal === 'checkbox') {
+            opcoesVal.forEach(op => {
+                adicionarOpcao(pId, op, tipoVal);
+            });
+        }
+    }
+
+    function adicionarPergunta() {
+        criarCardPergunta();
+        atualizarNumeracaoPerguntas();
+    }
+
+    function removerPergunta(pId) {
+        const card = document.getElementById(`pergunta_card_${pId}`);
+        if (card) {
+            card.remove();
+            atualizarNumeracaoPerguntas();
+        }
+    }
+
+    function moverPergunta(pId, direcao) {
+        const card = document.getElementById(`pergunta_card_${pId}`);
+        if (!card) return;
+        const container = document.getElementById('perguntasContainer');
+        if (direcao === -1 && card.previousElementSibling) {
+            container.insertBefore(card, card.previousElementSibling);
+        } else if (direcao === 1 && card.nextElementSibling) {
+            container.insertBefore(card.nextElementSibling, card);
+        }
+        atualizarNumeracaoPerguntas();
+    }
+
+    function atualizarNumeracaoPerguntas() {
+        const cards = document.querySelectorAll('.pergunta-card');
+        cards.forEach((c, idx) => {
+            const badge = c.querySelector('.badge');
+            if (badge) badge.innerText = `Pergunta ${idx + 1}`;
+        });
+    }
+
+    function alternarTipoPergunta(pId, tipo) {
+        const opcoesContainer = document.getElementById(`opcoes_container_${pId}`);
+        const previewTexto = document.getElementById(`preview_texto_${pId}`);
+        const opcoesLista = document.getElementById(`opcoes_lista_${pId}`);
+
+        if (tipo === 'multipla_escolha' || tipo === 'checkbox') {
+            opcoesContainer.style.display = 'block';
+            previewTexto.style.display = 'none';
+            if (opcoesLista.children.length === 0) {
+                adicionarOpcao(pId, 'Opção 1', tipo);
+                adicionarOpcao(pId, 'Opção 2', tipo);
+            }
+        } else {
+            opcoesContainer.style.display = 'none';
+            previewTexto.style.display = 'block';
+        }
+    }
+
+    function adicionarOpcao(pId, valor = '', tipo = 'multipla_escolha') {
+        const lista = document.getElementById(`opcoes_lista_${pId}`);
+        if (!lista) return;
+
+        const opIdx = lista.children.length + 1;
+        const opDiv = document.createElement('div');
+        opDiv.className = 'opcao-item';
+        opDiv.style = 'display: flex; align-items: center; gap: 8px;';
+
+        const icone = (tipo === 'checkbox') ? 'ph ph-square' : 'ph ph-circle';
+
+        opDiv.innerHTML = `
+        <i class="${icone}" style="color: var(--text-muted); font-size: 1.1rem; flex-shrink: 0;"></i>
+        <input type="text" class="input-opcao-texto" value="${escapeHtml(valor || `Opção ${opIdx}`)}" placeholder="Alternativa ${opIdx}" required
+               style="flex: 1; padding: 0.45rem 0.65rem; border-radius: 6px; border: 1px solid var(--border); font-size: 0.9rem;">
+        <button type="button" onclick="this.parentElement.remove()" style="background: none; border: none; color: #ef4444; font-size: 1.2rem; cursor: pointer; padding: 0 4px;" title="Remover Alternativa">
+            &times;
+        </button>
+    `;
+
+        lista.appendChild(opDiv);
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+
+    // Serialização no momento do envio do formulário
+    document.getElementById('formPesquisa').addEventListener('submit', function (e) {
+        const cards = document.querySelectorAll('.pergunta-card');
+        if (cards.length === 0) {
+            e.preventDefault();
+            alert('Adicione pelo menos uma pergunta à pesquisa.');
+            return;
+        }
+
+        const perguntasArray = [];
+        let valido = true;
+
+        cards.forEach((card, idx) => {
+            const titulo = card.querySelector('.input-pergunta-titulo').value.trim();
+            const tipo = card.querySelector('.select-pergunta-tipo').value;
+            const obrigatoria = card.querySelector('.chk-obrigatoria').checked;
+            const opcoes = [];
+
+            if (!titulo) {
+                valido = false;
+                card.querySelector('.input-pergunta-titulo').focus();
+            }
+
+            if (tipo === 'multipla_escolha' || tipo === 'checkbox') {
+                const inputsOpcao = card.querySelectorAll('.input-opcao-texto');
+                if (inputsOpcao.length === 0) {
+                    valido = false;
+                    alert(`A pergunta ${idx + 1} precisa de pelo menos uma alternativa.`);
+                }
+                inputsOpcao.forEach(opInput => {
+                    const opVal = opInput.value.trim();
+                    if (opVal) opcoes.push(opVal);
+                });
+            }
+
+            perguntasArray.push({
+                titulo: titulo,
+                tipo: tipo,
+                opcoes: opcoes,
+                obrigatoria: obrigatoria
+            });
+        });
+
+        if (!valido) {
+            e.preventDefault();
+            alert('Por favor, preencha todos os títulos de perguntas e alternativas.');
+            return;
+        }
+
+        document.getElementById('perguntas_json').value = JSON.stringify(perguntasArray);
+    });
+</script>
+
+<style>
+    .tipo-ident-card:hover {
+        border-color: #a5b4fc !important;
+        background: #eef2ff !important;
+    }
+
+    .tipo-ident-card:has(input:checked) {
+        border-color: #6366f1 !important;
+        background: #eef2ff !important;
+    }
+
+    .status-box:hover {
+        border-color: #10b981 !important;
+    }
+
+    .status-box:has(input:checked) {
+        border-color: #10b981 !important;
+        background: #f0fdf4 !important;
+    }
+
+    .input-opcao-texto:focus,
+    .input-pergunta-titulo:focus {
+        border-color: #6366f1 !important;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+    }
+</style>
+{% endblock %}

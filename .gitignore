@@ -8,11 +8,27 @@ env/
 *.sqlite3
 database.db
 
+# Ignorar chaves secretas, certificados locais e ACME challenges
+.secret_key
+certificado/
+.well-known/
+*.pem
+*.key
+*.crt
+
 # Ignorar artefatos do Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+
+# Ignorar scripts temporários, backups e scratch
+backup/
+split_app.py
+scratch/
+scratch_test.py
+test_request.py
+models_old.py
 
 # Ignorar temporários de OS
 .DS_Store

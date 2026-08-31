@@ -1,0 +1,330 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="fade-in">
+    <div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <a href="{{ url_for('admin_eventos') }}" style="color: var(--text-muted); display: inline-flex; align-items: center; text-decoration: none; margin-bottom: 0.5rem;">
+                <i class="ph ph-arrow-left" style="margin-right: 4px;"></i> Voltar para Eventos
+            </a>
+            <h1 style="margin: 0;"><i class="ph ph-calendar-star"></i> {{ evento.nome }}</h1>
+            <div style="margin-top: 0.5rem; display: inline-flex; padding: 0.25rem 0.75rem; background: #e0f2fe; color: #0369a1; border-radius: 9999px; font-size: 0.85rem; font-weight: 500;">
+                <i class="ph ph-calendar-blank" style="margin-right: 4px;"></i> Validade: 
+                {% if evento.data_inicio and evento.data_fim %}
+                    {{ evento.data_inicio[-2:] }}/{{ evento.data_inicio[5:7] }}/{{ evento.data_inicio[:4] }} a {{ evento.data_fim[-2:] }}/{{ evento.data_fim[5:7] }}/{{ evento.data_fim[:4] }}
+                {% else %}
+                    Indefinida
+                {% endif %}
+            </div>
+            <p style="color: var(--text-muted); margin-top: 0.5rem;">Gerencie a lista de convidados autorizados deste evento.</p>
+        </div>
+        
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <button class="btn" style="background: white; border: 1px solid var(--primary); color: var(--primary);" onclick="abrirModal('modalEditar')">
+                <i class="ph ph-note-pencil"></i> Editar Datas
+            </button>
+            <button class="btn" style="background: white; border: 1px solid var(--primary); color: var(--primary);" onclick="window.location.href='{{ url_for('admin_evento_imprimir', id=evento.id) }}'">
+                <i class="ph ph-printer"></i> Imprimir Crachás
+            </button>
+            <button class="btn" style="background: var(--background); border: 1px solid var(--border); color: var(--text);" onclick="window.location.href='{{ url_for('admin_evento_csv_template') }}'">
+                <i class="ph ph-download-simple"></i> Modelo CSV
+            </button>
+            <button class="btn btn-secondary" onclick="abrirModal('modalImportar')">
+                <i class="ph ph-upload-simple"></i> Importar CSV
+            </button>
+            <button class="btn btn-primary" onclick="abrirModal('modalAdicionar')">
+                <i class="ph ph-plus-circle"></i> Adicionar Manual
+            </button>
+        </div>
+    </div>
+
+    <div class="card" style="margin-bottom: 2rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+            <h2 style="font-size: 1.25rem; margin: 0;">
+                Participantes ({{ convidados|length }})
+            </h2>
+            <div style="position: relative; width: 300px;">
+                <i class="ph ph-magnifying-glass" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+                <input type="text" id="filtroParticipante" placeholder="Filtrar por nome ou CPF..." 
+                       style="width: 100%; padding: 0.6rem 1rem 0.6rem 2.5rem; border-radius: 8px; border: 1px solid var(--border); font-size: 0.9rem;">
+            </div>
+        </div>
+        
+        {% if convidados %}
+            <div style="overflow-x: auto;">
+                <table id="tabelaParticipantes">
+                    <thead>
+                        <tr>
+                            <th>Nome / Matrícula</th>
+                            <th>CPF</th>
+                            <th>Data Nasc.</th>
+                            <th>Instituição</th>
+                            <th style="text-align: center;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in convidados %}
+                        <tr>
+                            <td><strong>{{ c.nome }}</strong><br><small style="color: var(--text-muted);">{{ c.matricula }}</small></td>
+                            <td>{{ c.cpf | format_cpf }}</td>
+                            <td>{{ c.data_nascimento | datetimeformat }}</td>
+                            <td>{{ c.instituicao if c.instituicao else '-' }}</td>
+                            <td style="text-align: center; white-space: nowrap;">
+                                <a href="{{ url_for('admin_evento_imprimir', id=evento.id, aluno_id=c.id) }}" class="btn btn-sm btn-secondary" title="Imprimir Crachá" style="padding: 0.4rem; background: white; border: 1px solid var(--border); color: var(--text);">
+                                    <i class="ph ph-printer"></i>
+                                </a>
+                                <button type="button" class="btn btn-sm btn-secondary" title="Editar Participante" style="padding: 0.4rem; background: white; border: 1px solid var(--border); color: var(--text);"
+                                        onclick="abrirEdicaoConvidado(this)"
+                                        data-id="{{ c.id }}"
+                                        data-nome="{{ c.nome }}"
+                                        data-cpf="{{ c.cpf }}"
+                                        data-data_nascimento="{{ c.data_nascimento }}"
+                                        data-email="{{ c.email or '' }}"
+                                        data-instituicao="{{ c.instituicao or '' }}">
+                                    <i class="ph ph-pencil-simple"></i>
+                                </button>
+                                <form method="POST" action="{{ url_for('admin_evento_remover_participante', id=evento.id, aluno_id=c.id) }}" style="display: inline;" onsubmit="return confirm('Remover este participante do evento?')">
+                                    <button type="submit" class="btn btn-sm btn-danger" title="Remover do Evento" style="padding: 0.4rem;">
+                                        <i class="ph ph-user-minus"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                <i class="ph ph-users" style="font-size: 2rem; margin-bottom: 0.5rem; color: #d1d5db;"></i>
+                <p>Nenhum participante cadastrado para este evento.</p>
+            </div>
+        {% endif %}
+    </div>
+    
+    <div style="text-align: right;">
+        <button class="btn btn-danger" onclick="abrirModal('modalDeletar')">
+            <i class="ph ph-trash"></i> Excluir Evento e Histórico
+        </button>
+    </div>
+</div>
+
+<script>
+    document.getElementById('filtroParticipante').addEventListener('keyup', function() {
+        let filter = this.value.toUpperCase();
+        let rows = document.querySelector("#tabelaParticipantes tbody").rows;
+        
+        for (let i = 0; i < rows.length; i++) {
+            let nome = rows[i].cells[0].textContent.toUpperCase();
+            let cpf = rows[i].cells[1].textContent.toUpperCase();
+            if (nome.indexOf(filter) > -1 || cpf.indexOf(filter) > -1) {
+                rows[i].style.display = "";
+            } else {
+                rows[i].style.display = "none";
+            }      
+        }
+    });
+
+    // Helper functions for modal management
+    function abrirModal(id) {
+        const modal = document.getElementById(id);
+        if (modal) {
+            modal.classList.add('is-open');
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
+    function fecharModal(id) {
+        const modal = document.getElementById(id);
+        if (modal) {
+            modal.classList.remove('is-open');
+            document.body.style.overflow = '';
+        }
+    }
+
+    // Close on click outside and escape key
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.modal-overlay').forEach(modal => {
+            modal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    fecharModal(this.id);
+                }
+            });
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.modal-overlay.is-open').forEach(modal => {
+                    fecharModal(modal.id);
+                });
+            }
+        });
+    });
+
+    function abrirEdicaoConvidado(btn) {
+        document.getElementById('edit_nome_conv').value = btn.getAttribute('data-nome');
+        document.getElementById('edit_cpf_conv').value = btn.getAttribute('data-cpf');
+        document.getElementById('edit_nasc_conv').value = btn.getAttribute('data-data_nascimento');
+        document.getElementById('edit_email_conv').value = btn.getAttribute('data-email');
+        document.getElementById('edit_inst_conv').value = btn.getAttribute('data-instituicao');
+        
+        const alunoId = btn.getAttribute('data-id');
+        document.getElementById('formEditarConvidado').action = "/admin/eventos/" + "{{ evento.id }}" + "/editar_participante/" + alunoId;
+        
+        abrirModal('modalEditarConvidado');
+    }
+</script>
+{% endblock %}
+
+{% block modals %}
+    <!-- Modal Editar Evento -->
+    <div id="modalEditar" class="modal-overlay">
+        <div class="modal-box" style="max-width: 400px; padding: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 style="margin: 0; font-size: 1.25rem;"><i class="ph ph-calendar" style="color: var(--primary); margin-right: 8px;"></i>Editar Evento</h2>
+                <button onclick="fecharModal('modalEditar')" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+            </div>
+            <form method="POST" action="{{ url_for('admin_evento_editar', id=evento.id) }}">
+                <div class="form-group">
+                    <label for="nome_edit">Nome do Evento</label>
+                    <input type="text" id="nome_edit" name="nome" value="{{ evento.nome }}" required>
+                </div>
+                <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                    <div class="form-group" style="flex: 1;">
+                        <label for="data_inicio_edit">Data de Início</label>
+                        <input type="date" id="data_inicio_edit" name="data_inicio" value="{{ evento.data_inicio }}" required>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label for="data_fim_edit">Data de Fim</label>
+                        <input type="date" id="data_fim_edit" name="data_fim" value="{{ evento.data_fim }}" required>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                    <button type="button" class="btn" style="flex: 1; background: #e5e7eb; color: #374151;" onclick="fecharModal('modalEditar')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Adicionar Manual -->
+    <div id="modalAdicionar" class="modal-overlay">
+        <div class="modal-box" style="max-width: 500px; padding: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 style="margin: 0; font-size: 1.25rem;"><i class="ph ph-user-plus" style="color: var(--primary); margin-right: 8px;"></i>Adicionar Participante</h2>
+                <button onclick="fecharModal('modalAdicionar')" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+            </div>
+            <form method="POST" action="{{ url_for('admin_evento_adicionar_participante', id=evento.id) }}">
+                <div class="form-group">
+                    <label for="nome_manual">Nome Completo</label>
+                    <input type="text" id="nome_manual" name="nome" required placeholder="Ex: João da Silva">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label for="cpf_manual">CPF</label>
+                        <input type="text" id="cpf_manual" name="cpf" required placeholder="000.000.000-00">
+                    </div>
+                    <div class="form-group">
+                        <label for="nasc_manual">Data de Nascimento</label>
+                        <input type="date" id="nasc_manual" name="data_nascimento" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="email_manual">E-mail (opcional)</label>
+                    <input type="email" id="email_manual" name="email" placeholder="joao@email.com">
+                </div>
+                <div class="form-group">
+                    <label for="inst_manual">Instituição (opcional)</label>
+                    <input type="text" id="inst_manual" name="instituicao" placeholder="Ex: Campus Centro">
+                </div>
+                <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                    <button type="button" class="btn" style="flex: 1; background: #e5e7eb; color: #374151;" onclick="fecharModal('modalAdicionar')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Salvar Participante</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Importação -->
+    <div id="modalImportar" class="modal-overlay">
+        <div class="modal-box" style="max-width: 500px; padding: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 style="margin: 0; font-size: 1.25rem;"><i class="ph ph-upload-simple" style="color: var(--primary); margin-right: 8px;"></i>Importar via CSV</h2>
+                <button onclick="fecharModal('modalImportar')" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+            </div>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">O arquivo deve conter as colunas: Nome, CPF, Data de Nascimento, E-mail, Instituição.</p>
+            
+            <form method="POST" action="{{ url_for('admin_evento_importar', id=evento.id) }}" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="arquivo_csv">Selecione o arquivo (.csv)</label>
+                    <input type="file" id="arquivo_csv" name="arquivo_csv" accept=".csv" required style="padding: 0.5rem 0;">
+                </div>
+                <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                    <button type="button" class="btn" style="flex: 1; background: #e5e7eb; color: #374151;" onclick="fecharModal('modalImportar')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Processar Importação</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal Deletar -->
+    <div id="modalDeletar" class="modal-overlay">
+        <div class="modal-box" style="max-width: 500px; padding: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 style="margin: 0; font-size: 1.25rem; color: var(--danger);"><i class="ph ph-warning" style="margin-right: 8px;"></i>Atenção! Zona de Perigo</h2>
+                <button onclick="fecharModal('modalDeletar')" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+            </div>
+            <p style="color: var(--text); font-size: 0.95rem; margin-bottom: 1rem;">
+                Você está prestes a <strong>excluir permanentemente</strong> o evento <strong>{{ evento.nome }}</strong>.
+            </p>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">
+                Isso apagará todos os convidados desta lista e todas as reservas que eles fizeram no sistema. Esta ação não pode ser desfeita.
+            </p>
+            
+            <form method="POST" action="{{ url_for('admin_evento_deletar', id=evento.id) }}">
+                <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                    <button type="button" class="btn" style="flex: 1; background: #e5e7eb; color: #374151;" onclick="fecharModal('modalDeletar')">Cancelar</button>
+                    <button type="submit" class="btn btn-danger" style="flex: 1;"><i class="ph ph-trash"></i> Sim, Excluir Tudo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Editar Convidado -->
+    <div id="modalEditarConvidado" class="modal-overlay">
+        <div class="modal-box" style="max-width: 500px; padding: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 style="margin: 0; font-size: 1.25rem;"><i class="ph ph-pencil-simple" style="color: var(--primary); margin-right: 8px;"></i>Editar Participante</h2>
+                <button onclick="fecharModal('modalEditarConvidado')" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+            </div>
+            <form id="formEditarConvidado" method="POST" action="">
+                <div class="form-group">
+                    <label for="edit_nome_conv">Nome Completo</label>
+                    <input type="text" id="edit_nome_conv" name="nome" required>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label for="edit_cpf_conv">CPF</label>
+                        <input type="text" id="edit_cpf_conv" name="cpf" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_nasc_conv">Data de Nascimento</label>
+                        <input type="date" id="edit_nasc_conv" name="data_nascimento" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="edit_email_conv">E-mail (opcional)</label>
+                    <input type="email" id="edit_email_conv" name="email">
+                </div>
+                <div class="form-group">
+                    <label for="edit_inst_conv">Instituição (opcional)</label>
+                    <input type="text" id="edit_inst_conv" name="instituicao">
+                </div>
+                <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                    <button type="button" class="btn" style="flex: 1; background: #e5e7eb; color: #374151;" onclick="fecharModal('modalEditarConvidado')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+{% endblock %}

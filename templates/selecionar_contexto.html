@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Selecionar Contexto</title>
+    {% if global_config and global_config.logo_path %}
+    <link rel="icon" href="{{ global_config.logo_path }}">
+    <link rel="shortcut icon" href="{{ global_config.logo_path }}">
+    {% else %}
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍽️</text></svg>">
+    {% endif %}
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        body {
+            background-color: var(--background);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 1rem;
+        }
+        .context-container {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 16px;
+            box-shadow: var(--shadow-lg);
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
+        }
+        .context-option {
+            display: block;
+            width: 100%;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            background: white;
+            color: var(--text);
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+        }
+        .context-option:hover {
+            border-color: var(--primary);
+            background: #f0f9ff;
+        }
+        .context-option i {
+            margin-right: 8px;
+            font-size: 1.25rem;
+            vertical-align: middle;
+            color: var(--primary);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="context-container fade-in">
+        <div style="margin-bottom: 1.5rem;">
+            <i class="ph ph-users-three" style="font-size: 3rem; color: var(--primary);"></i>
+            <h2 style="margin: 0.5rem 0; font-size: 1.5rem;">Como você quer acessar?</h2>
+            <p style="color: var(--text-muted); font-size: 0.95rem;">
+                Identificamos que você faz parte de mais de um grupo ativo no momento. 
+                Escolha por qual deles deseja realizar seus agendamentos:
+            </p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}" style="margin-bottom: 1rem; text-align: left;">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('aluno_selecionar_contexto') }}">
+            {% for ctx in contextos %}
+            <button type="submit" name="contexto_id" value="{{ ctx.id }}" class="context-option">
+                {% if 'Turma' in ctx.nome %}
+                    <i class="ph ph-student"></i>
+                {% else %}
+                    <i class="ph ph-calendar-star"></i>
+                {% endif %}
+                {{ ctx.nome }}
+            </button>
+            {% endfor %}
+        </form>
+        
+        <div style="margin-top: 1.5rem; text-align: center;">
+            <a href="{{ url_for('logout') }}" style="color: var(--text-muted); font-size: 0.85rem; text-decoration: none;">
+                <i class="ph ph-sign-out"></i> Cancelar e Sair
+            </a>
+        </div>
+    </div>
+
+</body>
+</html>

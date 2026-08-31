@@ -5,10 +5,11 @@
     <div style="margin-bottom: 2rem;">
         <a href="{{ url_for('admin_dashboard') }}" style="color: var(--text-muted); display: inline-flex; align-items: center;"><i class="ph ph-arrow-left" style="margin-right: 4px;"></i> Voltar ao Painel</a>
         <h1 style="margin-top: 1rem;"><i class="ph ph-shield-check"></i> Gestão de Administradores</h1>
-        <p style="color: var(--text-muted);">Cadastre professores, vigias ou serventes para acesso à Tela de Fila.</p>
+        <p style="color: var(--text-muted);">Cadastre professores, vigias ou serventes para acesso ao sistema.</p>
     </div>
 
     <div class="grid">
+        <!-- Formulário de novo admin -->
         <div class="card">
             <h2>Novo Administrador</h2>
             <form method="POST" action="{{ url_for('admin_administradores') }}">
@@ -16,32 +17,46 @@
                     <label for="usuario">Usuário (Ex: joao.vigia)</label>
                     <input type="text" id="usuario" name="usuario" required>
                 </div>
-                
+
                 <div class="form-group">
                     <label for="senha">Senha de Acesso</label>
                     <input type="password" id="senha" name="senha" required>
                 </div>
-                
+
                 <div class="form-group">
                     <label style="font-weight: bold; margin-bottom: 0.5rem; display: block;">Permissões de Acesso</label>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; background: #f9fafb; padding: 1rem; border-radius: 8px; border: 1px solid var(--border);">
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="turmas"> Gestão de Turmas</label>
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="alunos"> Gestão de Alunos</label>
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="cardapios"> Cardápios</label>
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="relatorios"> Relatórios / Excel</label>
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="avisos"> Mural de Avisos</label>
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="fila"> Modo Fila (Scanner)</label>
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="admins"> Gestão de Admins</label>
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="config"> Config. de Marca</label>
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="smtp"> Config. de E-mail</label>
+
+                    <!-- Checkbox "Mestre" -->
+                    <label style="display: flex; align-items: center; gap: 8px; padding: 0.6rem 1rem; background: var(--primary); color: white; border-radius: 8px; margin-bottom: 0.75rem; cursor: pointer; font-weight: 600;">
+                        <input type="checkbox" id="chk_all_new" onchange="toggleAll('new', this.checked)" style="width:16px; height:16px; accent-color: white;">
+                        <i class="ph ph-crown-simple"></i> Mestre — todas as permissões
+                    </label>
+
+                    <div id="perms_new" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; background: #f9fafb; padding: 1rem; border-radius: 8px; border: 1px solid var(--border);">
+                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="turmas"    class="perm-new"> Gestão de Turmas</label>
+                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="alunos"    class="perm-new"> Gestão de Alunos</label>
+                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="cardapios" class="perm-new"> Cardápios</label>
+                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="relatorios" class="perm-new"> Relatórios / Excel</label>
+                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="avisos"    class="perm-new"> Mural de Avisos</label>
+                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="fila"      class="perm-new"> Modo Fila (Scanner)</label>
+                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="eventos"   class="perm-new"> Módulo Eventos</label>
+                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="admins"    class="perm-new"> Gestão de Admins</label>
+                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="config"    class="perm-new"> Config. de Marca</label>
+                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="smtp"      class="perm-new"> Config. de E-mail</label>
+                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="base_conhecimento" class="perm-new"> Base de Conhecimento</label>
+                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="pesquisas" class="perm-new"> Pesquisas e Formulários</label>
                     </div>
-                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">Administradores com permissão total ("all") não precisam marcar estas opções.</p>
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">
+                        Marque <strong>Mestre</strong> para acesso total, ou selecione permissões individuais.
+                        Sem nenhuma seleção, o admin será criado como <strong>Mestre</strong> por padrão.
+                    </p>
                 </div>
 
                 <button type="submit" class="btn btn-primary" style="width: 100%;"><i class="ph ph-user-plus" style="margin-right: 8px;"></i> Cadastrar Acesso</button>
             </form>
         </div>
 
+        <!-- Tabela de admins existentes -->
         <div class="card" style="grid-column: span 2;">
             <h2>Credenciais Ativas</h2>
             <div class="table-responsive">
@@ -50,18 +65,27 @@
                         <tr>
                             <th>Usuário</th>
                             <th>Nível</th>
+                            <th>Permissões</th>
                             <th>Ações</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for a in admins %}
+                        {% set perms = a.permissoes | fromjson if a.permissoes else [] %}
                         <tr>
                             <td><strong>{{ a.usuario }}</strong></td>
                             <td>
-                                {% if a.perfil == 'admin_mestre' %}
-                                    <span class="badge" style="background:var(--primary);color:white;font-size:0.75rem;">Mestre</span>
+                                {% if 'all' in perms or a.perfil == 'admin_mestre' %}
+                                    <span class="badge" style="background:var(--primary);color:white;font-size:0.75rem;"><i class="ph ph-crown-simple"></i> Mestre</span>
                                 {% else %}
-                                    <span class="badge" style="background:#E5E7EB;color:black;font-size:0.75rem;">Operador Fila</span>
+                                    <span class="badge" style="background:#E5E7EB;color:#374151;font-size:0.75rem;"><i class="ph ph-user-circle"></i> Operador</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if 'all' in perms or a.perfil == 'admin_mestre' %}
+                                    <span style="font-size: 0.8rem; color: var(--text-muted);">Todas</span>
+                                {% else %}
+                                    <span style="font-size: 0.8rem; color: var(--text-muted);">{{ perms | join(', ') if perms else '—' }}</span>
                                 {% endif %}
                             </td>
                             <td style="display: flex; gap: 0.5rem; align-items: center; min-width: 320px;">
@@ -72,7 +96,8 @@
                                     </button>
                                 </form>
 
-                                <button type="button" class="btn" style="background:var(--secondary); color:white; padding: 0.25rem 0.5rem; font-size: 0.8rem; border-radius: 4px;" title="Editar Permissões" onclick="abrirEdicaoAdmin('{{ a.id }}', '{{ a.usuario }}', '{{ a.perfil }}', '{{ a.permissoes }}')">
+                                <button type="button" class="btn" style="background:var(--secondary); color:white; padding: 0.25rem 0.5rem; font-size: 0.8rem; border-radius: 4px;" title="Editar Permissões"
+                                    onclick="abrirEdicaoAdmin('{{ a.id }}', '{{ a.usuario }}', '{{ a.perfil }}', '{{ a.permissoes | replace("'", "\\'") }}')">
                                     <i class="ph ph-pencil"></i>
                                 </button>
 
@@ -92,36 +117,40 @@
         </div>
     </div>
 
-    <!-- Modal de Edição de Admin -->
+    <!-- Modal de Edição -->
     <div id="modalEditAdmin" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center;">
-        <div class="card fade-in" style="background: white; border-radius: 12px; width: 100%; max-width: 500px; padding: 2rem; margin: auto; position: relative; top: 15%;">
+        <div class="card fade-in" style="background: white; border-radius: 12px; width: 100%; max-width: 520px; padding: 2rem; margin: auto; position: relative; top: 10%; max-height: 80vh; overflow-y: auto;">
             <h2 id="editAdminTitle" style="color: var(--primary); margin-bottom: 1rem;"><i class="ph ph-user-circle-gear"></i> Editar Permissões</h2>
-            
+
             <form id="formEditAdmin" method="POST" action="">
-                <div class="form-group">
-                    <label for="edit_perfil">Perfil / NÍVEL</label>
-                    <select id="edit_perfil" name="perfil" required>
-                        <option value="admin_mestre">Mestre (Todas as Permissões)</option>
-                        <option value="operador_fila">Operador de Fila / Outros</option>
-                    </select>
-                </div>
 
+                <!-- Checkbox Mestre no modal -->
                 <div class="form-group">
-                    <label style="font-weight: bold; margin-bottom: 0.5rem; display: block;">Permissões de Acesso</label>
-                    <div id="containerPermissoes" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; background: #f9fafb; padding: 1rem; border-radius: 8px; border: 1px solid var(--border);">
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="turmas"> Gestão de Turmas</label>
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="alunos"> Gestão de Alunos</label>
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="cardapios"> Cardápios</label>
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="relatorios"> Relatórios / Excel</label>
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="avisos"> Mural de Avisos</label>
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="fila"> Modo Fila (Scanner)</label>
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="admins"> Gestão de Admins</label>
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="config"> Config. de Marca</label>
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="smtp"> Config. de E-mail</label>
+                    <label style="display: flex; align-items: center; gap: 8px; padding: 0.6rem 1rem; background: var(--primary); color: white; border-radius: 8px; margin-bottom: 0.75rem; cursor: pointer; font-weight: 600;">
+                        <input type="checkbox" id="chk_all_edit" onchange="toggleAll('edit', this.checked)" style="width:16px; height:16px; accent-color: white;">
+                        <i class="ph ph-crown-simple"></i> Mestre — todas as permissões
+                    </label>
+
+                    <div id="perms_edit" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; background: #f9fafb; padding: 1rem; border-radius: 8px; border: 1px solid var(--border);">
+                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="turmas"     class="perm-edit"> Gestão de Turmas</label>
+                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="alunos"     class="perm-edit"> Gestão de Alunos</label>
+                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="cardapios"  class="perm-edit"> Cardápios</label>
+                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="relatorios" class="perm-edit"> Relatórios / Excel</label>
+                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="avisos"     class="perm-edit"> Mural de Avisos</label>
+                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="fila"       class="perm-edit"> Modo Fila (Scanner)</label>
+                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="eventos"    class="perm-edit"> Módulo Eventos</label>
+                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="admins"     class="perm-edit"> Gestão de Admins</label>
+                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="config"     class="perm-edit"> Config. de Marca</label>
+                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="smtp"       class="perm-edit"> Config. de E-mail</label>
+                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="base_conhecimento" class="perm-edit"> Base de Conhecimento</label>
+                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="pesquisas" class="perm-edit"> Pesquisas e Formulários</label>
                     </div>
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">
+                        Marque <strong>Mestre</strong> para conceder acesso total. O nível exibido na tabela será atualizado automaticamente.
+                    </p>
                 </div>
 
-                <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
                     <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="document.getElementById('modalEditAdmin').style.display='none'">Cancelar</button>
                     <button type="submit" class="btn btn-primary" style="flex: 1;"><i class="ph ph-floppy-disk" style="margin-right: 8px;"></i> Salvar Alterações</button>
                 </div>
@@ -130,32 +159,55 @@
     </div>
 
     <script>
+        // Marca/desmarca todos os checkboxes individuais
+        function toggleAll(grupo, checked) {
+            document.querySelectorAll('.perm-' + grupo).forEach(chk => {
+                chk.checked = checked;
+                chk.disabled = checked; // desabilita individuais quando mestre está marcado
+            });
+        }
+
+        // Abre o modal de edição preenchendo os campos
         function abrirEdicaoAdmin(id, usuario, perfil, permissoes) {
             const modal = document.getElementById('modalEditAdmin');
             const title = document.getElementById('editAdminTitle');
-            const form = document.getElementById('formEditAdmin');
-            const selPerfil = document.getElementById('edit_perfil');
-            
+            const form  = document.getElementById('formEditAdmin');
+            const chkAll = document.getElementById('chk_all_edit');
+
             title.innerHTML = `<i class="ph ph-user-circle-gear"></i> Editar Permissões: ${usuario}`;
             form.action = `/admin/administradores/editar/${id}`;
-            selPerfil.value = perfil;
-            
+
             // Parse permissões JSON
             let perms = [];
-            try {
-                perms = JSON.parse(permissoes || '[]');
-            } catch(e) {
-                perms = [];
-            }
-            
-            // Marcar checkboxes correspondentes
-            const checks = document.querySelectorAll('#containerPermissoes input[type="checkbox"]');
-            checks.forEach(chk => {
-                chk.checked = perms.includes(chk.value) || perms.includes('all');
+            try { perms = JSON.parse(permissoes || '[]'); } catch(e) { perms = []; }
+
+            const isMestre = perms.includes('all') || perfil === 'admin_mestre';
+
+            // Configura o checkbox mestre
+            chkAll.checked = isMestre;
+
+            // Configura os checkboxes individuais
+            document.querySelectorAll('.perm-edit').forEach(chk => {
+                chk.checked  = isMestre || perms.includes(chk.value);
+                chk.disabled = isMestre;
             });
-            
+
             modal.style.display = 'flex';
         }
+
+        // Fecha modal ao clicar fora
+        document.getElementById('modalEditAdmin').addEventListener('click', function(e) {
+            if (e.target === this) this.style.display = 'none';
+        });
+
+        // Sincroniza checkbox mestre quando individuais são clicados (novo admin)
+        document.querySelectorAll('.perm-new').forEach(chk => {
+            chk.addEventListener('change', function() {
+                const todos = document.querySelectorAll('.perm-new');
+                const todosMarcados = Array.from(todos).every(c => c.checked);
+                document.getElementById('chk_all_new').checked = todosMarcados;
+            });
+        });
     </script>
 </div>
 {% endblock %}

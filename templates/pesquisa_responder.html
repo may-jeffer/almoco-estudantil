@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="fade-in" style="max-width: 760px; margin: 0 auto; padding: 1rem 0 3rem 0;">
+
+    {% if erro_status %}
+    <!-- Telas de Status / Erro -->
+    <div class="card" style="text-align: center; padding: 3rem 2rem; border-top: 5px solid #ef4444; border-radius: 12px;">
+        {% if erro_status == 'nao_encontrado' %}
+            <i class="ph ph-warning-circle" style="font-size: 3.5rem; color: #ef4444; margin-bottom: 1rem; display: block;"></i>
+            <h2 style="margin-top: 0; color: var(--text-main);">Pesquisa Não Encontrada</h2>
+            <p style="color: var(--text-muted); max-width: 450px; margin: 0 auto 1.5rem auto;">
+                O formulário solicitado não existe ou o link pode estar incorreto.
+            </p>
+        {% elif erro_status == 'desativado' %}
+            <i class="ph ph-pause-circle" style="font-size: 3.5rem; color: #f59e0b; margin-bottom: 1rem; display: block;"></i>
+            <h2 style="margin-top: 0; color: var(--text-main);">Formulário Temporariamente Indisponível</h2>
+            <p style="color: var(--text-muted); max-width: 450px; margin: 0 auto 1.5rem auto;">
+                Esta pesquisa foi pausada pelo administrador do sistema. Tente novamente mais tarde.
+            </p>
+        {% elif erro_status == 'expirado' %}
+            <i class="ph ph-clock-countdown" style="font-size: 3.5rem; color: #6b7280; margin-bottom: 1rem; display: block;"></i>
+            <h2 style="margin-top: 0; color: var(--text-main);">Prazo de Resposta Encerrado</h2>
+            <p style="color: var(--text-muted); max-width: 450px; margin: 0 auto 1.5rem auto;">
+                O período de coleta de respostas para esta pesquisa expirou em <strong>{{ formulario.data_fim | datetimeformat }}</strong>.
+            </p>
+        {% elif erro_status == 'nao_iniciado' %}
+            <i class="ph ph-calendar" style="font-size: 3.5rem; color: #3b82f6; margin-bottom: 1rem; display: block;"></i>
+            <h2 style="margin-top: 0; color: var(--text-main);">Pesquisa Não Iniciada</h2>
+            <p style="color: var(--text-muted); max-width: 450px; margin: 0 auto 1.5rem auto;">
+                As respostas para este formulário serão abertas em <strong>{{ formulario.data_inicio | datetimeformat }}</strong>.
+            </p>
+        {% elif erro_status == 'ja_respondeu' %}
+            <i class="ph ph-check-circle" style="font-size: 3.5rem; color: #10b981; margin-bottom: 1rem; display: block;"></i>
+            <h2 style="margin-top: 0; color: var(--text-main);">Você já respondeu a esta pesquisa!</h2>
+            <p style="color: var(--text-muted); max-width: 450px; margin: 0 auto 1.5rem auto;">
+                Identificamos que sua resposta já foi registrada anteriormente. Muito obrigado pela sua colaboração!
+            </p>
+            {% if aluno_atual %}
+            <span class="badge" style="background: #eef2ff; color: #4338ca; font-size: 0.9rem; padding: 6px 12px;">
+                Estudante: {{ aluno_atual.nome }}
+            </span>
+            {% endif %}
+        {% endif %}
+        <div style="margin-top: 2rem;">
+            <a href="{{ url_for('main.index') }}" class="btn btn-secondary">
+                <i class="ph ph-house"></i> Voltar à Página Inicial
+            </a>
+        </div>
+    </div>
+
+    {% elif precisa_identificacao %}
+    <!-- Tela de Identificação do Aluno (quando a pesquisa é identificada e não há login prévio) -->
+    <div class="card" style="border-top: 6px solid #6366f1; padding: 2.5rem 2rem; border-radius: 12px;">
+        <div style="text-align: center; margin-bottom: 2rem;">
+            <div style="width: 60px; height: 60px; background: #eef2ff; color: #6366f1; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 2rem; margin-bottom: 1rem;">
+                <i class="ph ph-identification-badge"></i>
+            </div>
+            <h2 style="margin: 0; color: var(--text-main);">Identificação do Estudante</h2>
+            <p style="color: var(--text-muted); font-size: 0.95rem; margin-top: 0.5rem;">
+                A pesquisa <strong>"{{ formulario.titulo }}"</strong> requer a validação de seus dados cadastrais antes de responder.
+            </p>
+        </div>
+
+        <form method="POST" action="{{ url_for('pesquisa_identificar', slug=formulario.slug) }}" style="max-width: 420px; margin: 0 auto;">
+            <div class="form-group" style="margin-bottom: 1.25rem;">
+                <label for="cpf" style="font-weight: 600; font-size: 0.9rem;">CPF do Estudante *</label>
+                <input type="text" id="cpf" name="cpf" required placeholder="000.000.000-00" autofocus
+                       style="font-size: 1.1rem; padding: 0.65rem 0.85rem; border-radius: 8px; border: 1px solid var(--border); width: 100%;">
+            </div>
+
+            {% if modo_login == 'DATA_NASC' %}
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label for="data_nascimento" style="font-weight: 600; font-size: 0.9rem;">Data de Nascimento *</label>
+                <input type="date" id="data_nascimento" name="data_nascimento" required
+                       style="font-size: 1.1rem; padding: 0.65rem 0.85rem; border-radius: 8px; border: 1px solid var(--border); width: 100%;">
+            </div>
+            {% else %}
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label for="senha" style="font-weight: 600; font-size: 0.9rem;">Senha de Acesso *</label>
+                <input type="password" id="senha" name="senha" required placeholder="Sua senha cadastrada"
+                       style="font-size: 1.1rem; padding: 0.65rem 0.85rem; border-radius: 8px; border: 1px solid var(--border); width: 100%;">
+            </div>
+            {% endif %}
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.8rem; font-size: 1rem; font-weight: bold; background: #6366f1; border-color: #4f46e5;">
+                <i class="ph ph-arrow-right"></i> Continuar para a Pesquisa
+            </button>
+        </form>
+    </div>
+
+    {% elif sucesso %}
+    <!-- Tela de Confirmação de Sucesso -->
+    <div class="card fade-in" style="text-align: center; padding: 3.5rem 2rem; border-top: 6px solid #10b981; border-radius: 12px;">
+        <div style="width: 80px; height: 80px; background: #dcfce7; color: #10b981; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 3rem; margin-bottom: 1.5rem;">
+            <i class="ph ph-check-bold"></i>
+        </div>
+        <h2 style="margin: 0; color: #065f46; font-size: 1.8rem;">Resposta Registrada com Sucesso!</h2>
+        <p style="color: var(--text-muted); max-width: 480px; margin: 1rem auto 2rem auto; font-size: 1.05rem; line-height: 1.5;">
+            Suas respostas para o formulário <strong>"{{ formulario.titulo }}"</strong> foram salvas no sistema. Agradecemos muito a sua participação!
+        </p>
+        <div>
+            <a href="{{ url_for('main.index') }}" class="btn btn-primary" style="padding: 0.75rem 2rem; font-size: 1rem;">
+                <i class="ph ph-house"></i> Ir para o Início
+            </a>
+        </div>
+    </div>
+
+    {% else %}
+    <!-- Formulário de Preenchimento -->
+    <form method="POST" action="{{ url_for('pesquisa_enviar', slug=formulario.slug) }}" id="formResponderPesquisa">
+
+        <!-- Card Cabeçalho -->
+        <div class="card" style="border-top: 8px solid #6366f1; padding: 2rem; margin-bottom: 1.5rem; border-radius: 12px;">
+            <h1 style="margin: 0 0 0.5rem 0; font-size: 1.75rem; color: var(--text-main);">{{ formulario.titulo }}</h1>
+            {% if formulario.descricao %}
+            <p style="color: var(--text-muted); font-size: 1rem; line-height: 1.5; margin: 0 0 1.25rem 0; white-space: pre-line;">
+                {{ formulario.descricao }}
+            </p>
+            {% endif %}
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); padding-top: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+                {% if formulario.is_anonimo %}
+                <span class="badge" style="background: #f1f5f9; color: #475569; font-size: 0.85rem;">
+                    <i class="ph ph-mask-happy"></i> Pesquisa Anônima (Sem identificação)
+                </span>
+                {% elif aluno_atual %}
+                <span class="badge" style="background: #e0e7ff; color: #4338ca; font-size: 0.85rem;">
+                    <i class="ph ph-user"></i> Respondendo como: <strong>{{ aluno_atual.nome }}</strong> ({{ aluno_atual.turma_nome or 'Sem Turma' }})
+                </span>
+                {% endif %}
+
+                <span style="color: #ef4444; font-size: 0.85rem;">* Campos obrigatórios</span>
+            </div>
+        </div>
+
+        <!-- Cards das Perguntas -->
+        <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+            {% for p in perguntas %}
+            <div class="card pergunta-box" style="padding: 1.75rem; border-radius: 10px; border: 1px solid var(--border); margin: 0; background: white;">
+                <div style="margin-bottom: 1.25rem;">
+                    <label style="font-size: 1.1rem; font-weight: 600; color: var(--text-main); line-height: 1.4; display: block;">
+                        <span style="color: #6366f1; font-weight: bold; margin-right: 4px;">{{ loop.index }}.</span> 
+                        {{ p.titulo }}
+                        {% if p.obrigatoria %}<span style="color: #ef4444; margin-left: 2px;">*</span>{% endif %}
+                    </label>
+                </div>
+
+                <!-- 1. MÚLTIPLA ESCOLHA (Radio) -->
+                {% if p.tipo == 'multipla_escolha' %}
+                <div style="display: flex; flex-direction: column; gap: 0.65rem;">
+                    {% for op in p.opcoes %}
+                    <label style="display: flex; align-items: center; gap: 10px; padding: 0.65rem 0.85rem; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; cursor: pointer; transition: all 0.2s ease; margin: 0;" class="opcao-label">
+                        <input type="radio" name="pergunta_{{ p.id }}" value="{{ op }}" {% if p.obrigatoria and loop.first %}required{% endif %} style="width: 18px; height: 18px; margin: 0; cursor: pointer;">
+                        <span style="font-size: 0.95rem; color: var(--text-main);">{{ op }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+
+                <!-- 2. CAIXAS DE SELEÇÃO (Checkbox) -->
+                {% elif p.tipo == 'checkbox' %}
+                <div style="display: flex; flex-direction: column; gap: 0.65rem;">
+                    {% for op in p.opcoes %}
+                    <label style="display: flex; align-items: center; gap: 10px; padding: 0.65rem 0.85rem; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; cursor: pointer; transition: all 0.2s ease; margin: 0;" class="opcao-label">
+                        <input type="checkbox" name="pergunta_{{ p.id }}" value="{{ op }}" style="width: 18px; height: 18px; margin: 0; cursor: pointer;">
+                        <span style="font-size: 0.95rem; color: var(--text-main);">{{ op }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+
+                <!-- 3. RESPOSTA CURTA -->
+                {% elif p.tipo == 'texto_curto' %}
+                <div>
+                    <input type="text" name="pergunta_{{ p.id }}" placeholder="Sua resposta..." {% if p.obrigatoria %}required{% endif %}
+                           style="width: 100%; font-size: 1rem; padding: 0.75rem 0.85rem; border-radius: 6px; border: 1px solid var(--border);">
+                </div>
+
+                <!-- 4. PARÁGRAFO / TEXTO LONGO -->
+                {% elif p.tipo == 'texto_longo' %}
+                <div>
+                    <textarea name="pergunta_{{ p.id }}" rows="4" placeholder="Sua resposta detalhada..." {% if p.obrigatoria %}required{% endif %}
+                              style="width: 100%; font-size: 0.95rem; padding: 0.75rem; border-radius: 6px; border: 1px solid var(--border);"></textarea>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Botão de Envio -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; padding: 1rem 0;">
+            <a href="{{ url_for('main.index') }}" class="btn btn-secondary" style="padding: 0.75rem 1.25rem;">
+                Cancelar
+            </a>
+            <button type="submit" class="btn btn-primary" style="padding: 0.85rem 2.5rem; font-size: 1.1rem; font-weight: bold; background: #6366f1; border-color: #4f46e5; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);">
+                <i class="ph ph-paper-plane-right" style="margin-right: 8px;"></i> Enviar Respostas
+            </button>
+        </div>
+    </form>
+    {% endif %}
+</div>
+
+<style>
+.opcao-label:hover {
+    background: #eef2ff !important;
+    border-color: #c7d2fe !important;
+}
+.opcao-label:has(input:checked) {
+    background: #eef2ff !important;
+    border-color: #6366f1 !important;
+    font-weight: 600;
+}
+</style>
+{% endblock %}

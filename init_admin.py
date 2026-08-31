@@ -1,7 +1,7 @@
 import sys
 import getpass
 from werkzeug.security import generate_password_hash
-import models
+from database import init_db, closing, get_db_connection
 
 # Cores ANSI para o terminal
 GREEN = "\033[92m"
@@ -12,9 +12,9 @@ BOLD = "\033[1m"
 
 def main():
     print(f"\n{BOLD}{GREEN}--- Inicializador de Administrador (Deploy Seguro) ---{RESET}")
-    models.init_db()
+    init_db()
     
-    with models.closing(models.get_db_connection()) as conn:
+    with closing(get_db_connection()) as conn:
         count = conn.execute("SELECT COUNT(*) FROM administradores").fetchone()[0]
         if count > 0:
             print(f"{YELLOW}AVISO: Já existem administradores cadastrados neste banco.{RESET}")

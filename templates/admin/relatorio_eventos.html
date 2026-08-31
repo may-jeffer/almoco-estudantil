@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="fade-in">
+    <div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <a href="{{ url_for('admin_relatorios') }}" style="color: var(--text-muted); display: inline-flex; align-items: center; text-decoration: none; margin-bottom: 0.5rem;">
+                <i class="ph ph-arrow-left" style="margin-right: 4px;"></i> Voltar para Relatórios
+            </a>
+            <h1 style="margin: 0;"><i class="ph ph-calendar-check"></i> Consumo por Evento</h1>
+            <p style="color: var(--text-muted); margin-top: 0.25rem;">Veja quantas vezes e em quais dias cada participante do evento comeu.</p>
+        </div>
+    </div>
+
+    <!-- Filtro -->
+    <div class="card" style="margin-bottom: 2rem;">
+        <form method="GET" action="{{ url_for('admin_relatorio_eventos') }}" style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
+            <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
+                <label for="evento_id">Selecione o Evento</label>
+                <select name="evento_id" id="evento_id" class="form-control" required>
+                    <option value="">-- Escolha um evento --</option>
+                    {% for ev in eventos %}
+                    <option value="{{ ev.id }}" {% if evento_id == ev.id %}selected{% endif %}>{{ ev.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary" style="margin-bottom: 0;">
+                <i class="ph ph-magnifying-glass"></i> Gerar Relatório
+            </button>
+        </form>
+    </div>
+
+    {% if evento_selecionado %}
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <div>
+                <h2 style="margin: 0; font-size: 1.25rem;">Relatório: {{ evento_selecionado.nome }}</h2>
+                <p style="color: var(--text-muted); margin: 0; font-size: 0.9rem;">
+                    Período do Evento: 
+                    {% if evento_selecionado.data_inicio and evento_selecionado.data_fim %}
+                        {{ evento_selecionado.data_inicio }} a {{ evento_selecionado.data_fim }}
+                    {% else %}
+                        Não definido
+                    {% endif %}
+                </p>
+            </div>
+            <button class="btn btn-secondary" onclick="window.print()">
+                <i class="ph ph-printer"></i> Imprimir
+            </button>
+        </div>
+
+        {% if relatorio %}
+        <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nome do Participante</th>
+                        <th>CPF</th>
+                        <th>Instituição</th>
+                        <th style="text-align: center;">Total Consumido</th>
+                        <th>Datas do Consumo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in relatorio %}
+                    <tr>
+                        <td><strong>{{ item.nome }}</strong><br><small style="color: var(--text-muted);">{{ item.email if item.email else '-' }}</small></td>
+                        <td>{{ item.cpf }}</td>
+                        <td>{{ item.instituicao if item.instituicao else '-' }}</td>
+                        <td style="text-align: center; font-size: 1.1rem; font-weight: 600; color: {% if item.total_refeicoes > 0 %}var(--success){% else %}var(--text-muted){% endif %};">
+                            {{ item.total_refeicoes }}
+                        </td>
+                        <td style="color: var(--text-muted); font-size: 0.85rem;">
+                            {{ item.datas_consumo if item.datas_consumo else 'Não consumiu' }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+            <i class="ph ph-users-slash" style="font-size: 2.5rem; margin-bottom: 1rem; color: #d1d5db;"></i>
+            <p>Nenhum participante encontrado neste evento.</p>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="fade-in">
+    <div style="margin-bottom: 2rem;">
+        <a href="{{ url_for('admin_pesquisas') }}" style="color: var(--text-muted); display: inline-flex; align-items: center; text-decoration: none;">
+            <i class="ph ph-arrow-left" style="margin-right: 6px;"></i> Voltar para Pesquisas
+        </a>
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 1rem; flex-wrap: wrap; gap: 1rem;">
+            <div>
+                <h1 style="margin: 0; display: flex; align-items: center; gap: 10px;">
+                    <i class="ph ph-chart-bar" style="color: #6366f1;"></i> Relatório de Respostas: {{ formulario.titulo }}
+                </h1>
+                {% if formulario.descricao %}
+                <p style="color: var(--text-muted); margin: 0.25rem 0 0 0; font-size: 0.95rem;">
+                    {{ formulario.descricao }}
+                </p>
+                {% endif %}
+            </div>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <a href="{{ url_for('pesquisa_responder', slug=formulario.slug) }}" target="_blank" class="btn btn-secondary" style="padding: 0.6rem 1rem; font-size: 0.9rem;">
+                    <i class="ph ph-arrow-square-out"></i> Abrir Formulário
+                </a>
+                <a href="{{ url_for('admin_pesquisa_excel', id=formulario.id) }}" class="btn btn-primary" style="padding: 0.6rem 1.2rem; font-size: 0.9rem; background: #10b981; border-color: #059669;">
+                    <i class="ph ph-file-xls"></i> Baixar Planilha (Excel)
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cards de Resumo -->
+    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+        <div class="card" style="padding: 1.25rem; text-align: center; border-top: 4px solid #6366f1; margin: 0;">
+            <p style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; margin-bottom: 0.25rem; font-weight: 600;">Total de Respostas</p>
+            <h2 style="font-size: 2.2rem; color: #6366f1; margin: 0;">{{ total_envios }}</h2>
+            <small style="color: var(--text-muted); font-size: 0.75rem;">Questionários preenchidos</small>
+        </div>
+
+        <div class="card" style="padding: 1.25rem; text-align: center; border-top: 4px solid #0ea5e9; margin: 0;">
+            <p style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; margin-bottom: 0.25rem; font-weight: 600;">Identificação</p>
+            <div style="margin-top: 0.5rem;">
+                {% if formulario.is_anonimo %}
+                <span class="badge" style="background: #f1f5f9; color: #475569; font-size: 0.9rem; padding: 4px 10px;">
+                    <i class="ph ph-mask-happy"></i> 100% Anônimo
+                </span>
+                {% else %}
+                <span class="badge" style="background: #e0e7ff; color: #4338ca; font-size: 0.9rem; padding: 4px 10px;">
+                    <i class="ph ph-user"></i> Identificado
+                </span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem; text-align: center; border-top: 4px solid #10b981; margin: 0;">
+            <p style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; margin-bottom: 0.25rem; font-weight: 600;">Status</p>
+            <div style="margin-top: 0.5rem;">
+                {% if formulario.ativo %}
+                <span class="badge badge-active" style="font-size: 0.9rem; padding: 4px 10px;">ATIVO</span>
+                {% else %}
+                <span class="badge badge-cancelled" style="font-size: 0.9rem; padding: 4px 10px;">INATIVO</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem; text-align: center; border-top: 4px solid #f59e0b; margin: 0;">
+            <p style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; margin-bottom: 0.25rem; font-weight: 600;">Perguntas</p>
+            <h2 style="font-size: 2.2rem; color: #f59e0b; margin: 0;">{{ perguntas | length }}</h2>
+            <small style="color: var(--text-muted); font-size: 0.75rem;">Questões no formulário</small>
+        </div>
+    </div>
+
+    <!-- Navegação por Abas -->
+    <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 2px solid var(--border);">
+        <button type="button" class="btn tab-btn active" id="btn-tab-resumo" onclick="switchRespostasTab('tab-resumo')" style="border-radius: 8px 8px 0 0; font-weight: 600; padding: 0.6rem 1.25rem; border: none; border-bottom: 3px solid var(--primary); background: transparent; color: var(--primary);">
+            <i class="ph ph-chart-pie-slice"></i> Resumo Gráfico das Perguntas
+        </button>
+        <button type="button" class="btn tab-btn" id="btn-tab-detalhado" onclick="switchRespostasTab('tab-detalhado')" style="border-radius: 8px 8px 0 0; font-weight: 600; padding: 0.6rem 1.25rem; border: none; border-bottom: 3px solid transparent; background: transparent; color: var(--text-muted);">
+            <i class="ph ph-table"></i> Tabela Detalhada de Respostas ({{ total_envios }})
+        </button>
+    </div>
+
+    <!-- ABA 1: Resumo Gráfico e Estatísticas -->
+    <div id="tab-resumo" class="tab-content" style="display: block;">
+        {% if total_envios == 0 %}
+        <div class="card" style="text-align: center; padding: 3rem; color: var(--text-muted);">
+            <i class="ph ph-chat-circle-dots" style="font-size: 3.5rem; color: #cbd5e1; display: block; margin-bottom: 0.5rem;"></i>
+            <h3>Nenhuma resposta recebida ainda</h3>
+            <p>Compartilhe o link ou QR Code com os estudantes para começar a coletar respostas.</p>
+        </div>
+        {% else %}
+        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+            {% for stat in estatisticas %}
+            <div class="card" style="border-radius: 10px; padding: 1.75rem; border: 1px solid var(--border); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.03);">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.5rem;">
+                    <div>
+                        <span class="badge" style="background: #eef2ff; color: #4338ca; font-weight: bold; font-size: 0.75rem; text-transform: uppercase;">
+                            Pergunta {{ loop.index }} • {% if stat.tipo == 'multipla_escolha' %}Múltipla Escolha{% elif stat.tipo == 'checkbox' %}Caixas de Seleção{% elif stat.tipo == 'texto_curto' %}Texto Curto{% else %}Parágrafo{% endif %}
+                        </span>
+                        <h3 style="margin: 0.5rem 0 0 0; font-size: 1.15rem; color: var(--text-main);">
+                            {{ stat.titulo }}
+                        </h3>
+                    </div>
+                    <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">
+                        {{ stat.total_respostas }} resposta(s)
+                    </span>
+                </div>
+
+                {% if stat.tipo in ('multipla_escolha', 'checkbox') %}
+                <!-- Gráficos de Barra / Progresso para Perguntas de Escolha -->
+                <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+                    {% for op, qtd in stat.contagem_opcoes.items() %}
+                    {% set pct = (qtd / total_envios * 100) | round(1) if total_envios > 0 else 0 %}
+                    <div style="background: #f8fafc; padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid #f1f5f9;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem; font-size: 0.95rem;">
+                            <strong style="color: var(--text-main);">{{ op }}</strong>
+                            <span style="font-weight: bold; color: #4338ca;">{{ qtd }} <small style="color: var(--text-muted); font-weight: normal;">({{ pct }}%)</small></span>
+                        </div>
+                        <div style="background: #e2e8f0; border-radius: 6px; height: 10px; overflow: hidden; width: 100%;">
+                            <div style="background: linear-gradient(90deg, #6366f1, #0ea5e9); height: 100%; width: {{ pct }}%; border-radius: 6px; transition: width 0.6s ease;"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <!-- Listagem de Respostas Abertas -->
+                <div style="max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; padding-right: 0.5rem;">
+                    {% for txt in stat.respostas_texto %}
+                    <div style="background: #f8fafc; padding: 0.75rem 1rem; border-radius: 6px; border-left: 3px solid #6366f1; font-size: 0.9rem; color: var(--text-main); line-height: 1.4;">
+                        {{ txt }}
+                    </div>
+                    {% else %}
+                    <p style="color: var(--text-muted); font-style: italic; font-size: 0.85rem;">Nenhuma resposta registrada para esta pergunta.</p>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- ABA 2: Tabela Detalhada de Respostas -->
+    <div id="tab-detalhado" class="tab-content" style="display: none;">
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+                <h3 style="margin: 0; font-size: 1.1rem;"><i class="ph ph-list"></i> Todas as Respostas Registradas</h3>
+                <input type="text" id="filtroTabela" onkeyup="filtrarTabelaRespostas()" placeholder="Filtrar por estudante ou resposta..." style="font-size: 0.85rem; padding: 0.4rem 0.75rem; border-radius: 6px; border: 1px solid var(--border); min-width: 250px;">
+            </div>
+
+            <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                <table id="tabelaRespostas">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px; text-align: center;">#</th>
+                            <th style="white-space: nowrap;">Data / Hora</th>
+                            {% if formulario.is_anonimo == 0 %}
+                            <th>Estudante</th>
+                            <th>Turma</th>
+                            {% endif %}
+                            {% for p in perguntas %}
+                            <th style="min-width: 160px;">{{ p.titulo_pergunta }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for e in envios %}
+                        <tr>
+                            <td style="text-align: center; vertical-align: middle; font-weight: bold; color: var(--text-muted); font-size: 0.8rem;">
+                                {{ loop.index }}
+                            </td>
+                            <td style="vertical-align: middle; white-space: nowrap; font-size: 0.85rem;">
+                                {{ e.data_envio | datetimeformat }}
+                            </td>
+                            {% if formulario.is_anonimo == 0 %}
+                            <td style="vertical-align: middle;">
+                                <strong>{{ e.aluno_nome_db or e.aluno_identificacao or '—' }}</strong>
+                                {% if e.aluno_matricula_db %}
+                                <small style="display: block; color: var(--text-muted);">Mat: {{ e.aluno_matricula_db }}</small>
+                                {% endif %}
+                            </td>
+                            <td style="vertical-align: middle; font-size: 0.85rem; color: var(--text-muted);">
+                                {{ e.turma_nome or '—' }}
+                            </td>
+                            {% endif %}
+
+                            {% for p in perguntas %}
+                            <td style="vertical-align: middle; font-size: 0.85rem;">
+                                {% set val = respostas_map.get(e.id, {}).get(p.id, '') %}
+                                {% if val %}
+                                    {% if p.tipo_pergunta == 'checkbox' and val.startswith('[') %}
+                                        <span class="badge" style="background: #f1f5f9; color: var(--text-main);">{{ val }}</span>
+                                    {% else %}
+                                        {{ val }}
+                                    {% endif %}
+                                {% else %}
+                                    <span style="color: var(--text-muted); font-style: italic;">—</span>
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="{{ (perguntas | length) + (4 if formulario.is_anonimo == 0 else 2) }}" style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                                Nenhuma resposta registrada.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function switchRespostasTab(tabId) {
+    document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+        btn.style.color = 'var(--text-muted)';
+        btn.style.borderBottomColor = 'transparent';
+    });
+
+    const target = document.getElementById(tabId);
+    if (target) target.style.display = 'block';
+
+    const btn = document.getElementById('btn-' + tabId);
+    if (btn) {
+        btn.classList.add('active');
+        btn.style.color = 'var(--primary)';
+        btn.style.borderBottomColor = 'var(--primary)';
+    }
+}
+
+function filtrarTabelaRespostas() {
+    const input = document.getElementById('filtroTabela');
+    const filter = input.value.toLowerCase();
+    const rows = document.querySelectorAll('#tabelaRespostas tbody tr');
+
+    rows.forEach(row => {
+        const text = row.innerText.toLowerCase();
+        row.style.display = text.includes(filter) ? '' : 'none';
+    });
+}
+</script>
+{% endblock %}

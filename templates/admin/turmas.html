@@ -8,6 +8,7 @@
     </div>
 
     <div class="grid">
+        <!-- Formulário Nova Turma -->
         <div class="card">
             <h2>Nova Turma</h2>
             <form method="POST" action="{{ url_for('admin_turmas') }}">
@@ -19,31 +20,121 @@
             </form>
         </div>
 
+        <!-- Lista de Turmas -->
         <div class="card" style="grid-column: span 2;">
-            <h2>Turmas Cadastradas</h2>
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                <h2 style="margin:0;">Turmas Cadastradas <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: normal;">({{ total }} no total)</span></h2>
+            </div>
             <div class="table-responsive">
                 <table>
                     <thead>
                         <tr>
                             <th>ID</th>
                             <th>Nome</th>
+                            <th style="text-align: right;">Ações</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for t in turmas %}
                         <tr>
-                            <td>#{{ t.id }}</td>
+                            <td style="color: var(--text-muted); font-size: 0.85rem;">#{{ t.id }}</td>
                             <td><strong>{{ t.nome }}</strong></td>
+                            <td style="text-align: right;">
+                                <div style="display: flex; gap: 0.5rem; justify-content: flex-end; flex-wrap: wrap;">
+                                    <a href="{{ url_for('admin_alunos_imprimir', turma_id=t.id) }}" class="btn btn-sm btn-secondary">
+                                        <i class="ph ph-printer"></i> Crachás
+                                    </a>
+                                    <button type="button" class="btn btn-sm"
+                                        style="background: #f59e0b; color: white;"
+                                        onclick="abrirModalEditar({{ t.id }}, '{{ t.nome | replace("'", "\\'") }}')">
+                                        <i class="ph ph-pencil"></i> Editar
+                                    </button>
+                                    <form method="POST" action="{{ url_for('admin_turmas_excluir', id=t.id) }}"
+                                        onsubmit="return confirm('Excluir a turma \'{{ t.nome }}\'? Esta ação é irreversível.')">
+                                        <button type="submit" class="btn btn-sm btn-danger">
+                                            <i class="ph ph-trash"></i> Excluir
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="2" style="text-align: center; color: var(--text-muted);">Nenhuma turma cadastrada.</td>
+                            <td colspan="3" style="text-align: center; color: var(--text-muted);">Nenhuma turma cadastrada.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
+
+            {% if total_paginas > 1 %}
+            <div style="display: flex; align-items: center; justify-content: center; gap: 0.4rem; margin-top: 1.5rem; flex-wrap: wrap;">
+                {% if pagina > 1 %}
+                <a href="{{ url_for('admin_turmas', page=pagina-1) }}" class="btn btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;"><i class="ph ph-caret-left"></i></a>
+                {% endif %}
+                {% for p in range(1, total_paginas + 1) %}
+                    {% if p == pagina %}
+                    <span class="btn btn-primary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem; cursor: default;">{{ p }}</span>
+                    {% elif p == 1 or p == total_paginas or (p >= pagina - 2 and p <= pagina + 2) %}
+                    <a href="{{ url_for('admin_turmas', page=p) }}" class="btn btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;">{{ p }}</a>
+                    {% elif p == pagina - 3 or p == pagina + 3 %}
+                    <span style="color: var(--text-muted); padding: 0 0.25rem;">…</span>
+                    {% endif %}
+                {% endfor %}
+                {% if pagina < total_paginas %}
+                <a href="{{ url_for('admin_turmas', page=pagina+1) }}" class="btn btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;"><i class="ph ph-caret-right"></i></a>
+                {% endif %}
+                <span style="font-size: 0.8rem; color: var(--text-muted); margin-left: 0.5rem;">Página {{ pagina }} de {{ total_paginas }}</span>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>
+
+<!-- Modal Editar Turma -->
+<div id="modal-editar" class="modal-overlay">
+    <div class="modal-box" style="max-width: 480px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+            <h2 style="margin:0;"><i class="ph ph-pencil" style="margin-right:8px; color:#f59e0b;"></i>Editar Turma</h2>
+            <button onclick="fecharModal()" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--text-muted); line-height:1;">&times;</button>
+        </div>
+        <form id="form-editar" method="POST" action="">
+            <div class="form-group">
+                <label for="nome_editar">Nome da Turma</label>
+                <input type="text" id="nome_editar" name="nome" required autocomplete="off">
+            </div>
+            <div style="display:flex; gap:0.75rem; margin-top:1rem;">
+                <button type="button" onclick="fecharModal()" class="btn btn-secondary" style="flex:1;">Cancelar</button>
+                <button type="submit" class="btn btn-primary" style="flex:1; background:#f59e0b;">
+                    <i class="ph ph-floppy-disk" style="margin-right:6px;"></i>Salvar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function abrirModalEditar(id, nome) {
+        document.getElementById('form-editar').action = '/admin/turmas/editar/' + id;
+        document.getElementById('nome_editar').value = nome;
+        const modal = document.getElementById('modal-editar');
+        modal.classList.add('is-open');
+        setTimeout(() => document.getElementById('nome_editar').focus(), 50);
+    }
+
+    function fecharModal() {
+        document.getElementById('modal-editar').classList.remove('is-open');
+    }
+
+    // Fechar ao clicar no overlay (fora do card)
+    document.getElementById('modal-editar').addEventListener('click', function(e) {
+        if (e.target === this) fecharModal();
+    });
+
+    // Fechar com ESC
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') fecharModal();
+    });
+</script>
 {% endblock %}
+

@@ -7,12 +7,15 @@
     <div class="card" style="width: 100%; max-width: 400px;">
         <div style="text-align: center; margin-bottom: 2rem;">
             {% if global_config.logo_path %}
-                <img src="{{ global_config.logo_path }}" alt="Logo" style="height: 80px; width: auto; margin-bottom: 1rem; object-fit: contain;">
+            <img src="{{ global_config.logo_path }}" alt="Logo"
+                style="height: 80px; width: auto; margin-bottom: 1rem; object-fit: contain;">
             {% else %}
-                <i class="ph ph-fork-knife" style="font-size: 3rem; color: var(--primary);"></i>
+            <i class="ph ph-fork-knife" style="font-size: 3rem; color: var(--primary);"></i>
             {% endif %}
-            <h1 style="margin-top: 0.5rem; font-size: 1.5rem;">{{ global_config.nome_sistema if global_config else 'Cantina Estudantil' }}</h1>
-            <p style="color: var(--text-muted); font-size: 0.9rem;">Portal do Aluno - {{ global_config.sigla_instituicao if global_config else 'Marcar Almoço' }}</p>
+            <h1 style="margin-top: 0.5rem; font-size: 1.5rem;">{{ global_config.nome_sistema if global_config else
+                'Cantina Estudantil' }}</h1>
+            <p style="color: var(--text-muted); font-size: 0.9rem;">Portal do Aluno - {{ global_config.sigla_instituicao
+                if global_config else 'Marcar Almoço' }}</p>
         </div>
 
         <form method="POST" action="{{ url_for('login') }}">
@@ -28,23 +31,64 @@
                 <small style="color:var(--text-muted); display:block; margin-top:0.25rem; font-size: 0.8rem;">
                     <strong>1º Acesso?</strong> A sua senha provisória é sua <b>Data de Nascimento</b>.
                 </small>
-                <a href="{{ url_for('esqueci_senha') }}" style="display:block; text-align:right; margin-top:0.5rem; font-size: 0.85rem; color: var(--primary); text-decoration: none;"><strong>Esqueci minha Senha</strong></a>
+                <a href="{{ url_for('esqueci_senha') }}"
+                    style="display:block; text-align:right; margin-top:0.5rem; font-size: 0.85rem; color: var(--primary); text-decoration: none;"><strong>Esqueci
+                        minha Senha</strong></a>
             </div>
             {% else %}
             <div class="form-group">
                 <label for="data_nascimento">Data de Nascimento</label>
-                <input type="date" id="data_nascimento" name="data_nascimento" required>
+                <input type="text" id="data_nascimento" name="data_nascimento" required placeholder="DD/MM/AAAA" maxlength="10" inputmode="numeric">
+                <small style="color:var(--text-muted); display:block; margin-top:0.25rem; font-size: 0.8rem;">
+                    Digite sua data de nascimento com barras.
+                </small>
             </div>
             {% endif %}
 
-            <button type="submit" class="btn btn-primary" style="width: 100%; font-size: 1.1rem; padding: 0.8rem; margin-top: 1rem;">
-                <i class="ph ph-sign-in" style="margin-right: 8px;"></i> Acessar Cantina
+            <div class="form-group" style="display: flex; align-items: center; gap: 8px; margin-top: 1rem; margin-bottom: 1.5rem;">
+                <input type="checkbox" id="lembrar_me" name="lembrar_me" style="width: auto; margin: 0;">
+                <label for="lembrar_me" style="margin: 0; font-size: 0.9rem; cursor: pointer; user-select: none; color: var(--text-main);">Manter-me conectado por 30 dias</label>
+            </div>
+
+            <button type="submit" class="btn btn-primary"
+                style="width: 100%; font-size: 1.1rem; padding: 0.8rem; margin-top: 0.5rem;">
+                <i class="ph ph-sign-in" style="margin-right: 8px;"></i> Acessar
             </button>
         </form>
-        
-        <div style="text-align: center; margin-top: 2rem;">
+
+        <!--<div style="text-align: center; margin-top: 2rem;">
             <a href="{{ url_for('admin_login') }}" style="font-size: 0.85rem; color: var(--text-muted);"><i class="ph ph-lock-key"></i> Acesso Administrativo</a>
-        </div>
+        </div>-->
     </div>
 </div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const cpfInput = document.getElementById('cpf');
+        if(cpfInput) {
+            cpfInput.addEventListener('input', function (e) {
+                let v = e.target.value.replace(/\D/g, '');
+                if (v.length > 11) v = v.substring(0, 11);
+                v = v.replace(/(\d{3})(\d)/, '$1.$2');
+                v = v.replace(/(\d{3})(\d)/, '$1.$2');
+                v = v.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+                e.target.value = v;
+            });
+        }
+        
+        const dataInput = document.getElementById('data_nascimento');
+        if(dataInput) {
+            dataInput.addEventListener('input', function (e) {
+                let v = e.target.value.replace(/\D/g, '');
+                if (v.length > 8) v = v.substring(0, 8);
+                if (v.length >= 5) {
+                    v = v.replace(/(\d{2})(\d{2})(\d{1,4})/, '$1/$2/$3');
+                } else if (v.length >= 3) {
+                    v = v.replace(/(\d{2})(\d{1,2})/, '$1/$2');
+                }
+                e.target.value = v;
+            });
+        }
+    });
+</script>
 {% endblock %}
