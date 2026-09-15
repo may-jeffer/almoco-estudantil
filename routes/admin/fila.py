@@ -206,6 +206,9 @@ def admin_entrega():
                 qtd_solicitada_empresa = cardapio_hoje['qtd_solicitada']
             else:
                 qtd_solicitada_empresa = total_reservas_sistema
+        
+    https_alert = not request.is_secure
+        
     return render_template('admin/entrega.html', 
                            cardapios_hoje=cardapios_hoje,
                            cardapio_hoje=cardapio_hoje, 
@@ -214,7 +217,8 @@ def admin_entrega():
                            total_reservas_sistema=total_reservas_sistema,
                            total_extras=total_extras,
                            total_entregues=total_entregues, 
-                           qtd_solicitada_empresa=qtd_solicitada_empresa)
+                           qtd_solicitada_empresa=qtd_solicitada_empresa,
+                           https_alert=https_alert)
 
 @admin_bp.route('/admin/entrega/baixar', methods=['POST'])
 def baixar_reserva():

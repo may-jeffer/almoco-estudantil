@@ -19,13 +19,15 @@
         <h1 style="margin-top: 1rem; clear: both;"><i class="ph ph-qr-code"></i> Ponto de Controle</h1>
     </div>
 
-    <div id="https-camera-alert" class="alert alert-warning" style="display: none; margin-bottom: 2rem;">
+    {% if https_alert %}
+    <div class="alert alert-warning" style="margin-bottom: 2rem;">
         <i class="ph ph-warning-circle" style="font-size: 1.5rem;"></i>
         <div>
             <strong>Aviso de Câmera bloqueada pelo celular:</strong><br>
-            Você está acessando em HTTP. Navegadores mobile bloqueiam a câmera. Utilize a URL <code>https://</code>
+            Você está acessando em HTTP. Navegadores mobile bloqueiam a câmera. Utilize a URL `https://`
         </div>
     </div>
+    {% endif %}
 
     {% if cardapios_hoje %}
     <!-- Seletor de Refeição Ativa -->
@@ -611,13 +613,5 @@
             }
         });
     }
-
-    // Analisa o protocolo real utilizado pelo navegador do usuário
-    (function() {
-        if (window.location.protocol === 'http:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-            const alertEl = document.getElementById('https-camera-alert');
-            if (alertEl) alertEl.style.display = 'flex';
-        }
-    })();
 </script>
 {% endblock %}

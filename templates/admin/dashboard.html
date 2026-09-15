@@ -67,14 +67,14 @@
                 {% if tem_permissao('turmas') %}
                 <a href="{{ url_for('admin_turmas') }}" class="menu-item">
                     <i class="ph ph-buildings"></i>
-                    <span>Cadastrar / Editar Turmas</span>
+                    <span>Gerenciar Turmas</span>
                 </a>
                 {% endif %}
 
                 {% if tem_permissao('alunos') %}
                 <a href="{{ url_for('admin_alunos') }}" class="menu-item">
                     <i class="ph ph-student"></i>
-                    <span>Cadastrar / Editar Alunos</span>
+                    <span>Gerenciar Alunos</span>
                 </a>
                 {% endif %}
 
@@ -82,7 +82,7 @@
                 %}
                 <a href="{{ url_for('admin_eventos') }}" class="menu-item">
                     <i class="ph ph-calendar-star" style="color: #10b981;"></i>
-                    <span>Eventos / Público Externo</span>
+                    <span>Gerenciar Eventos</span>
                 </a>
                 {% endif %}
 
@@ -93,31 +93,24 @@
                 </a>
                 {% endif %}
 
+                {% if tem_permissao('fila') %}
+                <a href="{{ url_for('admin_reservas') }}" class="menu-item">
+                    <i class="ph ph-ticket"></i>
+                    <span>Gerenciar Reservas</span>
+                </a>
+                {% endif %}
+
                 {% if tem_permissao('relatorios') %}
                 <a href="{{ url_for('admin_relatorios') }}" class="menu-item">
                     <i class="ph ph-file-text"></i>
-                    <span>Relatórios de Consumo / Excel</span>
-                </a>
-                {% endif %}
-
-                {% if tem_permissao('admins') %}
-                <a href="{{ url_for('admin_administradores') }}" class="menu-item">
-                    <i class="ph ph-shield-check"></i>
-                    <span>Gestão de Acessos (Admins)</span>
-                </a>
-                {% endif %}
-
-                {% if session.get('admin_perfil') == 'admin_mestre' or tem_permissao('all') %}
-                <a href="{{ url_for('admin_auditoria') }}" class="menu-item">
-                    <i class="ph ph-shield-warning"></i>
-                    <span>Logs de Auditoria</span>
+                    <span>Relatórios</span>
                 </a>
                 {% endif %}
 
                 {% if tem_permissao('avisos') %}
                 <a href="{{ url_for('admin_avisos') }}" class="menu-item">
                     <i class="ph ph-megaphone"></i>
-                    <span>Mural de Avisos (Alunos)</span>
+                    <span>Gerenciar Avisos</span>
                 </a>
                 {% endif %}
 
@@ -128,13 +121,6 @@
                 </a>
                 {% endif %}
 
-                {% if tem_permissao('fila') %}
-                <a href="{{ url_for('admin_reservas') }}" class="menu-item">
-                    <i class="ph ph-ticket"></i>
-                    <span>Gerenciar Reservas Ativas</span>
-                </a>
-                {% endif %}
-
                 {% if tem_permissao('base_conhecimento') %}
                 <a href="{{ url_for('admin.admin_base_conhecimento') }}" class="menu-item">
                     <i class="ph ph-books" style="color: #7c3aed;"></i>
@@ -142,9 +128,23 @@
                 </a>
                 {% endif %}
 
+                {% if tem_permissao('admins') %}
+                <a href="{{ url_for('admin_administradores') }}" class="menu-item">
+                    <i class="ph ph-shield-check"></i>
+                    <span>Gestão de Acessos</span>
+                </a>
+                {% endif %}
+
+                {% if session.get('admin_perfil') == 'admin_mestre' or tem_permissao('all') %}
+                <a href="{{ url_for('admin_auditoria') }}" class="menu-item">
+                    <i class="ph ph-shield-warning"></i>
+                    <span>Logs do Sistema</span>
+                </a>
+                {% endif %}
+
                 <a href="{{ url_for('admin_manual') }}" class="menu-item">
                     <i class="ph ph-book-open" style="color: #0ea5e9;"></i>
-                    <span>Manual do Sistema & Ajuda</span>
+                    <span>Manual do Sistema</span>
                 </a>
 
                 {% if tem_permissao('fila') %}

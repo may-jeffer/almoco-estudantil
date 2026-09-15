@@ -13,11 +13,5 @@ if __name__ == '__main__':
     # Caso precise ativá-lo para desenvolvimento local, defina a variável de ambiente FLASK_DEBUG=1.
     debug_mode = os.environ.get('FLASK_DEBUG', '0') in ('1', 'true', 'True')
     
-    # Tenta rodar com o Waitress (servidor WSGI de produção para Windows) para suportar uploads maiores
-    try:
-        from waitress import serve
-        print(f"🚀 Rodando via Waitress (Produção) em http://0.0.0.0:5000")
-        serve(app, host='0.0.0.0', port=5000, max_request_body_size=500*1024*1024)
-    except ImportError:
-        print(f"⚠️ Waitress não encontrado. Usando servidor de desenvolvimento.")
-        app.run(host='0.0.0.0', port=5000, debug=debug_mode)
+    # Roda sem criptografia para acesso livre nos celulares s/ aviso de segurança
+    app.run(host='0.0.0.0', port=5000, debug=debug_mode)

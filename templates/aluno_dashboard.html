@@ -58,19 +58,13 @@
                 deste evento. Não é necessário reservar!</p>
 
             {% if qr_code_cracha %}
-            <div
-                style="background: white; padding: 1.5rem; border-radius: 12px; display: inline-block; box-shadow: var(--shadow-md); border: 1px solid var(--border);">
-                <img id="qr-code-img" src="data:image/png;base64,{{ qr_code_cracha }}" alt="QR Code Crachá"
-                    style="width: 180px; height: 180px;">
-                <div
-                    style="margin-top: 1rem; font-weight: bold; font-family: monospace; letter-spacing: 2px; color: var(--text);">
-                    {{ aluno_ativo.cpf }}
-                </div>
-            </div>
-            <div style="margin-top: 1.5rem; display: flex; justify-content: center; gap: 0.5rem; flex-wrap: wrap;">
-                <button onclick="downloadQRCode('data:image/png;base64,{{ qr_code_cracha }}', 'cracha_evento.png')" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.5rem 1rem; display: inline-flex; align-items: center; gap: 6px;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 1.5rem;">
+                <!-- A imagem será preenchida via Canvas no onload -->
+                <img id="badge-img-evento" style="width: 100%; max-width: 320px; height: auto; border-radius: 12px; box-shadow: var(--shadow-md); border: 1px solid var(--border); display: none;">
+                
+                <a id="btn-download-evento" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.5rem 1rem; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
                     <i class="ph ph-download-simple"></i> Salvar na Galeria (Acesso Offline)
-                </button>
+                </a>
             </div>
             <div style="margin-top: 2rem; color: var(--primary); font-weight: 600;">
                 <i class="ph ph-check-circle"></i> Válido de
@@ -99,19 +93,13 @@
             </p>
 
             {% if qr_code_cracha_std %}
-            <div
-                style="background: white; padding: 1.5rem; border-radius: 12px; display: inline-block; box-shadow: var(--shadow-md); border: 2px solid var(--success);">
-                <img id="qr-code-img-std" src="data:image/png;base64,{{ qr_code_cracha_std }}" alt="QR Code Crachá Fixo"
-                    style="width: 180px; height: 180px;">
-                <div
-                    style="margin-top: 1rem; font-weight: bold; font-family: monospace; letter-spacing: 2px; color: var(--text);">
-                    {{ aluno_ativo.matricula }}
-                </div>
-            </div>
-            <div style="margin-top: 1.5rem; display: flex; justify-content: center; gap: 0.5rem; flex-wrap: wrap;">
-                <button onclick="downloadQRCode('data:image/png;base64,{{ qr_code_cracha_std }}', 'cracha_permanente.png')" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.5rem 1rem; display: inline-flex; align-items: center; gap: 6px;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 1.5rem;">
+                <!-- A imagem será preenchida via Canvas no onload -->
+                <img id="badge-img-std" style="width: 100%; max-width: 320px; height: auto; border-radius: 12px; box-shadow: var(--shadow-md); border: 2px solid var(--success); display: none;">
+                
+                <a id="btn-download-std" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.5rem 1rem; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
                     <i class="ph ph-download-simple"></i> Salvar na Galeria (Acesso Offline)
-                </button>
+                </a>
             </div>
             <div style="margin-top: 1.5rem; color: var(--success); font-weight: 600; font-size: 0.9rem;">
                 <i class="ph ph-shield-check"></i> Identificador Digital Institucional
@@ -331,16 +319,145 @@
 </div>
 
 <script>
-function downloadQRCode(base64Data, filename) {
-    const link = document.createElement('a');
-    link.href = base64Data;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+function dataURItoBlob(dataURI) {
+    var byteString = atob(dataURI.split(',')[1]);
+    var ab = new ArrayBuffer(byteString.length);
+    var ia = new Uint8Array(ab);
+    for (var i = 0; i < byteString.length; i++) {
+        ia[i] = byteString.charCodeAt(i);
+    }
+    return new Blob([ab], { type: 'image/png' });
 }
 
-// Script de Estrelas Interativas (Ponto 11)
+document.addEventListener('DOMContentLoaded', function() {
+    function generateBadge(qrBase64, isEvento, callback) {
+        var canvas = document.createElement('canvas');
+        var w = 540, h = 800;
+        canvas.width = w;
+        canvas.height = h;
+        var ctx = canvas.getContext('2d');
+
+        var nomeSistema = {{ (global_config.nome_sistema if global_config and global_config.nome_sistema else 'CANTINA ESTUDANTIL') | tojson }}.toUpperCase();
+        var subtitulo = isEvento ? 'PARTICIPANTE DE EVENTO' : 'IDENTIFICAÇÃO ESTUDANTIL';
+        var nomeAluno = {{ (aluno_ativo.nome | default('Estudante')) | tojson }};
+        
+        var cpfStr = {{ (aluno_ativo.cpf | default('')) | tojson }};
+        var matStr = {{ (aluno_ativo.matricula | default('')) | tojson }};
+        var docTexto = isEvento ? ('CPF: ' + cpfStr) : ('Matrícula: ' + matStr);
+        var codText = isEvento ? cpfStr : matStr; 
+        
+        var rodapeTexto = {{ (session.get('contexto_nome') or (contexto_evento.nome if contexto_evento else (aluno_ativo.turma_nome or 'Estudante Regular'))) | tojson }};
+
+        function drawAndDownload(qrImageObj) {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, w, h);
+
+            ctx.fillStyle = '#10b981';
+            ctx.fillRect(0, 0, w, 8);
+
+            ctx.fillStyle = '#fafafa';
+            ctx.fillRect(0, 8, w, 100);
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.moveTo(0, 108); ctx.lineTo(w, 108); ctx.stroke();
+
+            ctx.fillStyle = '#1f2937';
+            ctx.font = 'bold 22px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(nomeSistema, w / 2, 50);
+
+            ctx.fillStyle = '#059669';
+            ctx.font = 'bold 16px sans-serif';
+            ctx.fillText(subtitulo, w / 2, 85);
+
+            ctx.fillStyle = '#111827';
+            ctx.font = 'bold 24px sans-serif';
+            var maxNameWidth = w - 40;
+            var nameToDraw = nomeAluno;
+            if (ctx.measureText(nameToDraw).width > maxNameWidth) {
+                ctx.font = 'bold 20px sans-serif';
+            }
+            ctx.fillText(nameToDraw, w / 2, 160);
+
+            ctx.fillStyle = '#4b5563';
+            ctx.font = '18px monospace';
+            ctx.fillText(docTexto, w / 2, 195);
+
+            // AUMENTADO O TAMANHO DO QR CODE (de 280 para 360) e ajustado o Y
+            var qrSize = 360, qrX = (w - qrSize) / 2, qrY = 210;
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(qrX - 10, qrY - 10, qrSize + 20, qrSize + 20);
+            ctx.strokeStyle = '#e5e7eb';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(qrX - 10, qrY - 10, qrSize + 20, qrSize + 20);
+
+            if (qrImageObj) {
+                ctx.drawImage(qrImageObj, qrX, qrY, qrSize, qrSize);
+            }
+
+            ctx.fillStyle = '#64748b';
+            ctx.font = 'bold 18px monospace';
+            ctx.fillText(codText || '', w / 2, qrY + qrSize + 35);
+
+            ctx.fillStyle = '#f0fdf4';
+            ctx.fillRect(0, h - 80, w, 80);
+            ctx.strokeStyle = '#d1fae5';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(0, h - 80); ctx.lineTo(w, h - 80); ctx.stroke();
+
+            ctx.fillStyle = '#065f46';
+            ctx.font = 'bold 20px sans-serif';
+            ctx.fillText(rodapeTexto || '', w / 2, h - 32);
+
+            var finalDataUrl = canvas.toDataURL('image/png');
+            callback(finalDataUrl);
+        }
+
+        if (qrBase64) {
+            var tempQr = new Image();
+            tempQr.onload = function() { drawAndDownload(tempQr); };
+            tempQr.onerror = function() { drawAndDownload(null); };
+            tempQr.src = qrBase64;
+        } else {
+            drawAndDownload(null);
+        }
+    }
+
+    var cleanNome = {{ (aluno_ativo.nome | default('Estudante')) | tojson }}.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'estudantil';
+
+    // Evento
+    var btnEvento = document.getElementById('btn-download-evento');
+    var imgEvento = document.getElementById('badge-img-evento');
+    var qrCodeCracha = '{{ qr_code_cracha }}';
+    if (btnEvento && imgEvento && qrCodeCracha) {
+        generateBadge('data:image/png;base64,' + qrCodeCracha, true, function(dataUrl) {
+            imgEvento.src = dataUrl;
+            imgEvento.style.display = 'block';
+            
+            var blob = dataURItoBlob(dataUrl);
+            var url = URL.createObjectURL(blob);
+            btnEvento.href = url;
+            btnEvento.download = 'cracha_evento_' + cleanNome + '.png';
+        });
+    }
+
+    // Standard
+    var btnStd = document.getElementById('btn-download-std');
+    var imgStd = document.getElementById('badge-img-std');
+    var qrCodeCrachaStd = '{{ qr_code_cracha_std }}';
+    if (btnStd && imgStd && qrCodeCrachaStd) {
+        generateBadge('data:image/png;base64,' + qrCodeCrachaStd, false, function(dataUrl) {
+            imgStd.src = dataUrl;
+            imgStd.style.display = 'block';
+            
+            var blob = dataURItoBlob(dataUrl);
+            var url = URL.createObjectURL(blob);
+            btnStd.href = url;
+            btnStd.download = 'cracha_' + cleanNome + '.png';
+        });
+    }
+});
+
 document.querySelectorAll('.star-btn').forEach(star => {
     star.addEventListener('click', function() {
         const val = parseInt(this.getAttribute('data-value'), 10);
