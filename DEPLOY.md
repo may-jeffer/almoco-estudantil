@@ -1,99 +1,176 @@
-# Guia de Implantação (Deployment) - Servidor de Produção
+# Guia Oficial de Implantação (Deployment) & Publicação na Internet
 
-Este guia descreve como subir a aplicação em um servidor oficial de forma segura e estável.
-
-## 1. Requisitos do Sistema
-- Servidor: Linux (**Ubuntu 22.04+**) ou Windows Pro.
-- Python: **3.10 ou superior**.
-- Porta: **5000** (padrão) ou **80/443**.
+Este documento descreve como empacotar a aplicação, executar a instalação automatizada (Linux e Windows) com banco de dados limpo, e configurar o acesso seguro via Internet com HTTPS.
 
 ---
 
-## 2. Instalação (Linux/Windows)
+## 1. Empacotamento para Distribuição (`build_package.py`)
 
-### 2.1 Preparar Ambiente
-1. Clone o repositório no servidor.
-2. Crie o ambiente virtual:
-   ```bash
-   python -m venv venv
-   ```
-3. Ative o ambiente:
-   - Linux: `source venv/bin/activate`
-   - Windows: `.\venv\Scripts\activate`
+Antes de enviar a aplicação para o servidor de produção, gere o pacote de instalação limpo:
 
-4. Instale as dependências:
-   ```bash
-   pip install -r requirements.txt
-   pip install gunicorn  # Para Linux
-   pip install waitress  # Para Windows
-   ```
-
-5. **CRIAÇÃO DO ADMINISTRADOR (Obrigatório)**
-   O sistema não possui senha padrão por segurança. Para criar sua primeira conta de acesso mestre, execute o script interativo:
-   ```bash
-   python init_admin.py
-   ```
-   Siga as instruções na tela para definir seu **Usuário** e **Senha**.
-
----
-
-## 3. Rodando em Produção (Script de Inicialização)
-
-### Opção A: Servidor Linux (Gunicorn + Systemd) - RECOMENDADO
-1. Crie um arquivo de serviço: `/etc/systemd/system/cantina.service`
-2. Adicione o conteúdo:
-   ```ini
-   [Unit]
-   Description=Gunicorn instance to serve Cantina App
-   After=network.target
-
-   [Service]
-   User=www-data
-   Group=www-data
-   WorkingDirectory=/var/www/almoco-estudantil
-   Environment="PATH=/var/www/almoco-estudantil/venv/bin"
-   ExecStart=/var/www/almoco-estudantil/venv/bin/gunicorn --workers 3 --bind 0.0.0.0:5000 app:app
-
-   [Install]
-   WantedBy=multi-user.target
-   ```
-3. Inicie o serviço:
-   ```bash
-   sudo systemctl start cantina
-   sudo systemctl enable cantina
-   ```
-
-### Opção B: Servidor Windows (Waitress)
-Para rodar no Windows de forma estável, crie um arquivo `run_prod.py`:
-```python
-from waitress import serve
-from app import app
-
-if __name__ == "__main__":
-    print("Servidor Cantina Iniciado na porta 5000...")
-    serve(app, host='0.0.0.0', port=5000)
-```
-Rode com python: `python run_prod.py`.
-
----
-
-## 4. Segurança e HTTPS
-
-### 4.1 SSL (HTTPS)
-É **obrigatório** usar HTTPS para que a câmera funcione no celular.
-- **Opção 1:** Use um Proxy Reverso como **Nginx** com Certbot (Let's Encrypt).
-- **Opção 2:** Configure o Nginx para redirecionar o tráfego da porta 80 para a 5000.
-
-### 4.2 Firewall
-Abra as portas necessárias:
+### 1.1 Pacote Padrão (Servidor com Acesso à Internet)
 ```bash
-sudo ufw allow 5000
-sudo ufw allow 80
-sudo ufw allow 443
+python build_package.py
 ```
+Gera o arquivo `dist/almoco-estudantil-dist.zip` (ou `.tar.gz`) contendo o código de produção.
+- **Garantia de Banco Limpo**: Qualquer arquivo `database.db`, caches (`__pycache__`), arquivos `.env` e arquivos de teste são estritamente excluídos do pacote.
+
+### 1.2 Pacote Offline (Servidor sem Conexão à Internet)
+Para instalar em servidores sem acesso à rede externa (redes fechadas ou laboratórios isolados):
+```bash
+python build_package.py --offline
+```
+- O script baixa antecipadamente todos os pacotes `.whl` (wheels) para uma pasta interna `wheels/`.
+- Os instaladores (`install.sh` e `install.bat`) detectam a pasta e instalam 100% offline.
 
 ---
 
-## 5. Banco de Dados (SQLite)
-O banco de dados é um arquivo único `database.db`. 
-**DICA:** Faça backup diário deste arquivo enviando-o para uma nuvem ou outro disco.
+## 2. Instalação Automatizada no Servidor
+
+Envie o arquivo `almoco-estudantil-dist.zip` para o servidor e extraia seu conteúdo.
+
+### Opção A: Servidor Linux (Ubuntu 22.04+ / Debian)
+Execute o script instalador como usuário comum (o script solicitará `sudo` quando necessário):
+```bash
+chmod +x install.sh
+./install.sh
+```
+
+**O que o instalador do Linux faz automaticamente:**
+1. Valida Python 3.10+.
+2. Cria o ambiente virtual (`venv/`) e atualiza dependências (offline ou online).
+3. Garante a instalação do servidor WSGI **Gunicorn**.
+4. Gera um arquivo `.env` com chave secreta criptográfica única (`SECRET_KEY`).
+5. Cria o banco de dados limpo e pergunta se deseja criar o Administrador agora ou utilizar o padrão provisório (`admin` / `admin123`).
+6. Configura e ativa o serviço no **Systemd** (`/etc/systemd/system/almoco-estudantil.service`) para inicialização automática no boot.
+7. Gera o arquivo de configuração para Nginx (`nginx_almoco.conf`).
+
+**Comandos de Gerenciamento do Serviço Linux:**
+- Status: `sudo systemctl status almoco-estudantil`
+- Reiniciar: `sudo systemctl restart almoco-estudantil`
+- Parar: `sudo systemctl stop almoco-estudantil`
+- Ver logs em tempo real: `sudo journalctl -u almoco-estudantil -f`
+
+---
+
+### Opção B: Servidor Windows (Windows 10, 11 ou Server)
+Basta dar duplo clique em `install.bat` ou executar no Prompt de Comando (CMD) como Administrador:
+```cmd
+install.bat
+```
+
+**O que o instalador do Windows faz automaticamente:**
+1. Valida Python 3.10+ no PATH.
+2. Cria o ambiente virtual (`venv\`).
+3. Instala dependências e o servidor WSGI de alta performance **Waitress**.
+4. Gera o arquivo `.env` seguro.
+5. Inicializa o banco limpo e cadastra o Administrador.
+6. Cria o executável de produção `iniciar_servidor.bat`.
+
+Para rodar o servidor em produção no Windows:
+- Execute `iniciar_servidor.bat` (escutando na porta 5000 com multi-threading).
+
+---
+
+## 3. Gestão do Administrador Inicial e Banco Limpo
+
+O sistema utiliza banco de dados SQLite (`database.db`). Na primeira instalação, o banco é criado do zero.
+
+Para gerenciar o Administrador Mestre a qualquer momento:
+- **Modo Interativo (Recomendado):**
+  ```bash
+  python init_admin.py
+  ```
+- **Modo Padrão Provisório:**
+  ```bash
+  python init_admin.py --default
+  ```
+  *(Cria o usuário `admin` com a senha `admin123`. Deve ser alterada imediatamente no primeiro login!)*
+- **Modo Automatizado (Scripts / CI):**
+  ```bash
+  python init_admin.py --user gestor --password 'SenhaForte#2026' --nome 'Gestor Cantina' --email gestor@escola.edu.br
+  ```
+
+---
+
+## 4. Guia Completo para Liberação na Internet
+
+Para que estudantes e funcionários acessem o sistema de fora da escola (de suas casas ou redes móveis) e para que a câmera do celular funcione no leitor de QR Code, siga os passos abaixo:
+
+```
+[ Usuário / Celular ]
+        │  HTTPS (Porta 443)
+        ▼
+[ Roteador / Firewall da Escola ] (Port Forwarding 80/443 -> IP Interno do Servidor)
+        │
+        ▼
+[ Nginx (Proxy Reverso + SSL Let's Encrypt) ] (Porta 80 e 443)
+        │  HTTP Local (127.0.0.1:5000)
+        ▼
+[ Gunicorn / Waitress (Aplicação Cantina) ]
+```
+
+### 4.1 Passo 1: Domínio (DNS) ou IP Fixo
+1. **Domínio Próprio:** Crie um apontamento DNS do tipo `A` apontando seu subdomínio (ex: `cantina.escola.edu.br`) para o IP Público da escola.
+2. **IP Dinâmico:** Se a escola não possuir IP fixo, configure um serviço DDNS gratuito como [No-IP](https://www.noip.com/) ou [DuckDNS](https://www.duckdns.org/).
+
+### 4.2 Passo 2: Redirecionamento de Portas no Roteador (Port Forwarding / NAT)
+No painel do roteador de borda da escola, redirecione o tráfego externo para o IP local do servidor (ex: `192.168.1.100`):
+- **Porta Externa 80 (TCP)** ➔ IP Interno `192.168.1.100` : Porta `80`
+- **Porta Externa 443 (TCP)** ➔ IP Interno `192.168.1.100` : Porta `443`
+
+> [!IMPORTANT]
+> **Por que o HTTPS (Porta 443) é Mandatório?**
+> As políticas de segurança dos navegadores modernos (Google Chrome, Safari iOS, Edge) **bloqueiam o uso da câmera do celular** (`navigator.mediaDevices.getUserMedia`) caso o site não seja acessado via HTTPS com certificado válido. Sem HTTPS, o leitor de QR Code para confirmação de refeições não funcionará nos celulares!
+
+### 4.3 Passo 3: Configuração do Nginx (Proxy Reverso)
+O script de instalação gera o arquivo `nginx_almoco.conf`.
+1. Copie o arquivo para o Nginx:
+   ```bash
+   sudo cp nginx_almoco.conf /etc/nginx/sites-available/almoco-estudantil.conf
+   ```
+2. Edite e informe o domínio configurado:
+   ```bash
+   sudo nano /etc/nginx/sites-available/almoco-estudantil.conf
+   # Altere 'cantina.escola.edu.br' pelo seu domínio real
+   ```
+3. Ative a configuração e valide a sintaxe:
+   ```bash
+   sudo ln -s /etc/nginx/sites-available/almoco-estudantil.conf /etc/nginx/sites-enabled/
+   sudo nginx -t
+   sudo systemctl reload nginx
+   ```
+
+### 4.4 Passo 4: Emissão do Certificado SSL Gratuito (Certbot)
+Com as portas 80 e 443 abertas e o DNS propagado:
+```bash
+sudo apt install certbot python3-certbot-nginx -y
+sudo certbot --nginx -d cantina.escola.edu.br
+```
+O Certbot configurará o certificado automaticamente e ativará a renovação automática periódica.
+
+---
+
+## 5. Alternativa sem Abrir Portas no Roteador: Cloudflare Tunnel
+
+Se a rede da instituição estiver sob **CGNAT** (sem IP público acessível) ou possuir bloqueios estritos de firewall:
+1. Crie uma conta gratuita na [Cloudflare](https://dash.cloudflare.com/) e aponte seu domínio para lá.
+2. Instale o conector `cloudflared` no servidor:
+   ```bash
+   curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+   sudo dpkg -i cloudflared.deb
+   ```
+3. Crie o túnel apontando diretamente para `http://localhost:5000`.
+- **Vantagens:** Não precisa abrir portas no roteador, não precisa configurar NAT e o certificado SSL é fornecido automaticamente pela Cloudflare.
+
+---
+
+## 6. Rotina de Backup do Banco de Dados
+
+O banco de dados SQLite fica em um único arquivo: `database.db`.
+Para realizar o backup seguro sem parar a aplicação, você pode usar o comando online do SQLite:
+```bash
+sqlite3 database.db ".backup 'backup_cantina_$(date +%Y%m%d_%H%M%S).db'"
+```
+Recomenda-se agendar uma tarefa diária no `cron` (Linux) ou no `Agendador de Tarefas` (Windows) para enviar a cópia para um drive externo ou nuvem institucional.
+

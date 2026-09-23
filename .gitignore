@@ -32,6 +32,12 @@ models_old.py
 test_*.py
 tests/
 
+# Ignorar pacotes de distribuição e wheels offline
+dist/
+dist_temp_wheels/
+wheels/
+
 # Ignorar temporários de OS
 .DS_Store
 Thumbs.db
+
