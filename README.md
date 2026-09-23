@@ -141,11 +141,13 @@ almoco-estudantil/
 │   └── admin/                  # Módulos da área administrativa
 │       ├── __init__.py         # Definição do blueprint admin_bp
 │       ├── alunos.py           # Alunos, importação CSV, SUAP e crachás
+│       ├── base_conhecimento.py# Materiais, tutoriais e biblioteca interna
 │       ├── cardapios.py        # Cardápios e controle de fornecedor
-│       ├── dashboard.py        # Painel, administradores, SMTP, logo e manual
+│       ├── dashboard.py        # Painel principal, administradores e SMTP
 │       ├── eventos.py          # Gestão de eventos e público externo
 │       ├── fila.py             # Modo fila, scanner e reservas ativas/manuais
 │       ├── pesquisas.py        # Formulários dinâmicos, QR Code e Excel
+│       ├── qualidade.py        # Fichas de recebimento e controle térmico
 │       ├── relatorios.py       # Relatórios consolidados, diários e auditoria
 │       └── turmas.py           # Gestão de turmas regulares
 │
@@ -160,7 +162,7 @@ almoco-estudantil/
 │   ├── login.html              # Tela de login do estudante
 │   ├── aluno_dashboard.html    # Painel do estudante
 │   ├── aluno_setup_senha.html  # Definição inicial de senha
-│   ├── esqueci_senha.html      # Solicitação de recuperação de senha
+│   ├── esqueci_senha.html      # Solicitação de recuperação de senha do aluno
 │   ├── recuperar_senha.html    # Redefinição de senha com token
 │   ├── pesquisa_responder.html # Tela pública de resposta da pesquisa
 │   ├── selecionar_contexto.html# Seleção de contexto (turma regular vs evento)
@@ -173,20 +175,30 @@ almoco-estudantil/
 │       ├── avisos.html         # Mural de comunicados
 │       ├── base_conhecimento.html # Base de conhecimento e tutoriais
 │       ├── cardapios.html      # Cadastro e listagem de cardápios
+│       ├── configuracoes.html  # Configurações globais e servidor SMTP
 │       ├── entrega.html        # Modo fila com scanner e alerta de alergias
-│       ├── eventos.html        # Lista de eventos
+│       ├── esqueci_senha.html  # Recuperação de senha do administrador
 │       ├── evento_detalhe.html # Participantes e crachás do evento
 │       ├── evento_imprimir.html# Impressão de crachás de evento
+│       ├── eventos.html        # Lista de eventos
 │       ├── login.html          # Login restrito de administradores
 │       ├── pesquisas.html      # Lista e gestão de formulários de pesquisa
 │       ├── pesquisa_form.html  # Construtor visual de formulários (Google Forms)
 │       ├── pesquisa_respostas.html # Dashboard analítico de respostas
+│       ├── qualidade_lista.html    # Registros de controle térmico de refeições
+│       ├── qualidade_form.html     # Registro e edição de temperatura de alimentos
+│       ├── qualidade_detalhes.html # Visualização completa da ficha sanitária
+│       ├── qualidade_imprimir.html # Laudo técnico sanitário para impressão A4
+│       ├── qualidade_imprimir_branco.html # Ficha em branco para preenchimento manual
+│       ├── recuperar_senha.html    # Redefinição de senha do administrador
 │       ├── relatorios_filtro.html  # Filtro de relatórios de refeições
+│       ├── relatorios_fornecedor.html # Planejamento semanal de pedidos e WhatsApp
+│       ├── relatorios_cancelamentos.html # Histórico detalhado de cancelamentos
 │       ├── relatorio_dia.html      # Relatório detalhado por dia
 │       ├── relatorio_periodo.html  # Relatório consolidado por período
 │       ├── relatorio_eventos.html  # Relatório de consumo por evento
 │       ├── reservas.html       # Reservas ativas e emissão manual com auditoria
-│       └── turmas.html         # Gestão de turmas
+│       └── turmas.html         # Gestão de turmas regulares
 │
 └── utils/                      # Módulos utilitários e serviços
     ├── auth.py                 # Autenticação, controle de sessão, rate-limiting e ACL

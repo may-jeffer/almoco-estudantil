@@ -22,13 +22,15 @@ __pycache__/
 *.pyo
 *.pyd
 
-# Ignorar scripts temporários, backups e scratch
+# Ignorar scripts temporários, backups, scratch e arquivos de teste
 backup/
 split_app.py
 scratch/
 scratch_test.py
 test_request.py
 models_old.py
+test_*.py
+tests/
 
 # Ignorar temporários de OS
 .DS_Store
