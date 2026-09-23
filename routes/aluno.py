@@ -68,8 +68,10 @@ def aluno_dashboard():
     max_reservas = config['max_reservas_ativas'] if 'max_reservas_ativas' in config.keys() else 1
     
     # Sincroniza reservas automáticas se a recorrência estiver ativada pelo admin
-    if config and config.permitir_reserva_recorrente:
+    permitir_recorrente = bool(config['permitir_reserva_recorrente']) if (config and 'permitir_reserva_recorrente' in config.keys()) else False
+    if permitir_recorrente:
         sincronizar_reservas_recorrentes(aluno_id)
+
         
     refeicoes_hoje = []
     reservas_ativas_count = 0
@@ -324,7 +326,7 @@ def aluno_dashboard():
         refeicoes_para_avaliar=refeicoes_para_avaliar,
         dias_recorrentes_aluno=dias_recorrentes_aluno,
         dias_bloqueados_turma=dias_bloqueados_turma,
-        permitir_reserva_recorrente=bool(config and config.permitir_reserva_recorrente)
+        permitir_reserva_recorrente=permitir_recorrente
     )
 
 @aluno_bp.route('/aluno/reservar/<int:cardapio_id>', methods=['POST'])
@@ -486,10 +488,12 @@ def aluno_recorrencia_salvar():
     if not is_logged_in_aluno(): return redirect(url_for('main.login'))
     aluno_id = session['aluno_id']
     config = get_config()
+    permitir_recorrente = bool(config['permitir_reserva_recorrente']) if (config and 'permitir_reserva_recorrente' in config.keys()) else False
     
-    if not config or not config.permitir_reserva_recorrente:
+    if not permitir_recorrente:
         flash('A opção de reserva automática/recorrente está desativada pela administração.', 'error')
         return redirect(url_for('aluno.aluno_dashboard'))
+
         
     dias_selecionados = [int(x) for x in request.form.getlist('dias_recorrencia') if x.isdigit()]
     now_str = datetime_now_str()

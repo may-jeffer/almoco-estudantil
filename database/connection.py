@@ -75,8 +75,10 @@ def init_db():
                     logo_path TEXT,
                     sigla_instituicao TEXT DEFAULT 'SIGLA',
                     tempo_autologout INTEGER DEFAULT 60,
-                    tema_admin TEXT DEFAULT 'padrao'
+                    tema_admin TEXT DEFAULT 'padrao',
+                    permitir_reserva_recorrente INTEGER DEFAULT 0
                 );
+
 
                 CREATE TABLE IF NOT EXISTS administradores (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
