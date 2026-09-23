@@ -45,14 +45,14 @@
                         <i class="ph ph-shield-check" style="color: #6366f1;"></i> Tipo de Identificação do Estudante
                     </label>
                     {% if total_respostas and total_respostas > 0 %}
-                    <span class="badge" style="background: #FEF3C7; color: #92400E; font-size: 0.8rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 8px; border: 1px solid #FDE68A;">
+                    <span class="badge warning-lock-badge" style="font-size: 0.8rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 8px; border: 1px solid #FDE68A;">
                         <i class="ph ph-lock-key"></i> Bloqueado: Já possui {{ total_respostas }} resposta{{ 's' if total_respostas > 1 else '' }}
                     </span>
                     {% endif %}
                 </div>
 
                 {% if total_respostas and total_respostas > 0 %}
-                <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 0.85rem; font-size: 0.85rem; color: #92400E; display: flex; align-items: center; gap: 8px;">
+                <div class="warning-lock-box" style="border: 1px solid #fde68a; border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 0.85rem; font-size: 0.85rem; display: flex; align-items: center; gap: 8px;">
                     <i class="ph ph-warning" style="font-size: 1.25rem; flex-shrink: 0;"></i>
                     <span>O tipo de identificação não pode ser alterado após o início da coleta de respostas para preservar a integridade dos dados registrados.</span>
                 </div>
@@ -62,7 +62,7 @@
 
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
                     <label class="tipo-ident-card {% if total_respostas and total_respostas > 0 %}is-disabled{% endif %}"
-                        style="display: flex; align-items: flex-start; gap: 12px; padding: 1rem 1.25rem; border-radius: 10px; border: 2px solid {% if (not formulario or formulario.is_anonimo == 1) %}#6366f1{% else %}var(--border){% endif %}; background: {% if total_respostas and total_respostas > 0 and formulario.is_anonimo != 1 %}#f1f5f9{% else %}#f8fafc{% endif %}; cursor: {% if total_respostas and total_respostas > 0 %}not-allowed{% else %}pointer{% endif %}; margin: 0; transition: all 0.2s ease; {% if total_respostas and total_respostas > 0 and formulario.is_anonimo != 1 %}opacity: 0.55;{% endif %}">
+                        style="display: flex; align-items: flex-start; gap: 12px; padding: 1rem 1.25rem; border-radius: 10px; border: 2px solid {% if (not formulario or formulario.is_anonimo == 1) %}#6366f1{% else %}var(--border){% endif %}; cursor: {% if total_respostas and total_respostas > 0 %}not-allowed{% else %}pointer{% endif %}; margin: 0; transition: all 0.2s ease; {% if total_respostas and total_respostas > 0 and formulario.is_anonimo != 1 %}opacity: 0.55;{% endif %}">
                         <input type="radio" name="is_anonimo" value="1" {% if not formulario or formulario.is_anonimo==1 %}checked{% endif %}
                             {% if total_respostas and total_respostas > 0 %}disabled{% endif %}
                             style="width: 18px; height: 18px; margin-top: 3px; flex-shrink: 0; cursor: {% if total_respostas and total_respostas > 0 %}not-allowed{% else %}pointer{% endif %};">
@@ -80,7 +80,7 @@
                     </label>
 
                     <label class="tipo-ident-card {% if total_respostas and total_respostas > 0 %}is-disabled{% endif %}"
-                        style="display: flex; align-items: flex-start; gap: 12px; padding: 1rem 1.25rem; border-radius: 10px; border: 2px solid {% if formulario and formulario.is_anonimo == 0 %}#6366f1{% else %}var(--border){% endif %}; background: {% if total_respostas and total_respostas > 0 and formulario.is_anonimo != 0 %}#f1f5f9{% else %}#f8fafc{% endif %}; cursor: {% if total_respostas and total_respostas > 0 %}not-allowed{% else %}pointer{% endif %}; margin: 0; transition: all 0.2s ease; {% if total_respostas and total_respostas > 0 and formulario.is_anonimo != 0 %}opacity: 0.55;{% endif %}">
+                        style="display: flex; align-items: flex-start; gap: 12px; padding: 1rem 1.25rem; border-radius: 10px; border: 2px solid {% if formulario and formulario.is_anonimo == 0 %}#6366f1{% else %}var(--border){% endif %}; cursor: {% if total_respostas and total_respostas > 0 %}not-allowed{% else %}pointer{% endif %}; margin: 0; transition: all 0.2s ease; {% if total_respostas and total_respostas > 0 and formulario.is_anonimo != 0 %}opacity: 0.55;{% endif %}">
                         <input type="radio" name="is_anonimo" value="0" {% if formulario and formulario.is_anonimo==0 %}checked{% endif %}
                             {% if total_respostas and total_respostas > 0 %}disabled{% endif %}
                             style="width: 18px; height: 18px; margin-top: 3px; flex-shrink: 0; cursor: {% if total_respostas and total_respostas > 0 %}not-allowed{% else %}pointer{% endif %};">
@@ -101,8 +101,8 @@
             </div>
 
             <!-- 2. Período de Validade e Status em Grid Equilibrado -->
-            <div
-                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem; background: #f8fafc; padding: 1.25rem; border-radius: 10px; border: 1px solid var(--border);">
+            <div class="validade-grid"
+                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem; padding: 1.25rem; border-radius: 10px; border: 1px solid var(--border);">
                 <!-- Validade -->
                 <div>
                     <label
@@ -116,7 +116,7 @@
                                 Inicial</span>
                             <input type="date" id="data_inicio" name="data_inicio"
                                 value="{{ formulario.data_inicio if formulario and formulario.data_inicio else '' }}"
-                                style="font-size: 0.85rem; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border); width: 100%; background: white;">
+                                style="font-size: 0.85rem; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border); width: 100%;">
                         </div>
                         <div>
                             <span
@@ -124,7 +124,7 @@
                                 Término</span>
                             <input type="date" id="data_fim" name="data_fim"
                                 value="{{ formulario.data_fim if formulario and formulario.data_fim else '' }}"
-                                style="font-size: 0.85rem; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border); width: 100%; background: white;">
+                                style="font-size: 0.85rem; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border); width: 100%;">
                         </div>
                     </div>
                     <small style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 5px;">
@@ -139,7 +139,7 @@
                         <i class="ph ph-toggle-left"></i> Status do Formulário
                     </label>
                     <label class="status-box"
-                        style="display: flex; align-items: center; gap: 10px; padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border); background: white; cursor: pointer; margin-top: 0.35rem;">
+                        style="display: flex; align-items: center; gap: 10px; padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border); cursor: pointer; margin-top: 0.35rem;">
                         <input type="checkbox" id="ativo" name="ativo" value="1" {% if not formulario or
                             formulario.ativo==1 %}checked{% endif %}
                             style="width: 20px; height: 20px; cursor: pointer;">
@@ -212,9 +212,9 @@
         const qIndex = index !== null ? index + 1 : container.children.length + 1;
 
         const card = document.createElement('div');
-        card.className = 'card pergunta-card fade-in';
+        card.className = 'card pergunta-card pergunta-edit-card fade-in';
         card.id = `pergunta_card_${pId}`;
-        card.style = 'border-radius: 10px; padding: 1.5rem; border: 1.5px solid var(--border); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); position: relative; margin: 0; background: white;';
+        card.style = 'border-radius: 10px; padding: 1.5rem; border: 1.5px solid var(--border); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); position: relative; margin: 0;';
         if (dados && dados.id) {
             card.dataset.perguntaId = dados.id;
         }
@@ -225,8 +225,8 @@
         const opcoesVal = (dados && dados.opcoes && dados.opcoes.length > 0) ? dados.opcoes : ['Opção 1', 'Opção 2'];
 
         card.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem;">
-            <span class="badge" style="background: #eef2ff; color: #4338ca; font-weight: bold; font-size: 0.85rem;" id="badge_index_${pId}">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem;">
+            <span class="badge badge-pergunta-num" id="badge_index_${pId}">
                 Pergunta ${qIndex}
             </span>
             <div style="display: flex; gap: 6px; align-items: center;">
@@ -248,7 +248,7 @@
                        style="width: 100%; font-size: 1.1rem; font-weight: 600; padding: 0.6rem 0.85rem; border-radius: 6px; border: 1px solid var(--border);">
             </div>
             <div style="min-width: 200px;">
-                <select class="select-pergunta-tipo" onchange="alternarTipoPergunta(${pId}, this.value)" style="width: 100%; padding: 0.6rem; border-radius: 6px; border: 1px solid var(--border); font-size: 0.9rem; font-weight: 500; background: #f8fafc;">
+                <select class="select-pergunta-tipo" onchange="alternarTipoPergunta(${pId}, this.value)" style="width: 100%; padding: 0.6rem; border-radius: 6px; border: 1px solid var(--border); font-size: 0.9rem; font-weight: 500;">
                     <option value="multipla_escolha" ${tipoVal === 'multipla_escolha' ? 'selected' : ''}>🔘 Múltipla Escolha (1 opção)</option>
                     <option value="checkbox" ${tipoVal === 'checkbox' ? 'selected' : ''}>☑️ Caixas de Seleção (várias)</option>
                     <option value="texto_curto" ${tipoVal === 'texto_curto' ? 'selected' : ''}>📝 Resposta Curta (Texto)</option>
@@ -258,7 +258,7 @@
         </div>
 
         <!-- Área de Opções (para múltipla escolha e checkbox) -->
-        <div id="opcoes_container_${pId}" style="display: ${(tipoVal === 'multipla_escolha' || tipoVal === 'checkbox') ? 'block' : 'none'}; margin-bottom: 1.25rem; background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px dashed var(--border);">
+        <div id="opcoes_container_${pId}" class="pergunta-subbox" style="display: ${(tipoVal === 'multipla_escolha' || tipoVal === 'checkbox') ? 'block' : 'none'}; margin-bottom: 1.25rem; padding: 1rem; border-radius: 8px; border: 1px dashed var(--border);">
             <div class="opcoes-lista" id="opcoes_lista_${pId}" style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.75rem;">
                 <!-- Opções renderizadas aqui -->
             </div>
@@ -268,12 +268,12 @@
         </div>
 
         <!-- Pré-visualização de campo de texto -->
-        <div id="preview_texto_${pId}" style="display: ${(tipoVal === 'texto_curto' || tipoVal === 'texto_longo') ? 'block' : 'none'}; margin-bottom: 1.25rem; background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px dashed var(--border); color: var(--text-muted); font-size: 0.9rem; font-style: italic;">
+        <div id="preview_texto_${pId}" class="pergunta-subbox" style="display: ${(tipoVal === 'texto_curto' || tipoVal === 'texto_longo') ? 'block' : 'none'}; margin-bottom: 1.25rem; padding: 1rem; border-radius: 8px; border: 1px dashed var(--border); color: var(--text-muted); font-size: 0.9rem; font-style: italic;">
             <i class="ph ph-text-t"></i> Campo de texto livre para o estudante responder.
         </div>
 
         <!-- Rodapé do Card da Pergunta -->
-        <div style="display: flex; justify-content: flex-end; align-items: center; gap: 1rem; border-top: 1px solid #f1f5f9; padding-top: 0.75rem;">
+        <div style="display: flex; justify-content: flex-end; align-items: center; gap: 1rem; border-top: 1px solid var(--border); padding-top: 0.75rem;">
             <label style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 600; cursor: pointer; margin: 0;">
                 <input type="checkbox" class="chk-obrigatoria" ${obrigatoriaVal ? 'checked' : ''} style="width: 16px; height: 16px;">
                 <span>Resposta Obrigatória</span>
@@ -425,6 +425,10 @@
 </script>
 
 <style>
+    .tipo-ident-card {
+        background: #f8fafc;
+    }
+
     .tipo-ident-card:not(.is-disabled):hover {
         border-color: #a5b4fc !important;
         background: #eef2ff !important;
@@ -439,6 +443,10 @@
         pointer-events: none;
     }
 
+    .status-box {
+        background: #FFFFFF;
+    }
+
     .status-box:hover {
         border-color: #10b981 !important;
     }
@@ -448,10 +456,76 @@
         background: #f0fdf4 !important;
     }
 
+    .badge-pergunta-num {
+        background: #eef2ff;
+        color: #4338ca;
+        font-weight: bold;
+        font-size: 0.85rem;
+    }
+
+    .warning-lock-box {
+        background: #fffbeb;
+        color: #92400E;
+    }
+
+    .warning-lock-badge {
+        background: #FEF3C7;
+        color: #92400E;
+    }
+
     .input-opcao-texto:focus,
     .input-pergunta-titulo:focus {
         border-color: #6366f1 !important;
         box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+    }
+
+    [data-theme="dark"] .tipo-ident-card {
+        background: rgba(255, 255, 255, 0.04) !important;
+        border-color: var(--border) !important;
+    }
+
+    [data-theme="dark"] .tipo-ident-card:not(.is-disabled):hover {
+        background: rgba(99, 102, 241, 0.15) !important;
+        border-color: #6366f1 !important;
+    }
+
+    [data-theme="dark"] .tipo-ident-card:not(.is-disabled):has(input:checked) {
+        background: rgba(99, 102, 241, 0.22) !important;
+        border-color: #6366f1 !important;
+    }
+
+    [data-theme="dark"] .validade-grid,
+    [data-theme="dark"] .pergunta-subbox {
+        background: rgba(255, 255, 255, 0.04) !important;
+        border-color: var(--border) !important;
+    }
+
+    [data-theme="dark"] .status-box {
+        background: rgba(255, 255, 255, 0.04) !important;
+        border-color: var(--border) !important;
+    }
+
+    [data-theme="dark"] .status-box:has(input:checked) {
+        background: rgba(16, 185, 129, 0.15) !important;
+        border-color: #10b981 !important;
+    }
+
+    [data-theme="dark"] .pergunta-edit-card {
+        background: var(--surface, #1E293B) !important;
+        border-color: var(--border) !important;
+        color: var(--text-main) !important;
+    }
+
+    [data-theme="dark"] .badge-pergunta-num {
+        background: rgba(99, 102, 241, 0.2) !important;
+        color: #a5b4fc !important;
+    }
+
+    [data-theme="dark"] .warning-lock-box,
+    [data-theme="dark"] .warning-lock-badge {
+        background: rgba(245, 158, 11, 0.15) !important;
+        border-color: rgba(245, 158, 11, 0.3) !important;
+        color: #FCD34D !important;
     }
 </style>
 {% endblock %}

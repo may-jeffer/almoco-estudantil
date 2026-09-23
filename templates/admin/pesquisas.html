@@ -72,24 +72,24 @@
 
                         <td style="vertical-align: middle; text-align: center;">
                             {% if f.is_anonimo %}
-                            <span class="badge" style="background: #f1f5f9; color: #475569; font-size: 0.75rem;">
+                            <span class="badge badge-anonimo">
                                 <i class="ph ph-mask-happy"></i> Anônimo
                             </span>
                             {% else %}
-                            <span class="badge" style="background: #e0e7ff; color: #4338ca; font-size: 0.75rem;">
+                            <span class="badge badge-identificado">
                                 <i class="ph ph-user"></i> Identificado
                             </span>
                             {% endif %}
                         </td>
 
                         <td style="vertical-align: middle; text-align: center;">
-                            <span class="badge" style="background: #f8fafc; border: 1px solid var(--border); color: var(--text-main); font-weight: bold;">
+                            <span class="badge" style="background: var(--surface); border: 1px solid var(--border); color: var(--text-main); font-weight: bold;">
                                 {{ f.total_perguntas }}
                             </span>
                         </td>
 
                         <td style="vertical-align: middle; text-align: center;">
-                            <a href="{{ url_for('admin_pesquisa_respostas', id=f.id) }}" class="badge" style="background: #ecfdf5; color: #065f46; font-size: 0.85rem; font-weight: bold; text-decoration: none; padding: 4px 10px; border: 1px solid #a7f3d0;" title="Ver Respostas">
+                            <a href="{{ url_for('admin_pesquisa_respostas', id=f.id) }}" class="badge badge-respostas" title="Ver Respostas">
                                 <i class="ph ph-chat-circle-dots"></i> {{ f.total_respostas }}
                             </a>
                         </td>
@@ -108,8 +108,7 @@
 
                         <td style="vertical-align: middle; text-align: center;">
                             <button type="button" 
-                                    class="btn" 
-                                    style="padding: 0.25rem 0.6rem; font-size: 0.75rem; border-radius: 20px; font-weight: bold; border: none; cursor: pointer; {% if f.ativo %}background: #dcfce7; color: #166534;{% else %}background: #fee2e2; color: #991b1b;{% endif %}"
+                                    class="btn btn-status-pesquisa {% if f.ativo %}status-ativo{% else %}status-inativo{% endif %}"
                                     onclick="toggleStatusPesquisa({{ f.id }}, this)"
                                     id="btn-status-{{ f.id }}"
                                     title="Clique para alternar o status da pesquisa">
@@ -175,7 +174,7 @@
 
 <!-- Modal QR Code -->
 <div id="modalQRCode" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center;">
-    <div class="card fade-in" style="background: white; border-radius: 12px; width: 90%; max-width: 420px; padding: 1.75rem; text-align: center; position: relative;">
+    <div class="card fade-in modal-qrcode-card" style="border-radius: 12px; width: 90%; max-width: 420px; padding: 1.75rem; text-align: center; position: relative;">
         <h3 id="modalQrTitulo" style="margin-top: 0; margin-bottom: 0.5rem; font-size: 1.2rem; color: var(--text-main);"></h3>
         <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.25rem;">Escaneie o QR Code abaixo para responder a pesquisa:</p>
         
@@ -184,7 +183,7 @@
         </div>
 
         <div style="margin-bottom: 1.5rem;">
-            <input type="text" id="modalQrUrl" readonly style="width: 100%; font-size: 0.8rem; padding: 0.5rem; text-align: center; background: #f8fafc; border: 1px solid var(--border); border-radius: 6px;">
+            <input type="text" id="modalQrUrl" readonly style="width: 100%; font-size: 0.8rem; padding: 0.5rem; text-align: center; border: 1px solid var(--border); border-radius: 6px;">
         </div>
 
         <div style="display: flex; gap: 0.5rem; justify-content: center;">
@@ -258,12 +257,10 @@ async function toggleStatusPesquisa(id, btn) {
         const data = await res.json();
         if (data.success) {
             if (data.novo_status === 1) {
-                btn.style.background = '#dcfce7';
-                btn.style.color = '#166534';
+                btn.className = 'btn btn-status-pesquisa status-ativo';
                 btn.innerHTML = '<i class="ph ph-check-circle"></i> ATIVO';
             } else {
-                btn.style.background = '#fee2e2';
-                btn.style.color = '#991b1b';
+                btn.className = 'btn btn-status-pesquisa status-inativo';
                 btn.innerHTML = '<i class="ph ph-x-circle"></i> INATIVO';
             }
         } else {
@@ -274,4 +271,69 @@ async function toggleStatusPesquisa(id, btn) {
     }
 }
 </script>
+<style>
+.badge-anonimo {
+    background: #f1f5f9;
+    color: #475569;
+    font-size: 0.75rem;
+}
+.badge-identificado {
+    background: #e0e7ff;
+    color: #4338ca;
+    font-size: 0.75rem;
+}
+.badge-respostas {
+    background: #ecfdf5;
+    color: #065f46;
+    font-size: 0.85rem;
+    font-weight: bold;
+    text-decoration: none;
+    padding: 4px 10px;
+    border: 1px solid #a7f3d0;
+}
+.btn-status-pesquisa {
+    padding: 0.25rem 0.6rem;
+    font-size: 0.75rem;
+    border-radius: 20px;
+    font-weight: bold;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-status-pesquisa.status-ativo {
+    background: #dcfce7;
+    color: #166534;
+}
+.btn-status-pesquisa.status-inativo {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+[data-theme="dark"] .badge-anonimo {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: var(--text-muted) !important;
+}
+[data-theme="dark"] .badge-identificado {
+    background: rgba(99, 102, 241, 0.2) !important;
+    color: #a5b4fc !important;
+}
+[data-theme="dark"] .badge-respostas {
+    background: rgba(16, 185, 129, 0.15) !important;
+    color: #34d399 !important;
+    border-color: rgba(16, 185, 129, 0.3) !important;
+}
+[data-theme="dark"] .btn-status-pesquisa.status-ativo {
+    background: rgba(16, 185, 129, 0.2) !important;
+    color: #34d399 !important;
+}
+[data-theme="dark"] .btn-status-pesquisa.status-inativo {
+    background: rgba(239, 68, 68, 0.2) !important;
+    color: #f87171 !important;
+}
+[data-theme="dark"] .modal-qrcode-card {
+    background: var(--surface, #1E293B) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text-main) !important;
+}
+</style>
 {% endblock %}

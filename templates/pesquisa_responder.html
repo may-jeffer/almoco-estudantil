@@ -38,7 +38,7 @@
                 Identificamos que sua resposta já foi registrada anteriormente. Muito obrigado pela sua colaboração!
             </p>
             {% if aluno_atual %}
-            <span class="badge" style="background: #eef2ff; color: #4338ca; font-size: 0.9rem; padding: 6px 12px;">
+            <span class="badge badge-identificado" style="font-size: 0.9rem; padding: 6px 12px;">
                 Estudante: {{ aluno_atual.nome }}
             </span>
             {% endif %}
@@ -54,7 +54,7 @@
     <!-- Tela de Identificação do Aluno (quando a pesquisa é identificada e não há login prévio) -->
     <div class="card" style="border-top: 6px solid #6366f1; padding: 2.5rem 2rem; border-radius: 12px;">
         <div style="text-align: center; margin-bottom: 2rem;">
-            <div style="width: 60px; height: 60px; background: #eef2ff; color: #6366f1; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 2rem; margin-bottom: 1rem;">
+            <div class="ident-icon-circle" style="width: 60px; height: 60px; background: #eef2ff; color: #6366f1; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 2rem; margin-bottom: 1rem;">
                 <i class="ph ph-identification-badge"></i>
             </div>
             <h2 style="margin: 0; color: var(--text-main);">Identificação do Estudante</h2>
@@ -93,10 +93,10 @@
     {% elif sucesso %}
     <!-- Tela de Confirmação de Sucesso -->
     <div class="card fade-in" style="text-align: center; padding: 3.5rem 2rem; border-top: 6px solid #10b981; border-radius: 12px;">
-        <div style="width: 80px; height: 80px; background: #dcfce7; color: #10b981; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 3rem; margin-bottom: 1.5rem;">
+        <div class="sucesso-badge-circle" style="width: 80px; height: 80px; background: #dcfce7; color: #10b981; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 3rem; margin-bottom: 1.5rem;">
             <i class="ph ph-check-bold"></i>
         </div>
-        <h2 style="margin: 0; color: #065f46; font-size: 1.8rem;">Resposta Registrada com Sucesso!</h2>
+        <h2 style="margin: 0; color: #10b981; font-size: 1.8rem;">Resposta Registrada com Sucesso!</h2>
         <p style="color: var(--text-muted); max-width: 480px; margin: 1rem auto 2rem auto; font-size: 1.05rem; line-height: 1.5;">
             Suas respostas para o formulário <strong>"{{ formulario.titulo }}"</strong> foram salvas no sistema. Agradecemos muito a sua participação!
         </p>
@@ -122,11 +122,11 @@
 
             <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); padding-top: 1rem; flex-wrap: wrap; gap: 0.5rem;">
                 {% if formulario.is_anonimo %}
-                <span class="badge" style="background: #f1f5f9; color: #475569; font-size: 0.85rem;">
+                <span class="badge badge-anonimo" style="font-size: 0.85rem;">
                     <i class="ph ph-mask-happy"></i> Pesquisa Anônima (Sem identificação)
                 </span>
                 {% elif aluno_atual %}
-                <span class="badge" style="background: #e0e7ff; color: #4338ca; font-size: 0.85rem;">
+                <span class="badge badge-identificado" style="font-size: 0.85rem;">
                     <i class="ph ph-user"></i> Respondendo como: <strong>{{ aluno_atual.nome }}</strong> ({{ aluno_atual.turma_nome or 'Sem Turma' }})
                 </span>
                 {% endif %}
@@ -138,7 +138,7 @@
         <!-- Cards das Perguntas -->
         <div style="display: flex; flex-direction: column; gap: 1.25rem;">
             {% for p in perguntas %}
-            <div class="card pergunta-box" style="padding: 1.75rem; border-radius: 10px; border: 1px solid var(--border); margin: 0; background: white;">
+            <div class="card pergunta-box" style="padding: 1.75rem; border-radius: 10px; border: 1px solid var(--border); margin: 0;">
                 <div style="margin-bottom: 1.25rem;">
                     <label style="font-size: 1.1rem; font-weight: 600; color: var(--text-main); line-height: 1.4; display: block;">
                         <span style="color: #6366f1; font-weight: bold; margin-right: 4px;">{{ loop.index }}.</span> 
@@ -151,7 +151,7 @@
                 {% if p.tipo == 'multipla_escolha' %}
                 <div style="display: flex; flex-direction: column; gap: 0.65rem;">
                     {% for op in p.opcoes %}
-                    <label style="display: flex; align-items: center; gap: 10px; padding: 0.65rem 0.85rem; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; cursor: pointer; transition: all 0.2s ease; margin: 0;" class="opcao-label">
+                    <label style="display: flex; align-items: center; gap: 10px; padding: 0.65rem 0.85rem; border-radius: 8px; cursor: pointer; transition: all 0.2s ease; margin: 0;" class="opcao-label">
                         <input type="radio" name="pergunta_{{ p.id }}" value="{{ op }}" {% if p.obrigatoria and loop.first %}required{% endif %} style="width: 18px; height: 18px; margin: 0; cursor: pointer;">
                         <span style="font-size: 0.95rem; color: var(--text-main);">{{ op }}</span>
                     </label>
@@ -162,7 +162,7 @@
                 {% elif p.tipo == 'checkbox' %}
                 <div style="display: flex; flex-direction: column; gap: 0.65rem;">
                     {% for op in p.opcoes %}
-                    <label style="display: flex; align-items: center; gap: 10px; padding: 0.65rem 0.85rem; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; cursor: pointer; transition: all 0.2s ease; margin: 0;" class="opcao-label">
+                    <label style="display: flex; align-items: center; gap: 10px; padding: 0.65rem 0.85rem; border-radius: 8px; cursor: pointer; transition: all 0.2s ease; margin: 0;" class="opcao-label">
                         <input type="checkbox" name="pergunta_{{ p.id }}" value="{{ op }}" style="width: 18px; height: 18px; margin: 0; cursor: pointer;">
                         <span style="font-size: 0.95rem; color: var(--text-main);">{{ op }}</span>
                     </label>
@@ -201,6 +201,10 @@
 </div>
 
 <style>
+.opcao-label {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+}
 .opcao-label:hover {
     background: #eef2ff !important;
     border-color: #c7d2fe !important;
@@ -209,6 +213,42 @@
     background: #eef2ff !important;
     border-color: #6366f1 !important;
     font-weight: 600;
+}
+
+.pergunta-box {
+    background: #ffffff;
+}
+
+[data-theme="dark"] .pergunta-box {
+    background: var(--surface, #1E293B) !important;
+    border-color: var(--border) !important;
+    color: var(--text-main) !important;
+}
+
+[data-theme="dark"] .opcao-label {
+    background: rgba(255, 255, 255, 0.04) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text-main) !important;
+}
+
+[data-theme="dark"] .opcao-label:hover {
+    background: rgba(99, 102, 241, 0.15) !important;
+    border-color: #6366f1 !important;
+}
+
+[data-theme="dark"] .opcao-label:has(input:checked) {
+    background: rgba(99, 102, 241, 0.25) !important;
+    border-color: #6366f1 !important;
+}
+
+[data-theme="dark"] .sucesso-badge-circle {
+    background: rgba(16, 185, 129, 0.15) !important;
+    color: #34d399 !important;
+}
+
+[data-theme="dark"] .ident-icon-circle {
+    background: rgba(99, 102, 241, 0.2) !important;
+    color: #a5b4fc !important;
 }
 </style>
 {% endblock %}
