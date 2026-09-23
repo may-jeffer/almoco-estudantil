@@ -1,0 +1,355 @@
+{% extends "base.html" %}
+
+{% block title %}Pedidos e Demanda ao Fornecedor — {{ global_config.nome_sistema if global_config else 'Cantina Estudantil' }}{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <!-- Cabeçalho -->
+    <div style="margin-bottom: 1.75rem;">
+        <div style="margin-bottom: 0.5rem;">
+            <a href="{{ url_for('admin_relatorios') }}" style="color: var(--text-muted); display: inline-flex; align-items: center; text-decoration: none; font-size: 0.9rem;">
+                <i class="ph ph-arrow-left" style="margin-right: 4px;"></i> Voltar aos Relatórios
+            </a>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <div>
+                <h1 style="margin: 0; font-size: 1.6rem; display: flex; align-items: center; gap: 10px; color: var(--text-main);">
+                    <i class="ph ph-truck" style="color: #2563eb;"></i> Pedidos e Demanda ao Fornecedor
+                </h1>
+                <p style="color: var(--text-muted); margin: 0.25rem 0 0 0; font-size: 0.95rem;">
+                    Visão semanal de porções, prazos de corte configurados por dia e demandas especiais de dietas.
+                </p>
+            </div>
+            <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+                <button type="button" class="btn btn-secondary" onclick="copiarResumoWhatsApp()" style="background: #25d366; border-color: #25d366; color: white; display: inline-flex; align-items: center; gap: 6px; font-weight: 600;" title="Copiar resumo formatado para colar no WhatsApp ou e-mail do fornecedor">
+                    <i class="ph ph-whatsapp-logo" style="font-size: 1.25rem;"></i> Copiar para WhatsApp
+                </button>
+                <a href="{{ url_for('admin.admin_relatorios_fornecedor_excel', semana=semana_opcao, data_inicio=data_inicio_custom) }}" 
+                   class="btn btn-success" style="background: #15803d; border-color: #15803d; color: white; display: inline-flex; align-items: center; gap: 6px;"
+                   title="Exportar planilha Excel formatada com totais e dietas">
+                    <i class="ph ph-file-xls" style="font-size: 1.2rem;"></i> Exportar Excel
+                </a>
+                <button type="button" class="btn btn-secondary" onclick="window.print()" style="display: inline-flex; align-items: center; gap: 6px;">
+                    <i class="ph ph-printer"></i> Imprimir
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navegação Semanal -->
+    <div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; background: var(--surface);">
+        <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+            <a href="{{ url_for('admin.admin_relatorios_fornecedor', semana='atual') }}" 
+               class="btn {% if semana_opcao == 'atual' %}btn-primary{% else %}btn-secondary{% endif %}"
+               style="font-size: 0.9rem; padding: 0.45rem 1rem;">
+                <i class="ph ph-calendar"></i> Semana Atual
+            </a>
+            <a href="{{ url_for('admin.admin_relatorios_fornecedor', semana='proxima') }}" 
+               class="btn {% if semana_opcao == 'proxima' %}btn-primary{% else %}btn-secondary{% endif %}"
+               style="font-size: 0.9rem; padding: 0.45rem 1rem;">
+                <i class="ph ph-calendar-plus"></i> Próxima Semana
+            </a>
+        </div>
+
+        <form method="GET" action="{{ url_for('admin.admin_relatorios_fornecedor') }}" style="display: flex; align-items: center; gap: 0.5rem; margin: 0;">
+            <label for="data_inicio" style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin: 0;">
+                Semana a partir de:
+            </label>
+            <input type="date" id="data_inicio" name="data_inicio" value="{{ data_inicio_custom or segunda_feira }}"
+                   style="padding: 0.45rem 0.75rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; background: var(--background); color: var(--text-main);">
+            <button type="submit" class="btn btn-secondary" style="padding: 0.45rem 0.85rem; font-size: 0.9rem;">
+                <i class="ph ph-magnifying-glass"></i> Ver
+            </button>
+        </form>
+
+        <div style="font-size: 0.95rem; font-weight: 600; color: var(--primary); display: flex; align-items: center; gap: 6px;">
+            <i class="ph ph-calendar-blank"></i> Período: {{ segunda_fmt }} a {{ fim_fmt }}
+        </div>
+    </div>
+
+    <!-- Cards KPI -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+        <div class="card" style="padding: 1.25rem; border-left: 4px solid #2563eb; display: flex; align-items: center; gap: 1rem; margin-bottom: 0;">
+            <div style="width: 48px; height: 48px; border-radius: 10px; background: #dbeafe; display: flex; align-items: center; justify-content: center; color: #1d4ed8; font-size: 1.6rem; flex-shrink: 0;">
+                <i class="ph ph-fork-knife"></i>
+            </div>
+            <div>
+                <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; letter-spacing: 0.03em;">Total da Semana</span>
+                <strong style="font-size: 1.6rem; color: var(--text-main); display: block; line-height: 1.1;">{{ total_refeicoes_semana }} porções</strong>
+            </div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem; border-left: 4px solid #ef4444; display: flex; align-items: center; gap: 1rem; margin-bottom: 0;">
+            <div style="width: 48px; height: 48px; border-radius: 10px; background: #fee2e2; display: flex; align-items: center; justify-content: center; color: #b91c1c; font-size: 1.6rem; flex-shrink: 0;">
+                <i class="ph ph-lock-key"></i>
+            </div>
+            <div>
+                <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; letter-spacing: 0.03em;">Prazos Encerrados</span>
+                <strong style="font-size: 1.6rem; color: #dc2626; display: block; line-height: 1.1;">{{ dias_fechados_count }} dia(s)</strong>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">Prontos para produção definitiva</span>
+            </div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem; border-left: 4px solid #16a34a; display: flex; align-items: center; gap: 1rem; margin-bottom: 0;">
+            <div style="width: 48px; height: 48px; border-radius: 10px; background: #dcfce7; display: flex; align-items: center; justify-content: center; color: #15803d; font-size: 1.6rem; flex-shrink: 0;">
+                <i class="ph ph-clock-countdown"></i>
+            </div>
+            <div>
+                <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; letter-spacing: 0.03em;">Reservas em Aberto</span>
+                <strong style="font-size: 1.6rem; color: #16a34a; display: block; line-height: 1.1;">{{ dias_abertos_count }} dia(s)</strong>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">Quantidades podem aumentar</span>
+            </div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem; border-left: 4px solid #f97316; display: flex; align-items: center; gap: 1rem; margin-bottom: 0;">
+            <div style="width: 48px; height: 48px; border-radius: 10px; background: #ffedd5; display: flex; align-items: center; justify-content: center; color: #c2410c; font-size: 1.6rem; flex-shrink: 0;">
+                <i class="ph ph-x-circle"></i>
+            </div>
+            <div>
+                <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; letter-spacing: 0.03em;">Canceladas</span>
+                <strong style="font-size: 1.6rem; color: var(--text-main); display: block; line-height: 1.1;">{{ total_canceladas_semana }}</strong>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">Não computadas no pedido</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabela Geral por Dia da Semana -->
+    <div class="card" style="padding: 1.5rem; margin-bottom: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.5rem;">
+            <h2 style="margin: 0; font-size: 1.25rem; display: flex; align-items: center; gap: 8px;">
+                <i class="ph ph-table" style="color: var(--primary);"></i> Grade Semanal de Refeições & Acionamento
+            </h2>
+            <span style="font-size: 0.85rem; color: var(--text-muted);">
+                Os prazos de corte respeitam a configuração individual de cada dia da semana.
+            </span>
+        </div>
+
+        <div class="table-responsive">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: var(--background); border-bottom: 2px solid var(--border); font-size: 0.85rem;">
+                        <th style="padding: 0.75rem 1rem; text-align: left;">Dia da Semana / Data</th>
+                        <th style="padding: 0.75rem 1rem; text-align: left;">Cardápio Previsto</th>
+                        <th style="padding: 0.75rem 1rem; text-align: center;">Status do Corte Fornecedor</th>
+                        <th style="padding: 0.75rem 0.5rem; text-align: center;" title="Alunos regulares">Regulares</th>
+                        <th style="padding: 0.75rem 0.5rem; text-align: center;" title="Consumo extra">Extras</th>
+                        <th style="padding: 0.75rem 0.5rem; text-align: center;" title="Eventos institucionais">Eventos</th>
+                        <th style="padding: 0.75rem 1rem; text-align: center; background: rgba(37,99,235,0.06);">TOTAL PEDIDO</th>
+                        <th style="padding: 0.75rem 1rem; text-align: left;">Restrições Alimentares</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in dias_semana %}
+                    <tr style="border-bottom: 1px solid var(--border); {% if loop.index is even %}background: rgba(0,0,0,0.015);{% endif %}">
+                        <td style="padding: 0.85rem 1rem; vertical-align: top;">
+                            <strong style="display: block; font-size: 0.95rem; color: var(--text-main);">
+                                {{ d.dia_nome }}
+                            </strong>
+                            <span style="font-size: 0.8rem; color: var(--text-muted);">
+                                <i class="ph ph-calendar"></i> {{ d.data_fmt }}
+                            </span>
+                        </td>
+
+                        <td style="padding: 0.85rem 1rem; vertical-align: top;">
+                            {% if d.tem_cardapio %}
+                                <strong style="font-size: 0.9rem; color: var(--text-main); display: block;">
+                                    {{ d.cardapio.tipo_refeicao or 'Almoço' }}
+                                </strong>
+                                <span style="font-size: 0.85rem; color: var(--text-muted);">
+                                    {{ d.cardapio.descricao }}
+                                </span>
+                                {% if d.cardapio.proteinas %}
+                                <div style="margin-top: 4px; font-size: 0.8rem; color: var(--primary);">
+                                    🥩 {{ d.cardapio.proteinas }}
+                                </div>
+                                {% endif %}
+                            {% else %}
+                                <span style="color: var(--text-muted); font-size: 0.85rem; font-style: italic;">
+                                    Sem cardápio cadastrado
+                                </span>
+                            {% endif %}
+                        </td>
+
+                        <td style="padding: 0.85rem 1rem; text-align: center; vertical-align: top;">
+                            {% if not d.tem_cardapio %}
+                                <span class="badge" style="background: #f3f4f6; color: #6b7280; font-size: 0.75rem;">—</span>
+                            {% elif d.janela.status == 'ENCERRADA' %}
+                                <span class="badge" style="background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; font-size: 0.8rem; padding: 4px 8px; border-radius: 6px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                                    <i class="ph ph-lock"></i> Prazo Encerrado
+                                </span>
+                                <div style="font-size: 0.75rem; color: #b91c1c; margin-top: 3px;">
+                                    Corte: {{ d.janela.fechamento_formatado }}
+                                </div>
+                            {% elif d.janela.status == 'ABERTA' %}
+                                <span class="badge" style="background: #dcfce7; color: #15803d; border: 1px solid #86efac; font-size: 0.8rem; padding: 4px 8px; border-radius: 6px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                                    <i class="ph ph-clock"></i> Reservas Abertas
+                                </span>
+                                <div style="font-size: 0.75rem; color: #15803d; margin-top: 3px;">
+                                    Fecha: {{ d.janela.fechamento_formatado }}
+                                </div>
+                            {% elif d.janela.status == 'NAO_INICIADA' %}
+                                <span class="badge" style="background: #fef3c7; color: #b45309; border: 1px solid #fde68a; font-size: 0.8rem; padding: 4px 8px; border-radius: 6px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                                    <i class="ph ph-hourglass-simple"></i> Não Iniciada
+                                </span>
+                                <div style="font-size: 0.75rem; color: #b45309; margin-top: 3px;">
+                                    Abre: {{ d.janela.abertura_formatada }}
+                                </div>
+                            {% else %}
+                                <span class="badge" style="background: #f3f4f6; color: #6b7280; font-size: 0.75rem;">Inativo</span>
+                            {% endif %}
+                        </td>
+
+                        <td style="padding: 0.85rem 0.5rem; text-align: center; vertical-align: top; font-size: 0.95rem;">
+                            {{ d.total_normais }}
+                        </td>
+
+                        <td style="padding: 0.85rem 0.5rem; text-align: center; vertical-align: top; font-size: 0.95rem; color: var(--text-muted);">
+                            {{ d.total_extras }}
+                        </td>
+
+                        <td style="padding: 0.85rem 0.5rem; text-align: center; vertical-align: top; font-size: 0.95rem; color: var(--text-muted);">
+                            {{ d.total_eventos }}
+                        </td>
+
+                        <td style="padding: 0.85rem 1rem; text-align: center; vertical-align: top; background: rgba(37,99,235,0.06);">
+                            <strong style="font-size: 1.25rem; color: #1d4ed8;">
+                                {{ d.total_confirmadas }}
+                            </strong>
+                            {% if d.total_canceladas > 0 %}
+                            <div style="font-size: 0.75rem; color: #991b1b; margin-top: 2px;">
+                                ({{ d.total_canceladas }} canc.)
+                            </div>
+                            {% endif %}
+                        </td>
+
+                        <td style="padding: 0.85rem 1rem; vertical-align: top;">
+                            {% if d.restricoes %}
+                                <div style="display: flex; flex-wrap: wrap; gap: 5px;">
+                                    {% for r in d.restricoes %}
+                                    <span style="background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; font-size: 0.75rem; padding: 2px 7px; border-radius: 4px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                                        <i class="ph ph-warning-circle"></i> {{ r.qtd }}x {{ r.restricao }}
+                                    </span>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <span style="font-size: 0.8rem; color: var(--text-muted);">Nenhuma restrição</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr style="background: var(--surface); border-top: 2px solid var(--border); font-weight: bold;">
+                        <td colspan="3" style="padding: 1rem; text-align: right; font-size: 1rem; color: var(--text-main);">
+                            TOTAIS CONSOLIDADOS DA SEMANA:
+                        </td>
+                        <td style="padding: 1rem 0.5rem; text-align: center; font-size: 1.05rem;">
+                            {{ total_normais_semana }}
+                        </td>
+                        <td style="padding: 1rem 0.5rem; text-align: center; font-size: 1.05rem; color: var(--text-muted);">
+                            {{ total_extras_semana }}
+                        </td>
+                        <td style="padding: 1rem 0.5rem; text-align: center; font-size: 1.05rem; color: var(--text-muted);">
+                            {{ total_eventos_semana }}
+                        </td>
+                        <td style="padding: 1rem; text-align: center; background: rgba(37,99,235,0.12); font-size: 1.35rem; color: #1e40af;">
+                            {{ total_refeicoes_semana }}
+                        </td>
+                        <td style="padding: 1rem; font-size: 0.85rem; color: var(--text-muted);">
+                            {{ restricoes_consolidadas | length }} tipo(s) de restrição
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <!-- Restrições Consolidadas e Prévia do Pedido -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+        <!-- Restrições Alimentares da Semana -->
+        <div class="card" style="padding: 1.5rem; margin-bottom: 0;">
+            <h3 style="margin-top: 0; margin-bottom: 0.75rem; font-size: 1.15rem; display: flex; align-items: center; gap: 8px;">
+                <i class="ph ph-heartbeat" style="color: #ea580c;"></i> Restrições Consolidadas da Semana
+            </h3>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0; margin-bottom: 1rem;">
+                Total de porções especiais que precisam ser preparadas separadamente pelo fornecedor:
+            </p>
+
+            {% if restricoes_consolidadas %}
+            <div style="display: flex; flex-direction: column; gap: 0.6rem;">
+                {% for restr, qtd in restricoes_consolidadas.items() %}
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.65rem 0.85rem; background: var(--background); border-radius: 6px; border: 1px solid var(--border);">
+                    <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
+                        <i class="ph ph-check-circle" style="color: #f59e0b;"></i> {{ restr }}
+                    </span>
+                    <span style="background: #fef3c7; color: #92400e; font-size: 0.85rem; font-weight: bold; padding: 2px 10px; border-radius: 12px; border: 1px solid #fcd34d;">
+                        {{ qtd }} porção(ões)
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div style="padding: 1.5rem; text-align: center; color: var(--text-muted); font-size: 0.9rem;">
+                <i class="ph ph-check-circle" style="font-size: 2rem; color: #16a34a; display: block; margin-bottom: 0.5rem;"></i>
+                Nenhuma restrição alimentar registrada para as refeições desta semana.
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Mensagem de Envio / WhatsApp -->
+        <div class="card" style="padding: 1.5rem; margin-bottom: 0; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                <h3 style="margin: 0; font-size: 1.15rem; display: flex; align-items: center; gap: 8px;">
+                    <i class="ph ph-chat-circle-dots" style="color: #16a34a;"></i> Mensagem para o Fornecedor
+                </h3>
+                <button type="button" class="btn btn-secondary" onclick="copiarResumoWhatsApp()" style="padding: 0.35rem 0.75rem; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 4px;">
+                    <i class="ph ph-copy"></i> Copiar Texto
+                </button>
+            </div>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0; margin-bottom: 0.75rem;">
+                Texto pré-formatado pronto para colar no aplicativo de mensagens ou e-mail corporativo:
+            </p>
+
+            <textarea id="textoWhatsappPreview" readonly 
+                      style="flex: 1; min-height: 180px; width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid var(--border); font-family: monospace; font-size: 0.85rem; background: var(--background); color: var(--text-main); resize: vertical; line-height: 1.4;">{{ msg_whatsapp_pronta }}</textarea>
+            
+            <div id="toastCopiado" style="display: none; margin-top: 0.5rem; padding: 0.5rem; background: #dcfce7; color: #15803d; border-radius: 6px; font-size: 0.85rem; text-align: center; font-weight: 600;">
+                <i class="ph ph-check"></i> Mensagem copiada para a área de transferência com sucesso!
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function copiarResumoWhatsApp() {
+    const texto = document.getElementById('textoWhatsappPreview').value;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(texto).then(() => {
+            mostrarToast();
+        }).catch(err => {
+            fallbackCopy();
+        });
+    } else {
+        fallbackCopy();
+    }
+}
+
+function fallbackCopy() {
+    const copyText = document.getElementById('textoWhatsappPreview');
+    copyText.select();
+    copyText.setSelectionRange(0, 99999);
+    document.execCommand('copy');
+    mostrarToast();
+}
+
+function mostrarToast() {
+    const toast = document.getElementById('toastCopiado');
+    if (toast) {
+        toast.style.display = 'block';
+        setTimeout(() => {
+            toast.style.display = 'none';
+        }, 3000);
+    }
+}
+</script>
+{% endblock %}

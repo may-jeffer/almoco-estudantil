@@ -1,0 +1,818 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="fade-in">
+    <div style="margin-bottom: 2rem;">
+        <h1 style="display: flex; align-items: center; gap: 10px; margin-bottom: 0.25rem;">
+            {% if tem_permissao('config') %}
+            <i class="ph ph-gear" style="color: var(--primary);"></i> Configurações do Sistema
+            {% else %}
+            <i class="ph ph-envelope-simple" style="color: var(--primary);"></i> Servidor de E-mail (SMTP)
+            {% endif %}
+        </h1>
+        <p style="color: var(--text-muted); font-size: 0.95rem;">
+            {% if tem_permissao('config') %}
+            Gerencie os parâmetros globais, identidade visual, regras de acesso e servidor de envio de e-mails.
+            {% else %}
+            Gerencie as configurações de autenticação e teste do servidor de envio de e-mails institucionais.
+            {% endif %}
+        </p>
+    </div>
+
+    {% if tem_permissao('config') %}
+    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+
+        <!-- CARD 1: IDENTIDADE VISUAL E LOGOMARCA -->
+
+        <div class="card" style="margin-bottom: 0;">
+            <h2 style="font-size: 1.25rem; display: flex; align-items: center; gap: 8px;">
+                <i class="ph ph-image" style="color: var(--primary);"></i> Identidade Visual
+            </h2>
+            <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1.5rem;">
+                Logotipo institucional exibido nas barras de navegação e relatórios.
+            </p>
+
+            <form method="POST" action="{{ url_for('admin.save_logo') }}" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label>Logomarca Institucional</label>
+                    <div class="config-logo-box" style="display: flex; gap: 15px; align-items: center; padding: 1rem; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 1rem;">
+                        {% if config.logo_path %}
+                        <img src="{{ config.logo_path }}" alt="Logo Atual" class="config-logo-preview" style="height: 55px; max-width: 120px; object-fit: contain; border-radius: 4px; border: 1px solid var(--border); padding: 4px;">
+                        {% else %}
+                        <div class="config-logo-placeholder" style="width: 55px; height: 55px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+                            <i class="ph ph-image-square"></i>
+                        </div>
+                        {% endif %}
+                        <div style="flex: 1;">
+                            <input type="file" name="logo_file" accept="image/*" required style="padding: 0.5rem; font-size: 0.9rem;">
+                            <small style="color: var(--text-muted); display: block; margin-top: 4px;">Formatos: PNG, JPG, WebP ou GIF.</small>
+                        </div>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-secondary" style="width: 100%;">
+                    <i class="ph ph-upload-simple" style="margin-right: 8px;"></i> Atualizar Logomarca
+                </button>
+            </form>
+        </div>
+
+        <!-- CARD 2: PALETA DE CORES INSTITUCIONAL -->
+        <div class="card" style="margin-bottom: 0;">
+            <h2 style="font-size: 1.25rem; display: flex; align-items: center; gap: 8px;">
+                <i class="ph ph-palette" style="color: var(--primary);"></i> Paleta de Cores Padrão
+            </h2>
+            <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1.5rem;">
+                Escolha a paleta oficial que será adotada como padrão institucional para o sistema.
+            </p>
+
+            <form method="POST" action="{{ url_for('admin.admin_configuracoes') }}">
+                <!-- Campos ocultos para não sobrescrever config ao salvar paleta -->
+                <input type="hidden" name="horario_limite" value="{{ config.horario_limite }}">
+                <input type="hidden" name="nome_sistema" value="{{ config.nome_sistema }}">
+                <input type="hidden" name="sigla_instituicao" value="{{ config.sigla_instituicao }}">
+                <input type="hidden" name="modo_login_aluno" value="{{ config.modo_login_aluno }}">
+                <input type="hidden" name="max_reservas_ativas" value="{{ config.max_reservas_ativas }}">
+                <input type="hidden" name="email_qr_reserva" value="{{ config.email_qr_reserva }}">
+                <input type="hidden" name="tempo_autologout" value="{{ config.tempo_autologout }}">
+
+                <div class="form-group">
+                    <label for="tema_admin_select">Tema Selecionado</label>
+                    <select id="tema_admin_select" name="tema_admin" onchange="previewPalette(this.value)">
+                        <option value="padrao" {% if config.tema_admin == 'padrao' or not config.tema_admin %}selected{% endif %}>🌿 Verde Padrão (Institucional)</option>
+                        <option value="azul" {% if config.tema_admin == 'azul' %}selected{% endif %}>🌊 Azul Oceano</option>
+                        <option value="indigo" {% if config.tema_admin == 'indigo' %}selected{% endif %}>🔮 Índigo Moderno</option>
+                        <option value="esmeralda" {% if config.tema_admin == 'esmeralda' %}selected{% endif %}>🍃 Verde Esmeralda</option>
+                        <option value="grafite" {% if config.tema_admin == 'grafite' %}selected{% endif %}>🪨 Grafite Slate</option>
+                        <option value="vinho" {% if config.tema_admin == 'vinho' %}selected{% endif %}>🍷 Vinho Bordô</option>
+                        <option value="ambar" {% if config.tema_admin == 'ambar' %}selected{% endif %}>☀️ Âmbar Solar</option>
+                    </select>
+                </div>
+
+                <div style="margin-top: 1rem;">
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">
+                        <i class="ph ph-check" style="margin-right: 8px;"></i> Salvar Paleta Padrão
+                    </button>
+                </div>
+            </form>
+        </div>
+
+    </div>
+
+    <!-- CARD 3: PARÂMETROS E REGRAS DE NEGÓCIO -->
+    <div class="card" style="margin-bottom: 2rem;">
+        <h2 style="font-size: 1.25rem; display: flex; align-items: center; gap: 8px;">
+            <i class="ph ph-sliders" style="color: var(--primary);"></i> Parâmetros e Regras do Sistema
+        </h2>
+        <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1.5rem;">
+            Defina os limites de horários, títulos oficiais e políticas de acesso dos estudantes.
+        </p>
+
+        <form method="POST" action="{{ url_for('admin.admin_configuracoes') }}">
+            <input type="hidden" name="tema_admin" value="{{ config.tema_admin or 'padrao' }}">
+
+            <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem;">
+                <div class="form-group">
+                    <label for="nome_sistema">Nome Principal do Sistema</label>
+                    <input type="text" id="nome_sistema" name="nome_sistema" value="{{ config.nome_sistema if config else 'Cantina Estudantil' }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="sigla_instituicao">Sigla/Nome da Instituição</label>
+                    <input type="text" id="sigla_instituicao" name="sigla_instituicao" value="{{ config.sigla_instituicao if config else 'SIGLA' }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="permitir_reserva_recorrente">Reserva Automática / Recorrente para Estudantes</label>
+                    <select id="permitir_reserva_recorrente" name="permitir_reserva_recorrente">
+                        <option value="0" {% if not config.permitir_reserva_recorrente %}selected{% endif %}>Desativada (Padrão: Apenas reservas manuais)</option>
+                        <option value="1" {% if config.permitir_reserva_recorrente %}selected{% endif %}>Ativada (Estudantes podem fixar dias habituais de almoço)</option>
+                    </select>
+                    <input type="hidden" id="horario_limite" name="horario_limite" value="{{ config.horario_limite or '18:00' }}">
+                    <small style="color: var(--text-muted);">Quando ativado, os alunos podem cadastrar seus dias habituais de almoço na semana.</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="modo_login_aluno">Método de Login do Aluno</label>
+                    <select id="modo_login_aluno" name="modo_login_aluno">
+                        <option value="DATA_NASC" {% if config.modo_login_aluno == 'DATA_NASC' %}selected{% endif %}>Data de Nascimento (Simples)</option>
+                        <option value="SENHA" {% if config.modo_login_aluno == 'SENHA' %}selected{% endif %}>CPF + Senha (Seguro)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="max_reservas_ativas">Máx. de Reservas Ativas por Aluno</label>
+                    <input type="number" id="max_reservas_ativas" name="max_reservas_ativas" value="{{ config.max_reservas_ativas if config.max_reservas_ativas else 1 }}" min="1" max="30">
+                    <small style="color: var(--text-muted);">Quantas refeições futuras um aluno pode reservar simultaneamente.</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="email_qr_reserva">Enviar QR Code por E-mail ao Reservar?</label>
+                    <select id="email_qr_reserva" name="email_qr_reserva">
+                        <option value="1" {% if config.email_qr_reserva %}selected{% endif %}>Sim (Requer SMTP ativo e e-mail cadastrado)</option>
+                        <option value="0" {% if not config.email_qr_reserva %}selected{% endif %}>Não</option>
+                    </select>
+                    <small style="color: var(--text-muted);">Disparo automático após cada confirmação de reserva.</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="tempo_autologout">Tempo de Autologout (Segundos)</label>
+                    <input type="number" id="tempo_autologout" name="tempo_autologout" value="{{ config.tempo_autologout if config.tempo_autologout is not none else 60 }}" min="0">
+                    <small style="color: var(--text-muted);">Tempo de inatividade nos tablets de estudantes (0 para desativar).</small>
+                </div>
+            </div>
+
+            <!-- SUBSEÇÃO: REGRAS MANUAIS DAS JANELAS DE RESERVA POR DIA DA SEMANA -->
+            <div style="margin-top: 2rem; padding-top: 1.75rem; border-top: 1px solid var(--border);">
+                <div style="margin-bottom: 1.25rem;">
+                    <h3 style="font-size: 1.15rem; margin: 0 0 0.35rem 0; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                        <i class="ph ph-calendar-check" style="color: var(--primary);"></i> Janelas de Reserva e Prazos do Fornecedor por Dia da Semana
+                    </h3>
+                    <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0; line-height: 1.4;">
+                        Configure manualmente para cada dia de refeição o momento exato em que as reservas <strong>começam (abertura)</strong> e quando <strong>terminam (corte final para o fornecedor)</strong>.
+                    </p>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    {% for j in janelas %}
+                    {% set cur_ab = '' ~ j.abertura_semana_offset ~ '_' ~ j.abertura_dia_semana %}
+                    {% set cur_fe = '' ~ j.fechamento_semana_offset ~ '_' ~ j.fechamento_dia_semana %}
+                    <div class="card" style="margin: 0; padding: 1.25rem; border: 1px solid var(--border); background: var(--background); border-radius: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <input type="checkbox" id="janela_{{ j.dia_refeicao }}_ativo" name="janela_{{ j.dia_refeicao }}_ativo" value="1" {% if j.ativo %}checked{% endif %} style="width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer;">
+                                <label for="janela_{{ j.dia_refeicao }}_ativo" style="font-weight: 700; font-size: 1rem; margin: 0; cursor: pointer; color: var(--text-main);">
+                                    {{ j.dia_nome }}
+                                </label>
+                            </div>
+                            <span class="badge" style="{% if j.ativo %}background: #dcfce7; color: #166534;{% else %}background: #f1f5f9; color: var(--text-muted);{% endif %} font-size: 0.75rem; font-weight: 600;">
+                                {% if j.ativo %}Ativo para Refeições{% else %}Dia Inativo{% endif %}
+                            </span>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem;">
+                            <!-- Início / Abertura -->
+                            <div style="background: var(--surface); padding: 0.85rem; border-radius: 8px; border: 1px solid var(--border);">
+                                <label style="font-weight: 600; font-size: 0.82rem; color: #1d4ed8; display: flex; align-items: center; gap: 6px; margin-bottom: 0.5rem;">
+                                    <i class="ph ph-door-open" style="font-size: 1rem;"></i> Início das Reservas (Abertura)
+                                </label>
+                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                    <select name="janela_{{ j.dia_refeicao }}_ab_combo" style="flex: 2; padding: 0.45rem 0.6rem; font-size: 0.85rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text-main);">
+                                        <optgroup label="Semana Anterior à Refeição">
+                                            <option value="1_0" {% if cur_ab == '1_0' %}selected{% endif %}>Segunda-feira (Semana anterior)</option>
+                                            <option value="1_1" {% if cur_ab == '1_1' %}selected{% endif %}>Terça-feira (Semana anterior)</option>
+                                            <option value="1_2" {% if cur_ab == '1_2' %}selected{% endif %}>Quarta-feira (Semana anterior)</option>
+                                            <option value="1_3" {% if cur_ab == '1_3' %}selected{% endif %}>Quinta-feira (Semana anterior)</option>
+                                            <option value="1_4" {% if cur_ab == '1_4' %}selected{% endif %}>Sexta-feira (Semana anterior)</option>
+                                            <option value="1_5" {% if cur_ab == '1_5' %}selected{% endif %}>Sábado (Semana anterior)</option>
+                                            <option value="1_6" {% if cur_ab == '1_6' %}selected{% endif %}>Domingo (Semana anterior)</option>
+                                        </optgroup>
+                                        <optgroup label="Mesma Semana da Refeição">
+                                            <option value="0_0" {% if cur_ab == '0_0' %}selected{% endif %}>Segunda-feira (Mesma semana)</option>
+                                            <option value="0_1" {% if cur_ab == '0_1' %}selected{% endif %}>Terça-feira (Mesma semana)</option>
+                                            <option value="0_2" {% if cur_ab == '0_2' %}selected{% endif %}>Quarta-feira (Mesma semana)</option>
+                                            <option value="0_3" {% if cur_ab == '0_3' %}selected{% endif %}>Quinta-feira (Mesma semana)</option>
+                                            <option value="0_4" {% if cur_ab == '0_4' %}selected{% endif %}>Sexta-feira (Mesma semana)</option>
+                                        </optgroup>
+                                    </select>
+                                    <span style="font-size: 0.8rem; color: var(--text-muted);">às</span>
+                                    <input type="time" name="janela_{{ j.dia_refeicao }}_ab_hora" value="{{ j.abertura_horario }}" style="width: 95px; padding: 0.45rem; font-size: 0.85rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text-main);">
+                                </div>
+                            </div>
+
+                            <!-- Fechamento / Corte Fornecedor -->
+                            <div style="background: var(--surface); padding: 0.85rem; border-radius: 8px; border: 1px solid var(--border);">
+                                <label style="font-weight: 600; font-size: 0.82rem; color: #b91c1c; display: flex; align-items: center; gap: 6px; margin-bottom: 0.5rem;">
+                                    <i class="ph ph-hourglass-high" style="font-size: 1rem;"></i> Término das Reservas (Corte Fornecedor)
+                                </label>
+                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                    <select name="janela_{{ j.dia_refeicao }}_fe_combo" style="flex: 2; padding: 0.45rem 0.6rem; font-size: 0.85rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text-main);">
+                                        <optgroup label="Semana Anterior à Refeição">
+                                            <option value="1_3" {% if cur_fe == '1_3' %}selected{% endif %}>Quinta-feira (Semana anterior)</option>
+                                            <option value="1_4" {% if cur_fe == '1_4' %}selected{% endif %}>Sexta-feira (Semana anterior)</option>
+                                            <option value="1_5" {% if cur_fe == '1_5' %}selected{% endif %}>Sábado (Semana anterior)</option>
+                                            <option value="1_6" {% if cur_fe == '1_6' %}selected{% endif %}>Domingo (Semana anterior)</option>
+                                        </optgroup>
+                                        <optgroup label="Mesma Semana da Refeição">
+                                            <option value="0_0" {% if cur_fe == '0_0' %}selected{% endif %}>Segunda-feira (Mesma semana)</option>
+                                            <option value="0_1" {% if cur_fe == '0_1' %}selected{% endif %}>Terça-feira (Mesma semana)</option>
+                                            <option value="0_2" {% if cur_fe == '0_2' %}selected{% endif %}>Quarta-feira (Mesma semana)</option>
+                                            <option value="0_3" {% if cur_fe == '0_3' %}selected{% endif %}>Quinta-feira (Mesma semana)</option>
+                                            <option value="0_4" {% if cur_fe == '0_4' %}selected{% endif %}>Sexta-feira (Mesma semana)</option>
+                                        </optgroup>
+                                    </select>
+                                    <span style="font-size: 0.8rem; color: var(--text-muted);">às</span>
+                                    <input type="time" name="janela_{{ j.dia_refeicao }}_fe_hora" value="{{ j.fechamento_horario }}" style="width: 95px; padding: 0.45rem; font-size: 0.85rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text-main);">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div style="margin-top: 1.5rem;">
+                <button type="submit" class="btn btn-primary" style="padding: 0.8rem 1.8rem;">
+                    <i class="ph ph-floppy-disk" style="margin-right: 8px;"></i> Salvar Parâmetros
+                </button>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+
+    <!-- CARD 4: SERVIDOR DE E-MAIL (SMTP) -->
+    {% if tem_permissao('smtp') %}
+    <div class="card">
+        <h2 style="font-size: 1.25rem; display: flex; align-items: center; gap: 8px;">
+            <i class="ph ph-envelope-simple" style="color: var(--primary);"></i> Servidor de E-mail (SMTP)
+        </h2>
+        <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1.5rem;">
+            Configurações para envio de alertas, notificações de refeição e recuperação de senha.
+        </p>
+
+        <form method="POST" action="{{ url_for('admin.save_configuracoes_smtp') }}">
+            <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem;">
+                <div class="form-group">
+                    <label>Serviço SMTP Ativo?</label>
+                    <select name="smtp_ativo" id="smtp_ativo">
+                        <option value="1" {% if config.smtp_ativo %}selected{% endif %}>Sim (Habilitado)</option>
+                        <option value="0" {% if not config.smtp_ativo %}selected{% endif %}>Não (Desativado)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Host SMTP</label>
+                    <input type="text" name="smtp_host" id="smtp_host" value="{{ config.smtp_host or '' }}" placeholder="Ex: smtp.gmail.com">
+                </div>
+                <div class="form-group">
+                    <label>Porta</label>
+                    <input type="text" name="smtp_porta" id="smtp_porta" value="{{ config.smtp_porta or '' }}" placeholder="Ex: 587">
+                </div>
+                <div class="form-group">
+                    <label>Usuário SMTP</label>
+                    <input type="text" name="smtp_user" id="smtp_user" value="{{ config.smtp_user or '' }}" placeholder="email@instituicao.edu.br">
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label>Senha / Token SMTP</label>
+                    <input type="password" name="smtp_senha" id="smtp_senha" placeholder="Mantenha vazio para preservar a senha atual">
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="margin-top: 1rem; padding: 0.8rem 1.8rem;">
+                <i class="ph ph-plugs-connected" style="margin-right: 8px;"></i> Salvar Configuração SMTP
+            </button>
+        </form>
+
+        <hr style="margin: 2rem 0; border: 0; border-top: 1px solid var(--border);">
+
+        <h3 style="font-size: 1.05rem; display: flex; align-items: center; gap: 8px; margin-bottom: 0.5rem;">
+            <i class="ph ph-paper-plane-tilt" style="color: #0ea5e9;"></i> Testar Conexão de E-mail
+        </h3>
+        <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1rem;">
+            Envie um e-mail de teste para validar resolução de DNS, portas, criptografia TLS/SSL e autenticação com relatório detalhado.
+        </p>
+
+        <form id="formTesteSmtp" method="POST" action="{{ url_for('admin.testar_smtp') }}" style="display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; max-width: 650px;">
+            <div class="form-group" style="flex: 1; min-width: 250px; margin-bottom: 0;">
+                <label for="email_teste">E-mail de destino do teste</label>
+                <input type="email" id="email_teste" name="email_teste" placeholder="seu@email.com" required>
+            </div>
+            <button type="submit" id="btnEnviarTesteSmtp" class="btn" style="background: #0ea5e9; color: white; white-space: nowrap; padding: 0.75rem 1.4rem; display: inline-flex; align-items: center; gap: 6px; font-weight: 500;">
+                <i class="ph ph-paper-plane-tilt" id="iconBtnTesteSmtp"></i>
+                <span id="labelBtnTesteSmtp">Enviar Teste</span>
+            </button>
+        </form>
+
+        <!-- CONTAINER DO RELATÓRIO DIAGNÓSTICO DO SMTP -->
+        <div id="smtpDiagnosticContainer" style="margin-top: 1.75rem; {% if not smtp_diagnostic %}display: none;{% endif %}">
+            {% if smtp_diagnostic %}
+            <div class="smtp-diagnostic-card {{ 'is-success' if smtp_diagnostic.success else 'is-error' }}">
+                <div class="smtp-diag-header">
+                    <div class="smtp-diag-badge {{ 'badge-success' if smtp_diagnostic.success else 'badge-danger' }}">
+                        <i class="{{ 'ph-bold ph-check-circle' if smtp_diagnostic.success else 'ph-bold ph-x-circle' }}"></i>
+                        <span>{{ 'CONEXÃO BEM-SUCEDIDA' if smtp_diagnostic.success else 'FALHA NO DIAGNÓSTICO' }}</span>
+                    </div>
+                    <h3 class="smtp-diag-title">{{ smtp_diagnostic.mensagem }}</h3>
+                    <div class="smtp-diag-meta">
+                        <span><i class="ph ph-clock"></i> {{ smtp_diagnostic.data_hora }}</span>
+                        <span><i class="ph ph-server"></i> {{ smtp_diagnostic.host }}:{{ smtp_diagnostic.porta }}</span>
+                        <span><i class="ph ph-user"></i> {{ smtp_diagnostic.user }}</span>
+                        <span><i class="ph ph-paper-plane"></i> Destino: {{ smtp_diagnostic.destinatario }}</span>
+                    </div>
+                </div>
+
+                <div class="smtp-diag-steps-box">
+                    <div class="smtp-diag-steps-title">
+                        <i class="ph ph-list-checks"></i> Resultado das Etapas de Conexão:
+                    </div>
+                    <div class="smtp-diag-steps-list">
+                        {% for etapa in smtp_diagnostic.etapas %}
+                        <div class="smtp-step-item status-{{ etapa.status }}">
+                            <div class="smtp-step-icon">
+                                {% if etapa.status == 'sucesso' %}
+                                <i class="ph-bold ph-check" style="color: #16a34a;"></i>
+                                {% elif etapa.status == 'alerta' %}
+                                <i class="ph-bold ph-warning" style="color: #d97706;"></i>
+                                {% else %}
+                                <i class="ph-bold ph-x" style="color: #dc2626;"></i>
+                                {% endif %}
+                            </div>
+                            <div class="smtp-step-content">
+                                <div class="smtp-step-name">{{ etapa.nome }}</div>
+                                <div class="smtp-step-detail">{{ etapa.detalhe }}</div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                {% if smtp_diagnostic.dica %}
+                <div class="smtp-diag-tip-box">
+                    <div class="smtp-diag-tip-icon"><i class="ph-bold ph-lightbulb"></i></div>
+                    <div class="smtp-diag-tip-body">
+                        <strong>Orientação Recomendada:</strong>
+                        <p>{{ smtp_diagnostic.dica }}</p>
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="smtp-diag-terminal-box">
+                    <div class="smtp-diag-terminal-header">
+                        <div class="smtp-diag-terminal-title">
+                            <i class="ph ph-terminal-window"></i> Transcrição do Protocolo SMTP e Rastreamento (Traceback)
+                        </div>
+                        <button type="button" class="btn-copy-log" onclick="copySmtpLog(this)">
+                            <i class="ph ph-copy"></i> <span>Copiar Log Completo</span>
+                        </button>
+                    </div>
+                    <pre class="smtp-diag-terminal-content" id="smtpRawLogContent">{% if smtp_diagnostic.log_protocolo %}[LOG DE PROTOCOLO SMTP]
+{{ smtp_diagnostic.log_protocolo | trim }}
+{% endif %}{% if smtp_diagnostic.traceback %}
+
+[RASTREAMENTO DE ERRO / TRACEBACK]
+{{ smtp_diagnostic.traceback | trim }}{% endif %}{% if not smtp_diagnostic.log_protocolo and not smtp_diagnostic.traceback %}(Nenhum erro de protocolo registrado){% endif %}</pre>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+/* Estilos do Painel de Diagnóstico SMTP */
+.smtp-diagnostic-card {
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+    animation: fadeIn 0.3s ease-out;
+}
+.smtp-diagnostic-card.is-success {
+    border-left: 6px solid #22c55e;
+}
+.smtp-diagnostic-card.is-error {
+    border-left: 6px solid #ef4444;
+}
+.smtp-diag-header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+}
+.smtp-diag-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 700;
+    font-size: 0.76rem;
+    padding: 3px 10px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+}
+.smtp-diag-badge.badge-success {
+    background: #dcfce7;
+    color: #15803d;
+}
+[data-theme="dark"] .smtp-diag-badge.badge-success {
+    background: rgba(34, 197, 94, 0.2);
+    color: #4ade80;
+}
+.smtp-diag-badge.badge-danger {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+[data-theme="dark"] .smtp-diag-badge.badge-danger {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+}
+.smtp-diag-title {
+    margin: 0.2rem 0 0.5rem;
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--text-main);
+}
+.smtp-diag-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+}
+.smtp-diag-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.smtp-diag-steps-box {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+}
+.smtp-diag-steps-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 0.75rem;
+}
+.smtp-diag-steps-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+.smtp-step-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 0.65rem 0.9rem;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.02);
+    border: 1px solid var(--border);
+}
+[data-theme="dark"] .smtp-step-item {
+    background: rgba(255, 255, 255, 0.02);
+}
+.smtp-step-item.status-sucesso {
+    border-color: rgba(34, 197, 94, 0.3);
+}
+.smtp-step-item.status-erro {
+    border-color: rgba(239, 68, 68, 0.35);
+    background: rgba(239, 68, 68, 0.04);
+}
+.smtp-step-item.status-alerta {
+    border-color: rgba(245, 158, 11, 0.35);
+    background: rgba(245, 158, 11, 0.04);
+}
+.smtp-step-icon {
+    font-size: 1.15rem;
+    margin-top: 1px;
+}
+.smtp-step-content {
+    flex: 1;
+}
+.smtp-step-name {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text-main);
+}
+.smtp-step-detail {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+    word-break: break-word;
+}
+.smtp-diag-tip-box {
+    margin: 1.25rem 1.5rem 0;
+    padding: 1rem 1.25rem;
+    border-radius: 8px;
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    color: var(--text-main);
+}
+.smtp-diag-tip-icon i {
+    color: #d97706;
+    font-size: 1.4rem;
+}
+.smtp-diag-tip-body strong {
+    font-size: 0.92rem;
+    display: block;
+    margin-bottom: 4px;
+    color: #d97706;
+}
+.smtp-diag-tip-body p {
+    margin: 0;
+    font-size: 0.86rem;
+    line-height: 1.45;
+}
+.smtp-diag-terminal-box {
+    margin: 1.25rem 1.5rem 1.5rem;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #090d16;
+    border: 1px solid #1e293b;
+}
+.smtp-diag-terminal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.55rem 0.9rem;
+    background: #1e293b;
+    color: #94a3b8;
+    font-size: 0.8rem;
+    font-family: monospace;
+}
+.smtp-diag-terminal-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    color: #e2e8f0;
+}
+.btn-copy-log {
+    background: #334155;
+    color: #f1f5f9;
+    border: none;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.15s ease;
+}
+.btn-copy-log:hover {
+    background: #475569;
+}
+.smtp-diag-terminal-content {
+    padding: 1rem;
+    margin: 0;
+    color: #38bdf8;
+    background: #090d16;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    max-height: 380px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+.smtp-diag-loading-box {
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+    background: var(--surface);
+    border: 1px dashed var(--border);
+    border-radius: 12px;
+}
+</style>
+
+<script>
+    function previewPalette(theme) {
+        document.documentElement.setAttribute('data-admin-theme', theme);
+        localStorage.setItem('admin_theme', theme);
+    }
+
+    // Gerenciador Assíncrono de Teste SMTP
+    document.addEventListener('DOMContentLoaded', function() {
+        const formTeste = document.getElementById('formTesteSmtp');
+        if (!formTeste) return;
+
+        formTeste.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const emailTesteInput = document.getElementById('email_teste');
+            const emailTeste = emailTesteInput ? emailTesteInput.value.trim() : '';
+            if (!emailTeste) return;
+
+            const btn = document.getElementById('btnEnviarTesteSmtp');
+            const icon = document.getElementById('iconBtnTesteSmtp');
+            const label = document.getElementById('labelBtnTesteSmtp');
+            const container = document.getElementById('smtpDiagnosticContainer');
+
+            // Estado de carregamento
+            if (btn) btn.disabled = true;
+            if (icon) icon.className = 'ph-bold ph-spinner ph-spin';
+            if (label) label.innerText = 'Testando conexão...';
+
+            if (container) {
+                container.style.display = 'block';
+                container.innerHTML = `
+                    <div class="smtp-diag-loading-box">
+                        <i class="ph-bold ph-spinner ph-spin" style="font-size: 2.2rem; color: #0ea5e9; margin-bottom: 0.75rem; display: inline-block;"></i>
+                        <h4 style="margin: 0 0 0.5rem; color: var(--text-main);">Executando Diagnóstico de Conexão SMTP...</h4>
+                        <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted);">
+                            Testando resolução de DNS, abertura de socket TCP, negociação STARTTLS/SSL e autenticação com o servidor...
+                        </p>
+                    </div>
+                `;
+                container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+
+            // Pega dados do formulário principal de SMTP se preenchidos
+            const formData = new FormData();
+            formData.append('email_teste', emailTeste);
+
+            const hostVal = document.getElementById('smtp_host')?.value?.trim();
+            const portaVal = document.getElementById('smtp_porta')?.value?.trim();
+            const userVal = document.getElementById('smtp_user')?.value?.trim();
+            const senhaVal = document.getElementById('smtp_senha')?.value;
+
+            if (hostVal) formData.append('smtp_host', hostVal);
+            if (portaVal) formData.append('smtp_porta', portaVal);
+            if (userVal) formData.append('smtp_user', userVal);
+            if (senhaVal) formData.append('smtp_senha', senhaVal);
+
+            try {
+                const response = await fetch("{{ url_for('admin.testar_smtp') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+                renderSmtpDiagnostic(data);
+            } catch (err) {
+                renderSmtpDiagnostic({
+                    success: false,
+                    mensagem: "Erro ao comunicar com o servidor da cantina: " + err.message,
+                    etapas: [{ nome: "Comunicação Interna", status: "erro", detalhe: err.message }],
+                    dica: "Verifique se a aplicação Flask está em execução.",
+                    data_hora: new Date().toLocaleString(),
+                    host: hostVal || 'N/A',
+                    porta: portaVal || 'N/A',
+                    user: userVal || 'N/A',
+                    destinatario: emailTeste,
+                    log_protocolo: "",
+                    traceback: err.stack || String(err)
+                });
+            } finally {
+                if (btn) btn.disabled = false;
+                if (icon) icon.className = 'ph ph-paper-plane-tilt';
+                if (label) label.innerText = 'Enviar Teste';
+                container?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        });
+    });
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function renderSmtpDiagnostic(data) {
+        const container = document.getElementById('smtpDiagnosticContainer');
+        if (!container) return;
+
+        let etapasHtml = '';
+        (data.etapas || []).forEach(etapa => {
+            let iconMarkup = '<i class="ph-bold ph-check" style="color: #16a34a;"></i>';
+            if (etapa.status === 'alerta') {
+                iconMarkup = '<i class="ph-bold ph-warning" style="color: #d97706;"></i>';
+            } else if (etapa.status === 'erro') {
+                iconMarkup = '<i class="ph-bold ph-x" style="color: #dc2626;"></i>';
+            }
+
+            etapasHtml += `
+                <div class="smtp-step-item status-${escapeHtml(etapa.status)}">
+                    <div class="smtp-step-icon">${iconMarkup}</div>
+                    <div class="smtp-step-content">
+                        <div class="smtp-step-name">${escapeHtml(etapa.nome)}</div>
+                        <div class="smtp-step-detail">${escapeHtml(etapa.detalhe)}</div>
+                    </div>
+                </div>
+            `;
+        });
+
+        let rawLogText = '';
+        if (data.log_protocolo && data.log_protocolo.trim()) {
+            rawLogText += "[LOG DE PROTOCOLO SMTP]\n" + data.log_protocolo.trim() + "\n\n";
+        }
+        if (data.traceback && data.traceback.trim()) {
+            rawLogText += "[RASTREAMENTO DE ERRO / TRACEBACK]\n" + data.traceback.trim();
+        }
+        if (!rawLogText) {
+            rawLogText = "(Nenhum erro de protocolo registrado. O processo completou com êxito)";
+        }
+
+        const tipBox = data.dica ? `
+            <div class="smtp-diag-tip-box">
+                <div class="smtp-diag-tip-icon"><i class="ph-bold ph-lightbulb"></i></div>
+                <div class="smtp-diag-tip-body">
+                    <strong>Orientação Recomendada:</strong>
+                    <p>${escapeHtml(data.dica)}</p>
+                </div>
+            </div>
+        ` : '';
+
+        container.style.display = 'block';
+        container.innerHTML = `
+            <div class="smtp-diagnostic-card ${data.success ? 'is-success' : 'is-error'}">
+                <div class="smtp-diag-header">
+                    <div class="smtp-diag-badge ${data.success ? 'badge-success' : 'badge-danger'}">
+                        <i class="${data.success ? 'ph-bold ph-check-circle' : 'ph-bold ph-x-circle'}"></i>
+                        <span>${data.success ? 'CONEXÃO BEM-SUCEDIDA' : 'FALHA NO DIAGNÓSTICO'}</span>
+                    </div>
+                    <h3 class="smtp-diag-title">${escapeHtml(data.mensagem)}</h3>
+                    <div class="smtp-diag-meta">
+                        <span><i class="ph ph-clock"></i> ${escapeHtml(data.data_hora || '')}</span>
+                        <span><i class="ph ph-server"></i> ${escapeHtml(data.host || '')}:${escapeHtml(data.porta || '')}</span>
+                        <span><i class="ph ph-user"></i> ${escapeHtml(data.user || '')}</span>
+                        <span><i class="ph ph-paper-plane"></i> Destino: ${escapeHtml(data.destinatario || '')}</span>
+                    </div>
+                </div>
+
+                <div class="smtp-diag-steps-box">
+                    <div class="smtp-diag-steps-title">
+                        <i class="ph ph-list-checks"></i> Resultado das Etapas de Conexão:
+                    </div>
+                    <div class="smtp-diag-steps-list">
+                        ${etapasHtml}
+                    </div>
+                </div>
+
+                ${tipBox}
+
+                <div class="smtp-diag-terminal-box">
+                    <div class="smtp-diag-terminal-header">
+                        <div class="smtp-diag-terminal-title">
+                            <i class="ph ph-terminal-window"></i> Transcrição do Protocolo SMTP e Rastreamento (Traceback)
+                        </div>
+                        <button type="button" class="btn-copy-log" onclick="copySmtpLog(this)">
+                            <i class="ph ph-copy"></i> <span>Copiar Log Completo</span>
+                        </button>
+                    </div>
+                    <pre class="smtp-diag-terminal-content" id="smtpRawLogContent">${escapeHtml(rawLogText)}</pre>
+                </div>
+            </div>
+        `;
+    }
+
+    function copySmtpLog(btn) {
+        const logContent = document.getElementById('smtpRawLogContent');
+        if (!logContent) return;
+
+        navigator.clipboard.writeText(logContent.innerText).then(() => {
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="ph-bold ph-check"></i> <span>Copiado!</span>';
+            btn.style.background = '#15803d';
+            setTimeout(() => {
+                btn.innerHTML = originalHtml;
+                btn.style.background = '';
+            }, 2500);
+        }).catch(() => {
+            alert('Não foi possível copiar automaticamente. Selecione o texto e use Ctrl+C.');
+        });
+    }
+</script>
+{% endblock %}

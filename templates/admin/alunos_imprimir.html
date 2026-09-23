@@ -244,7 +244,20 @@
             </div>
 
             <div class="badge-footer">
-                <span>{{ c.turma }}</span>
+                <span style="font-size: 0.68rem; font-weight: 700; color: #065f46; display: block; line-height: 1.25; padding: 0 4px;">
+                    {% if c.curso_efetivo %}
+                        {{ c.curso_efetivo }}{% if c.serie_ano %} &bull; {{ c.serie_ano }}º Ano{% endif %}
+                    {% elif c.turma and c.turma != 'Geral/Sem Turma' %}
+                        {{ c.turma }}{% if c.serie_ano %} &bull; {{ c.serie_ano }}º Ano{% endif %}
+                    {% else %}
+                        Estudante Regular{% if c.serie_ano %} &bull; {{ c.serie_ano }}º Ano{% endif %}
+                    {% endif %}
+                </span>
+                {% if c.turma and c.turma != c.curso_efetivo and c.turma != 'Geral/Sem Turma' %}
+                <span style="font-size: 0.55rem; color: #64748b; display: block; margin-top: 2px;">
+                    {{ c.turma }}
+                </span>
+                {% endif %}
             </div>
         </div>
         {% endfor %}

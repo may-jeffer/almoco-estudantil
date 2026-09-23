@@ -27,26 +27,40 @@
     {% endif %}
 
     <!-- Contexto Atual -->
-    <div class="flex-mobile-column"
-        style="background: white; padding: 1rem 1.5rem; border-radius: 12px; box-shadow: var(--shadow-sm); margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border);">
+    <div class="flex-mobile-column aluno-contexto-bar"
+        style="background: var(--surface); padding: 1rem 1.5rem; border-radius: 12px; box-shadow: var(--shadow-sm); margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border); gap: 10px;">
         <div style="display: flex; align-items: center; gap: 0.75rem;">
-            <div style="background: #f0f9ff; color: var(--primary); padding: 0.5rem; border-radius: 8px;">
+            <div style="background: var(--primary-light, #f0f9ff); color: var(--primary); padding: 0.5rem; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
                 <i class="ph ph-buildings" style="font-size: 1.5rem;"></i>
             </div>
             <div>
                 <span
                     style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em;">Acesso
                     atual</span>
-                <h3 style="margin: 0; font-size: 1.1rem; color: var(--text);">{{ session.get('contexto_nome', 'Turma
+                <h3 style="margin: 0; font-size: 1.1rem; color: var(--text-main);">{{ session.get('contexto_nome', 'Turma
                     Padrão') }}</h3>
+                {% if aluno_ativo and (aluno_ativo.serie_ano_efetiva or aluno_ativo.turma_curso) %}
+                <span style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-top: 2px;">
+                    {% if aluno_ativo.serie_ano_efetiva %}<strong>{{ aluno_ativo.serie_ano_efetiva }}º Ano</strong>{% endif %}
+                    {% if aluno_ativo.turma_curso %} &bull; {{ aluno_ativo.turma_curso }}{% endif %}
+                    {% if aluno_ativo.turma_ano %} ({{ aluno_ativo.turma_ano }}){% endif %}
+                </span>
+                {% endif %}
             </div>
         </div>
-        {% if tem_multiplos %}
-        <a href="{{ url_for('aluno.aluno_trocar_contexto') }}" class="btn btn-secondary"
-            style="font-size: 0.85rem; padding: 0.5rem 1rem;">
-            <i class="ph ph-arrows-left-right"></i> Trocar Evento
-        </a>
-        {% endif %}
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <!-- Botão Modo Escuro no Portal do Estudante -->
+            <button type="button" class="btn btn-secondary btn-sm" onclick="toggleStudentDarkMode()" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; padding: 0.5rem 0.9rem;" title="Alternar entre modo claro e escuro">
+                <i class="ph ph-moon student-dark-icon"></i>
+                <span class="student-dark-text">Modo Escuro</span>
+            </button>
+            {% if tem_multiplos %}
+            <a href="{{ url_for('aluno.aluno_trocar_contexto') }}" class="btn btn-secondary btn-sm"
+                style="font-size: 0.85rem; padding: 0.5rem 1rem;">
+                <i class="ph ph-arrows-left-right"></i> Trocar Evento
+            </a>
+            {% endif %}
+        </div>
     </div>
 
     <div class="grid">
@@ -84,7 +98,7 @@
         </div>
         {% else %}
         <!-- Card: Crachá Fixo Aluno Regular -->
-        <div class="card card-full" style="border-top: 4px solid var(--success); text-align: center; padding: 2rem;">
+        <div class="card card-full" style="border-top: 4px solid var(--primary); text-align: center; padding: 2rem;">
             <h2 style="margin-bottom: 1rem;"><i class="ph ph-identification-card"></i> Seu Crachá Permanente</h2>
             <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.95rem;">
                 Apresente este QR Code único em todas as refeições que você reservar.<br>
@@ -95,20 +109,20 @@
             {% if qr_code_cracha_std %}
             <div style="display: flex; flex-direction: column; align-items: center; gap: 1.5rem;">
                 <!-- A imagem será preenchida via Canvas no onload -->
-                <img id="badge-img-std" style="width: 100%; max-width: 320px; height: auto; border-radius: 12px; box-shadow: var(--shadow-md); border: 2px solid var(--success); display: none;">
+                <img id="badge-img-std" style="width: 100%; max-width: 320px; height: auto; border-radius: 12px; box-shadow: var(--shadow-md); border: 2px solid var(--primary); display: none;">
                 
                 <a id="btn-download-std" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.5rem 1rem; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
                     <i class="ph ph-download-simple"></i> Salvar na Galeria (Acesso Offline)
                 </a>
             </div>
-            <div style="margin-top: 1.5rem; color: var(--success); font-weight: 600; font-size: 0.9rem;">
+            <div style="margin-top: 1.5rem; color: var(--primary); font-weight: 600; font-size: 0.9rem;">
                 <i class="ph ph-shield-check"></i> Identificador Digital Institucional
             </div>
             {% endif %}
         </div>
 
         <!-- Card: Refeições de Hoje -->
-        <div class="card" style="border-top: 4px solid var(--secondary);">
+        <div class="card" style="border-top: 4px solid var(--primary);">
             <h2><i class="ph ph-bowl-food" style="margin-right: 8px; vertical-align: middle;"></i> Refeições de Hoje
             </h2>
 
@@ -116,10 +130,10 @@
             <div
                 style="background: var(--background); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid var(--border);">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h3 style="margin: 0; color: var(--secondary); font-size: 1.1rem;">{{ item.cardapio.tipo_refeicao }}
+                    <h3 style="margin: 0; color: var(--primary); font-size: 1.1rem;">{{ item.cardapio.tipo_refeicao }}
                     </h3>
                     <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">{{ item.cardapio.data
-                        | datetimeformat }}</span>
+                        | data_com_semana }}</span>
                 </div>
 
                 <div style="margin-top: 0.75rem; font-size: 0.95rem; color: var(--text-main); line-height: 1.5;">
@@ -144,20 +158,20 @@
                 {% if item.reserva %}
                 <div style="text-align: center; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border);">
                     {% if item.reserva['status'] == 'ATIVA' %}
-                    <div style="padding: 1.25rem; background: #dcfce7; border-radius: 12px; color: #15803d; font-weight: 800; font-size: 1.2rem; border: 2px solid #86efac; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                    <div class="reserva-status-ativa">
                         <i class="ph ph-check-circle" style="font-size: 1.5rem; vertical-align: middle;"></i> VOCÊ POSSUI RESERVA
-                        <p style="font-weight: 500; font-size: 0.95rem; margin-top: 0.5rem; color: #166534;">
+                        <p style="font-weight: 500; font-size: 0.95rem; margin-top: 0.5rem;">
                             Sua refeição está garantida. Use seu crachá para retirar.
                         </p>
                     </div>
                     {% else %}
-                    <div style="padding: 1rem; background: #f3f4f6; border-radius: 10px; color: #4b5563; font-weight: 700; font-size: 1.1rem; border: 1px solid #d1d5db;">
+                    <div class="reserva-status-consumida" style="padding: 1rem; background: #f3f4f6; border-radius: 10px; color: #4b5563; font-weight: 700; font-size: 1.1rem; border: 1px solid #d1d5db;">
                         <i class="ph ph-check-square-offset" style="font-size: 1.3rem; vertical-align: middle;"></i> Refeição Já Consumida
                     </div>
                     {% endif %}
                 </div>
                 {% else %}
-                <div style="text-align: center; padding: 1.25rem; border: 2px dashed #fca5a5; background: #fef2f2; border-radius: 12px; margin-top: 1.5rem;">
+                <div class="reserva-status-sem" style="text-align: center; padding: 1.25rem; border: 2px dashed #fca5a5; background: #fef2f2; border-radius: 12px; margin-top: 1.5rem;">
                     <i class="ph ph-warning-circle" style="color: #ef4444; font-size: 2rem;"></i>
                     <h3 style="color: #b91c1c; font-size: 1.1rem; margin: 0.5rem 0;">SEM RESERVA PARA HOJE</h3>
                     <p style="color: #991b1b; font-size: 0.9rem; font-weight: 500;">Você não solicitou esta refeição a tempo.</p>
@@ -171,6 +185,40 @@
             </div>
             {% endfor %}
         </div>
+
+        {% if permitir_reserva_recorrente %}
+        <!-- Card: Plano de Almoço Semanal (Recorrência) -->
+        <div class="card" style="border-top: 4px solid #10b981; margin-bottom: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem;">
+                <h2 style="font-size: 1.2rem; margin: 0; display: flex; align-items: center; gap: 8px; color: var(--text-main);">
+                    <i class="ph ph-repeat" style="color: #10b981;"></i> Meu Plano Semanal de Almoço
+                </h2>
+                <span class="badge" style="background: #ecfdf5; color: #047857; font-weight: 600; font-size: 0.75rem;">
+                    Reserva Automática
+                </span>
+            </div>
+            <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 1rem; line-height: 1.4;">
+                Marque os dias da semana em que você habitualmente almoça na instituição. O sistema reservará suas refeições com antecedência para o fornecedor. Se em algum dia não puder comparecer, basta cancelar a data pontualmente com seu motivo.
+            </p>
+
+            <form method="POST" action="{{ url_for('aluno.aluno_recorrencia_salvar') }}">
+                <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem;">
+                    {% set dias_nomes = [('0', 'Segunda'), ('1', 'Terça'), ('2', 'Quarta'), ('3', 'Quinta'), ('4', 'Sexta')] %}
+                    {% for val, rotulo in dias_nomes %}
+                    {% set bloqueado_turma = val|int in dias_bloqueados_turma %}
+                    <label style="display: flex; align-items: center; gap: 6px; padding: 0.55rem 0.9rem; border-radius: 8px; border: 1px solid var(--border); background: {% if bloqueado_turma %}rgba(239,68,68,0.06){% else %}var(--background){% endif %}; cursor: {% if bloqueado_turma %}not-allowed{% else %}pointer{% endif %}; font-size: 0.9rem; font-weight: 600; color: {% if bloqueado_turma %}var(--text-muted){% else %}var(--text-main){% endif %}; opacity: {% if bloqueado_turma %}0.65{% else %}1{% endif %};" title="{% if bloqueado_turma %}Almoço bloqueado para sua turma neste dia da semana{% endif %}">
+                        <input type="checkbox" name="dias_recorrencia" value="{{ val }}" {% if val|int in dias_recorrentes_aluno and not bloqueado_turma %}checked{% endif %} {% if bloqueado_turma %}disabled{% endif %} style="accent-color: #10b981; width: 16px; height: 16px;">
+                        {{ rotulo }}
+                        {% if bloqueado_turma %}<span style="font-size:0.7rem; color:#dc2626; font-weight:normal;">(Bloqueado)</span>{% endif %}
+                    </label>
+                    {% endfor %}
+                </div>
+                <button type="submit" class="btn btn-sm btn-primary" style="background: #10b981; border-color: #10b981; display: inline-flex; align-items: center; gap: 6px;">
+                    <i class="ph ph-check"></i> Salvar Meu Plano Semanal
+                </button>
+            </form>
+        </div>
+        {% endif %}
 
         <!-- Card: Agendar Próximas Refeições -->
         <div class="card" style="border-top: 4px solid var(--primary);">
@@ -191,13 +239,13 @@
             {% else %}
             <div style="display: flex; flex-direction: column; gap: 1rem;">
                 {% for item in cardapios_abertos %}
-                <div
-                    style="padding: 1rem; border: 1px solid var(--border); border-radius: 8px; background: {% if item.reserva %}#f0fdf4{% else %}white{% endif %};">
+                <div class="aluno-cardapio-item {% if item.reserva %}aluno-cardapio-reservado{% endif %}"
+                    style="padding: 1rem; border: 1px solid var(--border); border-radius: 8px;">
                     <div
                         style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
                         <div>
                             <strong style="display: block; color: var(--primary);">{{ item.cardapio.data |
-                                datetimeformat }}</strong>
+                                data_com_semana }}</strong>
                             <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">
                                 <span style="font-weight: 600; color: var(--text-main);">{{ item.cardapio.tipo_refeicao
                                     }}</span>
@@ -221,17 +269,41 @@
                         {% if item.reserva %}
                         <div style="text-align: right;">
                             <span class="badge"
-                                style="background: #22c55e; color: white; margin-bottom: 0.5rem; display: inline-block;">Reservado</span>
-                            <form method="POST" action="{{ url_for('aluno.cancelar_reserva', cardapio_id=item.cardapio.id) }}"
-                                onsubmit="return confirm('Deseja realmente cancelar esta reserva?')">
-                                <button type="submit" class="btn btn-sm btn-danger"
-                                    style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">Cancelar</button>
-                            </form>
+                                style="background: var(--primary); color: white; margin-bottom: 0.5rem; display: inline-block;">Reservado</span>
+                            <div>
+                                <button type="button" class="btn btn-sm btn-danger"
+                                    style="font-size: 0.75rem; padding: 0.3rem 0.6rem;"
+                                    onclick="abrirModalCancelarAluno('{{ item.cardapio.id }}', '{{ item.cardapio.data | data_com_semana }}', '{{ item.cardapio.tipo_refeicao }}')">
+                                    <i class="ph ph-x-circle"></i> Cancelar
+                                </button>
+                            </div>
+                        </div>
+                        {% elif item.turma_bloqueada %}
+                        <div style="text-align: center; background: #fff1f2; border: 1px solid #fecdd3; padding: 0.6rem 0.9rem; border-radius: 8px; min-width: 170px;">
+                            <span style="font-size: 0.85rem; color: #be123c; font-weight: 700; display: block; margin-bottom: 2px;">
+                                <i class="ph ph-prohibit" style="vertical-align: middle;"></i> TURMA BLOQUEADA
+                            </span>
+                            <span style="font-size: 0.78rem; color: #9f1239; font-weight: 500;">
+                                Sem almoço às {{ item.dia_semana_nome }}
+                            </span>
+                        </div>
+                        {% elif item.ainda_nao_abriu %}
+                        <div style="text-align: center; background: #eff6ff; border: 2px dashed #bfdbfe; padding: 0.75rem 1rem; border-radius: 10px; min-width: 160px;">
+                            <span style="font-size: 0.9rem; color: #1d4ed8; font-weight: 800; display: block; margin-bottom: 3px;">
+                                <i class="ph ph-clock" style="vertical-align: middle;"></i> EM BREVE
+                            </span>
+                            <span style="font-size: 0.8rem; color: #2563eb; font-weight: 500;">
+                                {{ item.janela.mensagem if item.janela else 'Abre em breve' }}
+                            </span>
                         </div>
                         {% elif item.perdeu_prazo %}
-                        <div style="text-align: center; background: #fef2f2; border: 2px dashed #fca5a5; padding: 0.75rem 1rem; border-radius: 10px; min-width: 150px;">
-                            <span style="font-size: 1rem; color: #b91c1c; font-weight: 800; display: block; margin-bottom: 4px;"><i class="ph ph-warning-octagon" style="font-size: 1.2rem; vertical-align: middle;"></i> PRAZO ENCERRADO</span>
-                            <span style="font-size: 0.85rem; color: #991b1b; font-weight: 500;">Você não reservou.</span>
+                        <div class="aluno-prazo-encerrado" style="text-align: center; background: #fef2f2; border: 2px dashed #fca5a5; padding: 0.75rem 1rem; border-radius: 10px; min-width: 160px;">
+                            <span style="font-size: 0.9rem; color: #b91c1c; font-weight: 800; display: block; margin-bottom: 3px;">
+                                <i class="ph ph-warning-octagon" style="vertical-align: middle;"></i> PRAZO ENCERRADO
+                            </span>
+                            <span style="font-size: 0.8rem; color: #991b1b; font-weight: 500;">
+                                {{ item.janela.mensagem if item.janela else 'Você não reservou a tempo.' }}
+                            </span>
                         </div>
                         {% else %}
                         {% if reservas_ativas_count < max_reservas %} <form method="POST"
@@ -277,7 +349,7 @@
                         <input type="hidden" name="nota" id="nota-{{ r.reserva_id }}" required>
                     </div>
                     
-                    <textarea name="comentario" placeholder="Deixe seu comentário (Opcional)..." rows="2" style="font-size: 0.85rem; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border); outline: none; resize: none; width: 100%;"></textarea>
+                    <textarea name="comentario" placeholder="Deixe seu comentário (Opcional)..." rows="2" style="font-size: 0.85rem; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border); outline: none; resize: none; width: 100%; background: var(--surface); color: var(--text-main);"></textarea>
                     
                     <button type="submit" class="btn btn-primary btn-sm" style="width: 100%; font-size: 0.8rem; padding: 0.4rem !important;">
                         Submeter Avaliação
@@ -303,7 +375,7 @@
                 <tbody>
                     {% for c in proximos_cardapios %}
                     <tr>
-                        <td><strong>{{ c.data | datetimeformat }}</strong></td>
+                        <td><strong>{{ c.data | data_com_semana }}</strong></td>
                         <td>{{ c.descricao }}</td>
                     </tr>
                     {% else %}
@@ -346,18 +418,32 @@ document.addEventListener('DOMContentLoaded', function() {
         var docTexto = isEvento ? ('CPF: ' + cpfStr) : ('Matrícula: ' + matStr);
         var codText = isEvento ? cpfStr : matStr; 
         
-        var rodapeTexto = {{ (session.get('contexto_nome') or (contexto_evento.nome if contexto_evento else (aluno_ativo.turma_nome or 'Estudante Regular'))) | tojson }};
+        {% if session.get('contexto_nome') %}
+            var rodapeTexto = {{ session.get('contexto_nome') | tojson }};
+        {% elif contexto_evento %}
+            var rodapeTexto = {{ contexto_evento.nome | tojson }};
+        {% elif aluno_ativo.curso_efetivo %}
+            var rodapeTexto = {{ (aluno_ativo.curso_efetivo ~ ((' • ' ~ aluno_ativo.serie_ano_efetiva ~ 'º Ano') if aluno_ativo.serie_ano_efetiva else '')) | tojson }};
+        {% elif aluno_ativo.turma_nome %}
+            var rodapeTexto = {{ (aluno_ativo.turma_nome ~ ((' • ' ~ aluno_ativo.serie_ano_efetiva ~ 'º Ano') if aluno_ativo.serie_ano_efetiva else '')) | tojson }};
+        {% else %}
+            var rodapeTexto = "Estudante Regular";
+        {% endif %}
 
         function drawAndDownload(qrImageObj) {
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, w, h);
 
-            ctx.fillStyle = '#10b981';
+            var primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#2F9E41';
+            var primaryHover = getComputedStyle(document.documentElement).getPropertyValue('--primary-hover').trim() || primaryColor;
+            var primaryLight = getComputedStyle(document.documentElement).getPropertyValue('--primary-light').trim() || '#E8F5E9';
+
+            ctx.fillStyle = primaryColor;
             ctx.fillRect(0, 0, w, 8);
 
             ctx.fillStyle = '#fafafa';
             ctx.fillRect(0, 8, w, 100);
-            ctx.strokeStyle = '#10b981';
+            ctx.strokeStyle = primaryColor;
             ctx.lineWidth = 3;
             ctx.beginPath(); ctx.moveTo(0, 108); ctx.lineTo(w, 108); ctx.stroke();
 
@@ -366,7 +452,7 @@ document.addEventListener('DOMContentLoaded', function() {
             ctx.textAlign = 'center';
             ctx.fillText(nomeSistema, w / 2, 50);
 
-            ctx.fillStyle = '#059669';
+            ctx.fillStyle = primaryColor;
             ctx.font = 'bold 16px sans-serif';
             ctx.fillText(subtitulo, w / 2, 85);
 
@@ -399,14 +485,21 @@ document.addEventListener('DOMContentLoaded', function() {
             ctx.font = 'bold 18px monospace';
             ctx.fillText(codText || '', w / 2, qrY + qrSize + 35);
 
-            ctx.fillStyle = '#f0fdf4';
+            ctx.fillStyle = primaryLight;
             ctx.fillRect(0, h - 80, w, 80);
-            ctx.strokeStyle = '#d1fae5';
+            ctx.strokeStyle = primaryColor;
             ctx.lineWidth = 2;
             ctx.beginPath(); ctx.moveTo(0, h - 80); ctx.lineTo(w, h - 80); ctx.stroke();
 
-            ctx.fillStyle = '#065f46';
-            ctx.font = 'bold 20px sans-serif';
+            ctx.fillStyle = primaryHover;
+            var maxFooterWidth = w - 30;
+            ctx.font = 'bold 18px sans-serif';
+            if (ctx.measureText(rodapeTexto || '').width > maxFooterWidth) {
+                ctx.font = 'bold 15px sans-serif';
+            }
+            if (ctx.measureText(rodapeTexto || '').width > maxFooterWidth) {
+                ctx.font = 'bold 13px sans-serif';
+            }
             ctx.fillText(rodapeTexto || '', w / 2, h - 32);
 
             var finalDataUrl = canvas.toDataURL('image/png');
@@ -503,5 +596,80 @@ document.addEventListener('visibilitychange', async () => {
     }
 });
 requestWakeLock();
+
+// ─── Modal de Cancelamento de Reserva (Estudante) ─────────────────────────────
+function abrirModalCancelarAluno(cardapioId, dataStr, refeicaoStr) {
+    document.getElementById('formCancelarAluno').action = '/aluno/cancelar/' + cardapioId;
+    document.getElementById('canc_aluno_data').textContent = dataStr;
+    document.getElementById('canc_aluno_refeicao').textContent = refeicaoStr;
+    document.getElementById('motivo_cancelamento_select').value = '';
+    document.getElementById('motivo_cancelamento_outro').value = '';
+    document.getElementById('modalCancelarAluno').classList.add('is-open');
+}
+function fecharModalCancelarAluno() {
+    document.getElementById('modalCancelarAluno').classList.remove('is-open');
+}
+function verificarOutroMotivoAluno(sel) {
+    const txt = document.getElementById('motivo_cancelamento_outro');
+    if (sel.value === 'Outro') {
+        txt.required = true;
+        txt.placeholder = 'Por favor, especifique o motivo do cancelamento...';
+        txt.focus();
+    } else {
+        txt.required = false;
+        txt.placeholder = 'Detalhes ou observação adicional (opcional)...';
+    }
+}
+document.getElementById('modalCancelarAluno')?.addEventListener('click', function(e) {
+    if (e.target === this) fecharModalCancelarAluno();
+});
 </script>
+{% endblock %}
+
+{% block modals %}
+<!-- Modal Cancelamento de Reserva (Estudante) -->
+<div id="modalCancelarAluno" class="modal-overlay">
+    <div class="modal-box" style="max-width: 480px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem;">
+            <h2 style="margin:0; font-size: 1.25rem; color: var(--danger); display: flex; align-items: center; gap: 8px;">
+                <i class="ph ph-x-circle"></i> Cancelar Reserva
+            </h2>
+            <button onclick="fecharModalCancelarAluno()" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--text-muted); line-height:1;">&times;</button>
+        </div>
+        
+        <form id="formCancelarAluno" method="POST" action="">
+            <p style="font-size: 0.95rem; margin-bottom: 1rem; color: var(--text-main); line-height: 1.4;">
+                Você está prestes a cancelar sua reserva para <strong id="canc_aluno_data">---</strong> (<span id="canc_aluno_refeicao">---</span>).
+            </p>
+
+            <div class="form-group" style="margin-bottom: 1rem;">
+                <label style="font-weight: 600; font-size: 0.9rem; margin-bottom: 0.4rem; display: block;">Qual o motivo do cancelamento? *</label>
+                <select id="motivo_cancelamento_select" name="motivo_cancelamento" onchange="verificarOutroMotivoAluno(this)" required style="width: 100%; padding: 0.6rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text-main); font-size: 0.9rem;">
+                    <option value="">-- Selecione o motivo --</option>
+                    <option value="Não poderei comparecer à instituição nesta data">Não poderei comparecer à instituição nesta data</option>
+                    <option value="Problema de saúde / Consulta médica">Problema de saúde / Consulta médica</option>
+                    <option value="Atividade externa / Visita técnica">Atividade externa / Visita técnica</option>
+                    <option value="Não tenho interesse no cardápio do dia">Não tenho interesse no cardápio do dia</option>
+                    <option value="Outro">Outro motivo (especificar abaixo)</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="grupo_motivo_outro" style="margin-bottom: 1.25rem;">
+                <label style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.3rem; display: block;">Detalhes ou observação adicional:</label>
+                <textarea id="motivo_cancelamento_outro" name="motivo_cancelamento_outro" rows="2" placeholder="Detalhes ou observação adicional (opcional)..." style="width: 100%; padding: 0.6rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text-main); font-size: 0.9rem; resize: vertical;"></textarea>
+            </div>
+
+            <div style="background: rgba(239, 68, 68, 0.08); border-left: 4px solid var(--danger); padding: 0.75rem; border-radius: 4px; margin-bottom: 1.25rem; font-size: 0.85rem; color: var(--text-main);">
+                <i class="ph ph-info" style="color: var(--danger); font-size: 1rem; vertical-align: middle;"></i> Ao cancelar, sua porção será liberada para a contabilidade de sobras.
+            </div>
+
+            <div style="display:flex; gap:0.75rem;">
+                <button type="button" onclick="fecharModalCancelarAluno()" class="btn btn-secondary" style="flex:1;">Voltar</button>
+                <button type="submit" class="btn btn-danger" style="flex:1.2; font-weight: 700;">
+                    <i class="ph ph-x-circle" style="margin-right:4px;"></i> Confirmar Cancelamento
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 {% endblock %}

@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ficha de Recebimento em Branco (Manual) — {{ config.nome_sistema if config else 'Cantina Escolar' }}</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }
+        body { background: #F3F4F6; padding: 20px; color: #111827; }
+        .page {
+            background: white;
+            max-width: 920px;
+            margin: 0 auto;
+            padding: 30px 35px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 2px solid #111827;
+            padding-bottom: 12px;
+            margin-bottom: 15px;
+        }
+        .header-logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .header-logo img {
+            max-height: 50px;
+            width: auto;
+            object-fit: contain;
+        }
+        .header-title h1 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #111827;
+        }
+        .header-title p {
+            font-size: 0.8rem;
+            color: #4B5563;
+            margin-top: 2px;
+        }
+        .doc-badge {
+            text-align: right;
+            font-size: 0.75rem;
+            color: #6B7280;
+        }
+        .doc-badge strong {
+            display: block;
+            font-size: 0.95rem;
+            color: #111827;
+        }
+
+        /* Seção de Dados do Recebimento */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            background: #F9FAFB;
+            border: 1px solid #D1D5DB;
+            border-radius: 6px;
+            padding: 10px 14px;
+            margin-bottom: 14px;
+            font-size: 0.88rem;
+        }
+        .info-item span {
+            color: #6B7280;
+            font-size: 0.75rem;
+            display: block;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+        .info-item strong {
+            color: #111827;
+            font-size: 0.9rem;
+        }
+        .blank-line {
+            display: inline-block;
+            min-width: 180px;
+            border-bottom: 1px dotted #4B5563;
+            height: 16px;
+        }
+
+        /* Cardápio Box */
+        .cardapio-box {
+            background: #F0FDF4;
+            border: 1px solid #BBF7D0;
+            border-radius: 6px;
+            padding: 8px 12px;
+            margin-bottom: 15px;
+            font-size: 0.82rem;
+            line-height: 1.45;
+        }
+        .cardapio-box strong { color: #166534; }
+
+        /* Tabela de Itens */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 16px;
+            font-size: 0.8rem;
+        }
+        th, td {
+            border: 1px solid #9CA3AF;
+            padding: 6px 8px;
+            text-align: left;
+        }
+        th {
+            background: #E5E7EB;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.72rem;
+            letter-spacing: 0.04em;
+            color: #1F2937;
+        }
+        .row-blank {
+            height: 38px;
+        }
+        .center { text-align: center; }
+
+        /* Normas Sanitárias */
+        .normas-box {
+            background: #FFFBEB;
+            border: 1px solid #FDE68A;
+            border-radius: 6px;
+            padding: 8px 12px;
+            margin-bottom: 25px;
+            font-size: 0.75rem;
+            color: #92400E;
+            line-height: 1.4;
+        }
+
+        /* Assinaturas */
+        .signatures {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-top: 30px;
+            text-align: center;
+        }
+        .sig-line {
+            border-top: 1px solid #111827;
+            padding-top: 5px;
+            font-size: 0.75rem;
+            color: #111827;
+        }
+        .sig-line strong { display: block; font-size: 0.8rem; }
+        .sig-line span { font-size: 0.7rem; color: #6B7280; }
+
+        .no-print-bar {
+            max-width: 920px;
+            margin: 0 auto 15px auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            text-decoration: none;
+            border: none;
+        }
+        .btn-print { background: #2F9E41; color: white; }
+        .btn-back { background: #6B7280; color: white; }
+
+        @media print {
+            body { background: white; padding: 0; }
+            .page { box-shadow: none; padding: 10px 15px; max-width: 100%; border-radius: 0; }
+            .no-print-bar { display: none !important; }
+            @page { margin: 8mm; size: A4 portrait; }
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print-bar">
+        <a href="javascript:window.close()" class="btn btn-back">Voltar / Fechar</a>
+        <div style="display: flex; gap: 8px;">
+            <button onclick="window.print()" class="btn btn-print">🖨️ Imprimir Ficha em Branco</button>
+        </div>
+    </div>
+
+    <div class="page">
+        <!-- Cabeçalho Institucional -->
+        <div class="header">
+            <div class="header-logo">
+                {% if config and config.logo_path %}
+                <img src="{{ config.logo_path }}" alt="Logo">
+                {% endif %}
+                <div class="header-title">
+                    <h1>{{ config.nome_sistema if config else 'Controle de Alimentação Estudantil' }}</h1>
+                    <p>Ficha de Recebimento, Controle Térmico e Aspecto Sensorial (Preenchimento Manual)</p>
+                </div>
+            </div>
+            <div class="doc-badge">
+                <span>Controle Sanitário Manual</span>
+                <strong>Ficha de Campo</strong>
+            </div>
+        </div>
+
+        <!-- Identificação do Recebimento -->
+        {% if cardapio %}
+        <!-- Modo Vinculado ao Cardápio -->
+        <div class="info-grid">
+            <div class="info-item">
+                <span>Campus / Unidade</span>
+                <strong>{{ config.sigla_instituicao if config else 'Campus Principal' }}</strong>
+            </div>
+            <div class="info-item">
+                <span>Data Prevista / Horário de Recebimento</span>
+                <strong>{{ cardapio.data | datetimeformat }} &nbsp;|&nbsp; Horário: _____ : _____</strong>
+            </div>
+            <div class="info-item">
+                <span>Empresa / Fornecedor</span>
+                <span class="blank-line" style="width: 85%;"></span>
+            </div>
+            <div class="info-item">
+                <span>Tipo de Refeição</span>
+                <strong>{{ cardapio.tipo_refeicao }}</strong>
+            </div>
+        </div>
+
+        <div class="cardapio-box">
+            <strong>Cardápio Previsto no Sistema:</strong> {{ cardapio.descricao }}
+            {% if cardapio.proteinas %}<br><strong>Proteína:</strong> {{ cardapio.proteinas }}{% endif %}
+            {% if cardapio.acompanhamento %} | <strong>Acomp.:</strong> {{ cardapio.acompanhamento }}{% endif %}
+            {% if cardapio.salada %} | <strong>Salada:</strong> {{ cardapio.salada }}{% endif %}
+        </div>
+        {% else %}
+        <!-- Modo Totalmente em Branco (Avulso) -->
+        <div class="info-grid">
+            <div class="info-item">
+                <span>Campus / Unidade</span>
+                <span class="blank-line" style="width: 80%;"></span>
+            </div>
+            <div class="info-item">
+                <span>Data do Recebimento &nbsp;|&nbsp; Horário</span>
+                <strong>_____ / _____ / ________ &nbsp;|&nbsp; Horário: _____ : _____</strong>
+            </div>
+            <div class="info-item">
+                <span>Empresa Fornecedora</span>
+                <span class="blank-line" style="width: 85%;"></span>
+            </div>
+            <div class="info-item">
+                <span>Tipo de Refeição</span>
+                <span style="font-size: 0.85rem;">[ &nbsp; ] Almoço &nbsp; [ &nbsp; ] Jantar &nbsp; [ &nbsp; ] Lanche &nbsp; [ &nbsp; ] Outro</span>
+            </div>
+        </div>
+
+        <div class="cardapio-box" style="background: #F8FAFC; border-color: #E2E8F0; color: #475569;">
+            <strong>Cardápio Recebido / Observado:</strong> 
+            <span class="blank-line" style="width: 65%;"></span>
+        </div>
+        {% endif %}
+
+        <!-- Tabela de Avaliação dos Preparos para Preenchimento à Caneta -->
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 25px;" class="center">#</th>
+                    <th style="width: 170px;">Tipo de Preparo</th>
+                    <th class="center" style="width: 85px;">Temp. (°C)</th>
+                    <th class="center" style="width: 95px;">Conformidade</th>
+                    <th class="center" style="width: 105px;">Aspecto Sensorial</th>
+                    <th style="width: 160px;">Aferição / Recebedor</th>
+                    <th>Observações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if cardapio %}
+                    <!-- Linha 1: Proteína -->
+                    <tr class="row-blank">
+                        <td class="center font-weight-bold">1</td>
+                        <td><strong>Proteína:</strong> {{ cardapio.proteinas or '___________________' }}</td>
+                        <td class="center">______ °C</td>
+                        <td class="center">[ &nbsp; ] S &nbsp; [ &nbsp; ] N</td>
+                        <td class="center">[ &nbsp; ] Adeq &nbsp; [ &nbsp; ] Inad</td>
+                        <td style="font-size: 0.7rem; line-height: 1.3;">
+                            Medidor: ________________<br>Recebeu: ________________
+                        </td>
+                        <td></td>
+                    </tr>
+                    <!-- Linha 2: Feijão -->
+                    <tr class="row-blank">
+                        <td class="center font-weight-bold">2</td>
+                        <td><strong>Feijão</strong></td>
+                        <td class="center">______ °C</td>
+                        <td class="center">[ &nbsp; ] S &nbsp; [ &nbsp; ] N</td>
+                        <td class="center">[ &nbsp; ] Adeq &nbsp; [ &nbsp; ] Inad</td>
+                        <td style="font-size: 0.7rem; line-height: 1.3;">
+                            Medidor: ________________<br>Recebeu: ________________
+                        </td>
+                        <td></td>
+                    </tr>
+                    <!-- Linha 3: Arroz -->
+                    <tr class="row-blank">
+                        <td class="center font-weight-bold">3</td>
+                        <td><strong>Arroz</strong></td>
+                        <td class="center">______ °C</td>
+                        <td class="center">[ &nbsp; ] S &nbsp; [ &nbsp; ] N</td>
+                        <td class="center">[ &nbsp; ] Adeq &nbsp; [ &nbsp; ] Inad</td>
+                        <td style="font-size: 0.7rem; line-height: 1.3;">
+                            Medidor: ________________<br>Recebeu: ________________
+                        </td>
+                        <td></td>
+                    </tr>
+                    <!-- Linha 4: Macarrão / Salada se houver ou em branco -->
+                    {% if cardapio.acompanhamento and 'macarr' in cardapio.acompanhamento.lower() %}
+                    <tr class="row-blank">
+                        <td class="center font-weight-bold">4</td>
+                        <td><strong>Macarrão / Massas</strong></td>
+                        <td class="center">______ °C</td>
+                        <td class="center">[ &nbsp; ] S &nbsp; [ &nbsp; ] N</td>
+                        <td class="center">[ &nbsp; ] Adeq &nbsp; [ &nbsp; ] Inad</td>
+                        <td style="font-size: 0.7rem; line-height: 1.3;">
+                            Medidor: ________________<br>Recebeu: ________________
+                        </td>
+                        <td></td>
+                    </tr>
+                    {% endif %}
+                    {% if cardapio.salada %}
+                    <tr class="row-blank">
+                        <td class="center font-weight-bold">{% if cardapio.acompanhamento and 'macarr' in cardapio.acompanhamento.lower() %}5{% else %}4{% endif %}</td>
+                        <td><strong>Salada:</strong> {{ cardapio.salada }}</td>
+                        <td class="center">______ °C</td>
+                        <td class="center">[ &nbsp; ] S &nbsp; [ &nbsp; ] N</td>
+                        <td class="center">[ &nbsp; ] Adeq &nbsp; [ &nbsp; ] Inad</td>
+                        <td style="font-size: 0.7rem; line-height: 1.3;">
+                            Medidor: ________________<br>Recebeu: ________________
+                        </td>
+                        <td></td>
+                    </tr>
+                    {% endif %}
+                    <!-- Linhas extras para preenchimento manual -->
+                    {% for i in range(1, 5) %}
+                    <tr class="row-blank">
+                        <td class="center font-weight-bold">-</td>
+                        <td>Outro: __________________</td>
+                        <td class="center">______ °C</td>
+                        <td class="center">[ &nbsp; ] S &nbsp; [ &nbsp; ] N</td>
+                        <td class="center">[ &nbsp; ] Adeq &nbsp; [ &nbsp; ] Inad</td>
+                        <td style="font-size: 0.7rem; line-height: 1.3;">
+                            Medidor: ________________<br>Recebeu: ________________
+                        </td>
+                        <td></td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <!-- 9 Linhas em Branco no modo Avulso -->
+                    {% for i in range(1, 10) %}
+                    <tr class="row-blank">
+                        <td class="center font-weight-bold">{{ i }}</td>
+                        <td>
+                            [ &nbsp; ] Proteína &nbsp; [ &nbsp; ] Arroz &nbsp; [ &nbsp; ] Feijão<br>
+                            [ &nbsp; ] Outro: _________________
+                        </td>
+                        <td class="center">______ °C</td>
+                        <td class="center">[ &nbsp; ] S &nbsp; [ &nbsp; ] N</td>
+                        <td class="center">[ &nbsp; ] Adeq &nbsp; [ &nbsp; ] Inad</td>
+                        <td style="font-size: 0.7rem; line-height: 1.3;">
+                            Medidor: ________________<br>Recebeu: ________________
+                        </td>
+                        <td></td>
+                    </tr>
+                    {% endfor %}
+                {% endif %}
+            </tbody>
+        </table>
+
+        <!-- Orientações Técnicas e Padrões de Recebimento -->
+        <div class="normas-box">
+            <strong>Orientações Técnicas e Padrões de Recebimento:</strong><br>
+            {{ (config.padrao_qualidade_texto if config and config.padrao_qualidade_texto else '• Preparações Quentes: Devem ser mantidas e recebidas a 60°C ou mais por no máximo 6 horas.\n• Preparações Frias: Devem ser mantidas e recebidas abaixo de 10°C (ou abaixo de 5°C para carnes e sobremesas lácteas).\n• Aspecto Sensorial: Avaliação de cor, odor, sabor e textura característicos de alimento próprio para consumo.') | nl2br }}
+        </div>
+
+        <!-- Campos de Assinatura -->
+        <div class="signatures">
+            <div class="sig-line">
+                <strong>Profissional da Medição</strong>
+                <span>Nutricionista / Técnico Responsável (Carimbo / CRN)</span>
+            </div>
+            <div class="sig-line">
+                <strong>Responsável pelo Recebimento</strong>
+                <span>Fiscal / Servidor da Cantina</span>
+            </div>
+            <div class="sig-line">
+                <strong>Representante da Fornecedora</strong>
+                <span>Entregador / Motorista / Empresa</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="fade-in" style="max-width: 1050px; margin: 0 auto;">
+    <div style="margin-bottom: 2rem;">
+        <a href="{{ url_for('admin_qualidade') }}" style="color: var(--text-muted); display: inline-flex; align-items: center;">
+            <i class="ph ph-arrow-left" style="margin-right: 4px;"></i> Voltar à Lista de Recebimentos
+        </a>
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-top: 1rem;">
+            <div>
+                <h1 style="margin: 0; display: flex; align-items: center; gap: 10px;">
+                    <i class="ph ph-file-text" style="color: #2F9E41;"></i> Ficha de Controle Térmico e Recebimento #{{ registro.id }}
+                </h1>
+                <p style="color: var(--text-muted); margin: 0.35rem 0 0 0;">
+                    Registro de inspeção sanitária e qualidade nutricional dos alimentos.
+                </p>
+            </div>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <a href="{{ url_for('admin_qualidade_imprimir', id=registro.id) }}" target="_blank" class="btn btn-secondary" style="padding: 0.6rem 1rem; font-size: 0.9rem;">
+                    <i class="ph ph-printer" style="margin-right: 6px;"></i> Imprimir Relatório A4
+                </a>
+                <a href="{{ url_for('admin_qualidade_editar', id=registro.id) }}" class="btn btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.95rem;">
+                    <i class="ph ph-pencil-simple" style="margin-right: 6px;"></i> Editar Registro
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Informações do Recebimento (Cabeçalho) -->
+    <div class="card" style="margin-bottom: 1.5rem; padding: 1.5rem;">
+        <h2 style="font-size: 1.15rem; margin-bottom: 1rem; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+            <i class="ph ph-info" style="color: #0284C7;"></i> Dados Gerais da Entrega
+        </h2>
+        
+        <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; margin-bottom: 1.25rem;">
+            <div style="background: #F9FAFB; padding: 1rem; border-radius: 8px; border: 1px solid var(--border);">
+                <span style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; display: block;">Campus</span>
+                <strong style="font-size: 1.05rem; color: var(--text-main);">{{ registro.campus }}</strong>
+            </div>
+
+            <div style="background: #F9FAFB; padding: 1rem; border-radius: 8px; border: 1px solid var(--border);">
+                <span style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; display: block;">Data e Horário</span>
+                <strong style="font-size: 1.05rem; color: var(--text-main);">
+                    {{ registro.data_recebimento | datetimeformat }} às {{ registro.horario_recebimento }}
+                </strong>
+            </div>
+
+            <div style="background: #F9FAFB; padding: 1rem; border-radius: 8px; border: 1px solid var(--border);">
+                <span style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; display: block;">Fornecedor</span>
+                <strong style="font-size: 1.05rem; color: var(--text-main);">{{ registro.fornecedor }}</strong>
+            </div>
+
+            <div style="background: #F9FAFB; padding: 1rem; border-radius: 8px; border: 1px solid var(--border);">
+                <span style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; display: block;">Cardápio Vinculado</span>
+                <strong style="font-size: 1.05rem; color: #4338CA;">
+                    {{ registro.cardapio_tipo }} ({{ registro.cardapio_data | datetimeformat }})
+                </strong>
+            </div>
+        </div>
+
+        <div style="background: #F8FAFC; border-left: 4px solid #2F9E41; padding: 0.75rem 1rem; border-radius: 0 8px 8px 0; font-size: 0.85rem; color: var(--text-muted);">
+            <strong>Descrição do Cardápio:</strong> {{ registro.cardapio_descricao }}
+        </div>
+
+        <div style="margin-top: 1rem; font-size: 0.78rem; color: var(--text-muted); display: flex; gap: 1.5rem; flex-wrap: wrap;">
+            <span><i class="ph ph-user"></i> Registrado por: <strong>{{ registro.criado_por }}</strong> em {{ registro.criado_em }}</span>
+            {% if registro.atualizado_em %}
+            <span><i class="ph ph-pencil"></i> Última edição por: <strong>{{ registro.atualizado_por }}</strong> em {{ registro.atualizado_em }}</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Tabela Detalhada de Preparos -->
+    <div class="card" style="padding: 1.5rem;">
+        <h2 style="font-size: 1.15rem; margin-bottom: 1.25rem; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+            <i class="ph ph-thermometer-hot" style="color: #F59E0B;"></i> Preparos, Medições Térmicas e Avaliação Sensorial ({{ itens | length }})
+        </h2>
+
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">#</th>
+                        <th>Preparo</th>
+                        <th style="text-align: center;">Temperatura</th>
+                        <th style="text-align: center;">Conformidade</th>
+                        <th style="text-align: center;">Aspecto Sensorial</th>
+                        <th>Responsáveis</th>
+                        <th>Observações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for it in itens %}
+                    <tr>
+                        <td style="vertical-align: middle; font-weight: bold; color: var(--text-muted);">
+                            {{ loop.index }}
+                        </td>
+                        <td style="vertical-align: middle;">
+                            <strong style="color: var(--text-main); font-size: 0.95rem; display: block;">
+                                {{ it.tipo_preparo }}
+                            </strong>
+                            {% if it.tipo_preparo == 'Outros' and it.tipo_preparo_outro %}
+                            <span style="font-size: 0.82rem; color: #4F46E5; display: block;">
+                                {{ it.tipo_preparo_outro }}
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td style="vertical-align: middle; text-align: center; white-space: nowrap;">
+                            {% if it.temperatura is not none %}
+                                <span style="font-size: 1.1rem; font-weight: 700; color: {% if it.temperatura >= 60 %}#059669{% elif it.temperatura <= 10 %}#0284C7{% else %}#D97706{% endif %};">
+                                    {{ it.temperatura }} °C
+                                </span>
+                                <span style="display: block; font-size: 0.72rem; color: var(--text-muted);">
+                                    {% if it.temperatura >= 60 %}Quente (&ge;60°C){% elif it.temperatura <= 10 %}Refrigerado{% else %}Risco Térmico{% endif %}
+                                </span>
+                            {% else %}
+                                <span style="color: var(--text-muted); font-size: 0.85rem;">Não aferida</span>
+                            {% endif %}
+                        </td>
+                        <td style="vertical-align: middle; text-align: center; white-space: nowrap;">
+                            {% if it.conformidade == 'Sim' %}
+                                <span class="badge" style="background: #D1FAE5; color: #065F46; font-weight: 600;">
+                                    <i class="ph ph-check"></i> Conforme
+                                </span>
+                            {% else %}
+                                <span class="badge" style="background: #FEE2E2; color: #991B1B; font-weight: 600;">
+                                    <i class="ph ph-x"></i> Não Conforme
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td style="vertical-align: middle; text-align: center; white-space: nowrap;">
+                            {% if it.aspecto_sensorial == 'Adequado' %}
+                                <span class="badge" style="background: #D1FAE5; color: #065F46; font-weight: 600;">
+                                    Adequado
+                                </span>
+                            {% else %}
+                                <span class="badge" style="background: #FEE2E2; color: #991B1B; font-weight: 600;">
+                                    Inadequado
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td style="vertical-align: middle; font-size: 0.82rem; line-height: 1.5;">
+                            <div><span style="color: var(--text-muted);">Medição:</span> <strong>{{ it.profissional_medicao }}</strong></div>
+                            <div><span style="color: var(--text-muted);">Recebeu:</span> <strong>{{ it.responsavel_recebimento }}</strong></div>
+                            <div><span style="color: var(--text-muted);">Fornecedor:</span> <strong>{{ it.responsavel_fornecedor }}</strong></div>
+                        </td>
+                        <td style="vertical-align: middle; font-size: 0.85rem; color: var(--text-muted);">
+                            {{ it.observacoes or '—' }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

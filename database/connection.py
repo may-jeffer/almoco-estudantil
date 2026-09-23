@@ -40,7 +40,8 @@ def init_db():
                     reset_token TEXT,
                     reset_expiracao TEXT,
                     permitido_almoco INTEGER DEFAULT 1,
-                    turma_id INTEGER NOT NULL,
+                    turma_id INTEGER,
+                    curso TEXT,
                     FOREIGN KEY (turma_id) REFERENCES turmas (id)
                 );
 
@@ -73,15 +74,24 @@ def init_db():
                     smtp_ativo INTEGER DEFAULT 0,
                     logo_path TEXT,
                     sigla_instituicao TEXT DEFAULT 'SIGLA',
-                    tempo_autologout INTEGER DEFAULT 60
+                    tempo_autologout INTEGER DEFAULT 60,
+                    tema_admin TEXT DEFAULT 'padrao'
                 );
 
                 CREATE TABLE IF NOT EXISTS administradores (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     usuario TEXT UNIQUE NOT NULL,
                     senha TEXT NOT NULL,
-                    perfil TEXT DEFAULT 'admin_mestre',
-                    permissoes TEXT DEFAULT '[]'
+                    nome TEXT,
+                    cpf TEXT,
+                    setor TEXT,
+                    email TEXT,
+                    perfil TEXT DEFAULT 'operador',
+                    permissoes TEXT DEFAULT '[]',
+                    reset_token TEXT,
+                    reset_expiracao TEXT,
+                    modo_escuro INTEGER DEFAULT 0,
+                    tema_preferido TEXT DEFAULT 'padrao'
                 );
 
                 CREATE TABLE IF NOT EXISTS avisos (
@@ -297,6 +307,13 @@ def init_db():
                 cur.execute("ALTER TABLE configuracoes ADD COLUMN tempo_autologout INTEGER DEFAULT 60")
                 conn.commit()
 
+            # Migração automática 24: tema_admin na tabela configuracoes (paleta de cores do painel admin)
+            try:
+                cur.execute("SELECT tema_admin FROM configuracoes LIMIT 1")
+            except sqlite3.OperationalError:
+                cur.execute("ALTER TABLE configuracoes ADD COLUMN tema_admin TEXT DEFAULT 'padrao'")
+                conn.commit()
+
             # O admin inicial NÃO é mais criado automaticamente no models.py por motivos de segurança cibernética.
             # O administrador deve rodar o script 'init_admin.py' no momento do deploy para definir sua senha proprietária.
             
@@ -427,5 +444,368 @@ def init_db():
                     )
                 ''')
                 conn.commit()
-            pass
 
+            # Migração automática 27: Controle de Recebimento, Temperatura e Qualidade das Refeições
+            try:
+                cur.execute("SELECT COUNT(*) FROM controle_qualidade")
+            except sqlite3.OperationalError:
+                cur.execute('''
+                    CREATE TABLE controle_qualidade (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        cardapio_id INTEGER NOT NULL,
+                        campus TEXT NOT NULL,
+                        data_recebimento TEXT NOT NULL,
+                        horario_recebimento TEXT NOT NULL,
+                        fornecedor TEXT NOT NULL,
+                        criado_em TEXT NOT NULL,
+                        atualizado_em TEXT,
+                        criado_por TEXT,
+                        atualizado_por TEXT,
+                        FOREIGN KEY (cardapio_id) REFERENCES cardapios(id)
+                    )
+                ''')
+                cur.execute('''
+                    CREATE TABLE controle_qualidade_itens (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        controle_id INTEGER NOT NULL,
+                        tipo_preparo TEXT NOT NULL,
+                        tipo_preparo_outro TEXT,
+                        temperatura REAL,
+                        conformidade TEXT NOT NULL,
+                        aspecto_sensorial TEXT NOT NULL,
+                        profissional_medicao TEXT NOT NULL,
+                        responsavel_recebimento TEXT NOT NULL,
+                        responsavel_fornecedor TEXT NOT NULL,
+                        observacoes TEXT,
+                        ordem INTEGER DEFAULT 0,
+                        FOREIGN KEY (controle_id) REFERENCES controle_qualidade(id) ON DELETE CASCADE
+                    )
+                ''')
+                conn.commit()
+            except sqlite3.OperationalError:
+                pass
+
+            # Migração automática 28: padrao_qualidade_texto na tabela configuracoes
+            try:
+                cur.execute("SELECT padrao_qualidade_texto FROM configuracoes LIMIT 1")
+            except sqlite3.OperationalError:
+                cur.execute("ALTER TABLE configuracoes ADD COLUMN padrao_qualidade_texto TEXT")
+                padrao_inicial = (
+                    "• Preparações Quentes: Devem ser mantidas e recebidas a 60°C ou mais por no máximo 6 horas.\n"
+                    "• Preparações Frias: Devem ser mantidas e recebidas abaixo de 10°C (ou abaixo de 5°C para carnes e sobremesas lácteas).\n"
+                    "• Aspecto Sensorial: Avaliação de cor, odor, sabor e textura característicos de alimento próprio para consumo."
+                )
+                cur.execute("UPDATE configuracoes SET padrao_qualidade_texto = ? WHERE id = 1", (padrao_inicial,))
+                conn.commit()
+
+            # Migração automática 29: rastreabilidade e recuperação em administradores
+            novas_colunas_admin = [
+                ('nome', 'TEXT'),
+                ('cpf', 'TEXT'),
+                ('setor', 'TEXT'),
+                ('email', 'TEXT'),
+                ('reset_token', 'TEXT'),
+                ('reset_expiracao', 'TEXT')
+            ]
+            for col_nome, col_tipo in novas_colunas_admin:
+                try:
+                    cur.execute(f"ALTER TABLE administradores ADD COLUMN {col_nome} {col_tipo}")
+                except sqlite3.OperationalError:
+                    pass
+            # Migração automática 30: modo_escuro, tema_preferido e saneamento de perfis de administradores
+            novas_colunas_preferencias = [
+                ('modo_escuro', 'INTEGER DEFAULT 0'),
+                ('tema_preferido', "TEXT DEFAULT 'padrao'")
+            ]
+            for col_nome, col_tipo in novas_colunas_preferencias:
+                try:
+                    cur.execute(f"ALTER TABLE administradores ADD COLUMN {col_nome} {col_tipo}")
+                except sqlite3.OperationalError:
+                    pass
+
+            # Saneamento: administradores não-root sem 'all' explícito nas permissões são 'operador'
+            cur.execute("""
+                UPDATE administradores 
+                SET perfil = 'operador' 
+                WHERE usuario != 'admin' AND (permissoes IS NULL OR permissoes NOT LIKE '%"all"%')
+            """)
+            conn.commit()
+
+            # Migração automática 31: modo_escuro em alunos
+            try:
+                cur.execute("ALTER TABLE alunos ADD COLUMN modo_escuro INTEGER DEFAULT 0")
+            except sqlite3.OperationalError:
+                pass
+            conn.commit()
+
+            # Migração automática 32: Metadados na tabela turmas (Curso, Ano, Série, etc.)
+            novas_colunas_turmas = [
+                ('curso', 'TEXT'),
+                ('ano_letivo', 'INTEGER'),
+                ('periodo_letivo', 'INTEGER DEFAULT 1'),
+                ('serie_ano', 'INTEGER'),
+                ('turno', 'TEXT'),
+                ('modalidade', 'TEXT'),
+                ('ativa', 'INTEGER DEFAULT 1'),
+                ('dias_bloqueados', "TEXT DEFAULT ''")
+            ]
+            for col_nome, col_tipo in novas_colunas_turmas:
+                try:
+                    cur.execute(f"ALTER TABLE turmas ADD COLUMN {col_nome} {col_tipo}")
+                except sqlite3.OperationalError:
+                    pass
+            conn.commit()
+
+            # Migração automática 33: Metadados SUAP na tabela alunos
+            novas_colunas_alunos = [
+                ('serie_ano_atual', 'INTEGER'),
+                ('ano_ingresso', 'INTEGER'),
+                ('situacao_matricula', "TEXT DEFAULT 'Matriculado'")
+            ]
+            for col_nome, col_tipo in novas_colunas_alunos:
+                try:
+                    cur.execute(f"ALTER TABLE alunos ADD COLUMN {col_nome} {col_tipo}")
+                except sqlite3.OperationalError:
+                    pass
+            conn.commit()
+
+            # Migração automática 34: Tabela aluno_turma_historico
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS aluno_turma_historico (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    aluno_id INTEGER NOT NULL,
+                    turma_id INTEGER,
+                    ano_letivo INTEGER,
+                    periodo_letivo INTEGER DEFAULT 1,
+                    serie_ano INTEGER,
+                    situacao TEXT DEFAULT 'Cursando',
+                    data_inicio TEXT NOT NULL,
+                    data_fim TEXT,
+                    observacao TEXT,
+                    FOREIGN KEY (aluno_id) REFERENCES alunos(id),
+                    FOREIGN KEY (turma_id) REFERENCES turmas(id),
+                    UNIQUE(aluno_id, turma_id, ano_letivo, periodo_letivo)
+                )
+            ''')
+            conn.commit()
+
+            # Seed inicial de histórico para alunos existentes com turma_id vinculada
+            try:
+                from utils.helpers import date_hoje_str
+                data_hoje = date_hoje_str()
+            except Exception:
+                from datetime import date
+                data_hoje = date.today().strftime('%Y-%m-%d')
+
+            cur.execute("""
+                INSERT OR IGNORE INTO aluno_turma_historico 
+                    (aluno_id, turma_id, ano_letivo, periodo_letivo, serie_ano, situacao, data_inicio, observacao)
+                SELECT 
+                    a.id, 
+                    a.turma_id, 
+                    t.ano_letivo, 
+                    COALESCE(t.periodo_letivo, 1), 
+                    COALESCE(a.serie_ano_atual, t.serie_ano), 
+                    COALESCE(a.situacao_matricula, 'Cursando'), 
+                    ?, 
+                    'Histórico inicial registrado na migração'
+                FROM alunos a
+                LEFT JOIN turmas t ON a.turma_id = t.id
+                WHERE a.turma_id IS NOT NULL
+                  AND NOT EXISTS (
+                      SELECT 1 FROM aluno_turma_historico h WHERE h.aluno_id = a.id
+                  )
+            """, (data_hoje,))
+            conn.commit()
+
+            # Migração automática 35: Colunas de motivo e autoria de cancelamento na tabela reservas
+            novas_colunas_reservas = [
+                ('motivo_cancelamento', 'TEXT'),
+                ('cancelado_por', 'TEXT'),
+                ('data_cancelamento', 'TEXT')
+            ]
+            for col_nome, col_tipo in novas_colunas_reservas:
+                try:
+                    cur.execute(f"ALTER TABLE reservas ADD COLUMN {col_nome} {col_tipo}")
+                except sqlite3.OperationalError:
+                    pass
+            conn.commit()
+
+            # Migração automática 36: Tabela config_janelas_reserva (Janelas Manuais por Dia da Semana)
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS config_janelas_reserva (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    dia_refeicao INTEGER UNIQUE NOT NULL,
+                    dia_nome TEXT NOT NULL,
+                    ativo INTEGER DEFAULT 1,
+                    abertura_dia_semana INTEGER DEFAULT 0,
+                    abertura_semana_offset INTEGER DEFAULT 1,
+                    abertura_horario TEXT DEFAULT '08:00',
+                    fechamento_dia_semana INTEGER NOT NULL,
+                    fechamento_semana_offset INTEGER NOT NULL,
+                    fechamento_horario TEXT NOT NULL
+                )
+            ''')
+            conn.commit()
+
+            # Seed padrão inicial para cada dia da semana (0=Segunda ... 6=Domingo)
+            janelas_padrao = [
+                (0, 'Segunda-feira', 1, 0, 1, '08:00', 4, 1, '14:00'),
+                (1, 'Terça-feira',   1, 0, 1, '08:00', 0, 0, '10:00'),
+                (2, 'Quarta-feira',  1, 0, 1, '08:00', 1, 0, '10:00'),
+                (3, 'Quinta-feira',  1, 0, 1, '08:00', 2, 0, '10:00'),
+                (4, 'Sexta-feira',   1, 0, 1, '08:00', 3, 0, '10:00'),
+                (5, 'Sábado',        0, 0, 1, '08:00', 4, 0, '10:00'),
+                (6, 'Domingo',       0, 0, 1, '08:00', 4, 0, '10:00')
+            ]
+            for jp in janelas_padrao:
+                cur.execute("""
+                    INSERT OR IGNORE INTO config_janelas_reserva 
+                    (dia_refeicao, dia_nome, ativo, abertura_dia_semana, abertura_semana_offset, abertura_horario, fechamento_dia_semana, fechamento_semana_offset, fechamento_horario)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, jp)
+            conn.commit()
+
+            # Migração automática 37: Controle de Recorrência e Tabela aluno_recorrencia_dias
+            try:
+                cur.execute("ALTER TABLE configuracoes ADD COLUMN permitir_reserva_recorrente INTEGER DEFAULT 0")
+            except sqlite3.OperationalError:
+                pass
+
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS aluno_recorrencia_dias (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    aluno_id INTEGER NOT NULL,
+                    dia_semana INTEGER NOT NULL,
+                    ativo INTEGER DEFAULT 1,
+                    criado_em TEXT NOT NULL,
+                    atualizado_em TEXT,
+                    FOREIGN KEY(aluno_id) REFERENCES alunos(id),
+                    UNIQUE(aluno_id, dia_semana)
+                )
+            ''')
+            # Migração automática 38: Campo curso na tabela alunos, remoção de NOT NULL em turma_id e backfill inteligente
+            try:
+                cur.execute("ALTER TABLE alunos ADD COLUMN curso TEXT")
+            except sqlite3.OperationalError:
+                pass
+
+            # Garante que turma_id possa ser NULL (para alunos em regime de dependência / avulsos)
+            aluno_info = cur.execute("PRAGMA table_info(alunos)").fetchall()
+            turma_id_col = next((c for c in aluno_info if c[1] == 'turma_id'), None)
+            if turma_id_col and turma_id_col[3] == 1:  # notnull == 1
+                cur.execute("PRAGMA foreign_keys = OFF")
+                cur.execute("ALTER TABLE alunos RENAME TO alunos_old")
+                cur.execute('''
+                    CREATE TABLE alunos (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        nome TEXT NOT NULL,
+                        matricula TEXT UNIQUE NOT NULL,
+                        cpf TEXT UNIQUE NOT NULL,
+                        data_nascimento TEXT NOT NULL,
+                        restricoes TEXT,
+                        email TEXT,
+                        senha_hash TEXT,
+                        reset_token TEXT,
+                        reset_expiracao TEXT,
+                        permitido_almoco INTEGER DEFAULT 1,
+                        turma_id INTEGER,
+                        instituicao TEXT,
+                        codigo_cracha TEXT,
+                        modo_escuro INTEGER DEFAULT 0,
+                        serie_ano_atual INTEGER,
+                        ano_ingresso INTEGER,
+                        situacao_matricula TEXT DEFAULT 'Matriculado',
+                        curso TEXT,
+                        FOREIGN KEY (turma_id) REFERENCES turmas (id)
+                    )
+                ''')
+                cur.execute('''
+                    INSERT INTO alunos (
+                        id, nome, matricula, cpf, data_nascimento, restricoes, email, senha_hash, reset_token, reset_expiracao,
+                        permitido_almoco, turma_id, instituicao, codigo_cracha, modo_escuro, serie_ano_atual, ano_ingresso,
+                        situacao_matricula, curso
+                    ) SELECT 
+                        id, nome, matricula, cpf, data_nascimento, restricoes, email, senha_hash, reset_token, reset_expiracao,
+                        permitido_almoco, turma_id, instituicao, codigo_cracha, modo_escuro, serie_ano_atual, ano_ingresso,
+                        situacao_matricula, curso
+                    FROM alunos_old
+                ''')
+                cur.execute("DROP TABLE alunos_old")
+                cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_codigo_cracha_alunos ON alunos(codigo_cracha)")
+                cur.execute("PRAGMA foreign_keys = ON")
+                conn.commit()
+
+            # Backfill para turmas legadas onde o nome da turma era o próprio curso
+            cur.execute("""
+                UPDATE turmas
+                SET curso = nome
+                WHERE (curso IS NULL OR TRIM(curso) = '') 
+                  AND COALESCE(is_evento, 0) = 0 
+                  AND nome NOT LIKE '20%'
+            """)
+
+            # Backfill automático: sincroniza curso dos alunos a partir da turma atual
+            cur.execute("""
+                UPDATE alunos 
+                SET curso = (
+                    SELECT t.curso FROM turmas t 
+                    WHERE t.id = alunos.turma_id AND t.curso IS NOT NULL AND TRIM(t.curso) != ''
+                )
+                WHERE (curso IS NULL OR TRIM(curso) = '') AND turma_id IS NOT NULL
+            """)
+
+            # Backfill a partir do histórico acadêmico caso ainda esteja sem curso
+            cur.execute("""
+                UPDATE alunos 
+                SET curso = (
+                    SELECT t.curso FROM aluno_turma_historico h
+                    JOIN turmas t ON h.turma_id = t.id
+                    WHERE h.aluno_id = alunos.id AND t.curso IS NOT NULL AND TRIM(t.curso) != ''
+                    ORDER BY h.id DESC LIMIT 1
+                )
+                WHERE (curso IS NULL OR TRIM(curso) = '')
+            """)
+            conn.commit()
+
+            # Migração automática 39: Saneamento e unificação definitiva de CPFs duplicados
+            try:
+                from utils.filters import format_cpf
+                rows_alunos = cur.execute("SELECT id, matricula, cpf, codigo_cracha FROM alunos").fetchall()
+                cpf_map = {}
+                for r in rows_alunos:
+                    c_dig = ''.join(filter(str.isdigit, str(r['cpf'] or '')))
+                    if c_dig:
+                        cpf_map.setdefault(c_dig, []).append(r)
+                
+                for c_dig, r_list in cpf_map.items():
+                    if len(r_list) > 1:
+                        def score_al(al):
+                            tem_cracha = 1 if al['codigo_cracha'] else 0
+                            return (tem_cracha, -al['id'])
+                        r_list_sorted = sorted(r_list, key=score_al, reverse=True)
+                        principal = r_list_sorted[0]
+                        duplicatas = r_list_sorted[1:]
+                        cpf_padrao = format_cpf(c_dig)
+                        
+                        for dup in duplicatas:
+                            dup_id = dup['id']
+                            cur.execute("UPDATE OR IGNORE reservas SET aluno_id = ? WHERE aluno_id = ?", (principal['id'], dup_id))
+                            cur.execute("DELETE FROM reservas WHERE aluno_id = ?", (dup_id,))
+                            cur.execute("UPDATE OR IGNORE aluno_turma_historico SET aluno_id = ? WHERE aluno_id = ?", (principal['id'], dup_id))
+                            cur.execute("DELETE FROM aluno_turma_historico WHERE aluno_id = ?", (dup_id,))
+                            cur.execute("UPDATE OR IGNORE aluno_recorrencia_dias SET aluno_id = ? WHERE aluno_id = ?", (principal['id'], dup_id))
+                            cur.execute("DELETE FROM aluno_recorrencia_dias WHERE aluno_id = ?", (dup_id,))
+                            cur.execute("DELETE FROM alunos WHERE id = ?", (dup_id,))
+                            
+                        cur.execute("UPDATE alunos SET cpf = ? WHERE id = ?", (cpf_padrao, principal['id']))
+                conn.commit()
+            except Exception as e:
+                print(f"Aviso migração 39: {e}")
+
+            # Migração automática 40: Bloqueio de reservas por turma em dias da semana específicos
+            try:
+                cur.execute("ALTER TABLE turmas ADD COLUMN dias_bloqueados TEXT DEFAULT ''")
+                conn.commit()
+            except sqlite3.OperationalError:
+                pass

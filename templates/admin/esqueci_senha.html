@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+
+{% block title %}Recuperação de Senha Administrativa - {{ global_config.nome_sistema if global_config else 'Sistema' }}{% endblock %}
+
+{% block navbar %}
+<nav class="navbar" style="justify-content: center;">
+    <div class="navbar-brand" style="display: flex; align-items: center; gap: 8px;">
+        <i class="ph ph-shield-check" style="color: #ef4444; font-size: 1.5rem;"></i>
+        <span>Área Administrativa — Recuperação</span>
+    </div>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: center; align-items: center; min-height: 75vh; padding: 1.5rem 0;">
+    <div class="card fade-in" style="max-width: 440px; width: 100%; border-top: 5px solid #ef4444; border-radius: 12px; padding: 2rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08);">
+        <div style="text-align: center; margin-bottom: 1.75rem;">
+            <div style="width: 64px; height: 64px; background: #fee2e2; color: #ef4444; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem auto; font-size: 2rem;">
+                <i class="ph ph-key"></i>
+            </div>
+            <h2 style="color: var(--text-main); margin: 0 0 0.5rem 0; font-size: 1.4rem;">Recuperar Acesso</h2>
+            <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.45; margin: 0;">
+                Informe seu <strong>CPF</strong>, <strong>E-mail</strong> ou <strong>Usuário</strong> cadastrado. Um link de uso único e válido por 1 hora será enviado ao seu e-mail.
+            </p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} fade-in" style="margin-bottom: 1.25rem;">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('admin.admin_esqueci_senha') }}">
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label for="identificador" style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 6px;">
+                    Credencial do Administrador
+                </label>
+                <div style="position: relative;">
+                    <input type="text" id="identificador" name="identificador" required autofocus
+                           placeholder="Digite seu CPF, E-mail ou Usuário"
+                           style="width: 100%; padding: 0.75rem 0.85rem 0.75rem 2.5rem; border-radius: 8px; border: 1px solid var(--border); font-size: 0.95rem;">
+                    <i class="ph ph-user-focus" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 1.2rem;"></i>
+                </div>
+                <small style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 4px;">
+                    Ex: <code>123.456.789-00</code>, <code>ana.silva@escola.edu.br</code> ou <code>ana.silva</code>
+                </small>
+            </div>
+
+            <button type="submit" class="btn btn-danger" style="width: 100%; font-size: 1rem; padding: 0.85rem; font-weight: bold; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <i class="ph ph-paper-plane-tilt"></i> Enviar Link de Recuperação
+            </button>
+        </form>
+
+        <div style="text-align: center; margin-top: 1.75rem; padding-top: 1.25rem; border-top: 1px solid var(--border);">
+            <a href="{{ url_for('admin_login') }}" style="color: var(--text-muted); font-size: 0.88rem; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; font-weight: 500;">
+                <i class="ph ph-arrow-left"></i> Voltar para o Login Administrativo
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

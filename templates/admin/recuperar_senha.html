@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block title %}Redefinir Senha Administrativa - {{ global_config.nome_sistema if global_config else 'Sistema' }}{% endblock %}
+
+{% block navbar %}
+<nav class="navbar" style="justify-content: center;">
+    <div class="navbar-brand" style="display: flex; align-items: center; gap: 8px;">
+        <i class="ph ph-shield-check" style="color: #ef4444; font-size: 1.5rem;"></i>
+        <span>Área Administrativa — Redefinição</span>
+    </div>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: center; align-items: center; min-height: 75vh; padding: 1.5rem 0;">
+    <div class="card fade-in" style="max-width: 440px; width: 100%; border-top: 5px solid #ef4444; border-radius: 12px; padding: 2rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08);">
+        <div style="text-align: center; margin-bottom: 1.75rem;">
+            <div style="width: 64px; height: 64px; background: #fee2e2; color: #ef4444; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem auto; font-size: 2rem;">
+                <i class="ph ph-lock-key-open"></i>
+            </div>
+            <h2 style="color: var(--text-main); margin: 0 0 0.5rem 0; font-size: 1.4rem;">Criar Nova Senha</h2>
+            <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.45; margin: 0;">
+                Olá, <strong>{{ admin.nome if admin.nome else admin.usuario }}</strong> (<code>@{{ admin.usuario }}</code>).<br>
+                Defina sua nova senha de acesso ao painel administrativo.
+            </p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} fade-in" style="margin-bottom: 1.25rem;">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('admin.admin_recuperar_senha', token=token) }}">
+            <div class="form-group" style="margin-bottom: 1.25rem;">
+                <label for="nova_senha" style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 6px;">
+                    Nova Senha
+                </label>
+                <input type="password" id="nova_senha" name="nova_senha" required minlength="4" autofocus
+                       placeholder="Mínimo de 4 caracteres"
+                       style="width: 100%; padding: 0.75rem 0.85rem; border-radius: 8px; border: 1px solid var(--border); font-size: 0.95rem;">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label for="confirma_senha" style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 6px;">
+                    Confirme a Nova Senha
+                </label>
+                <input type="password" id="confirma_senha" name="confirma_senha" required minlength="4"
+                       placeholder="Repita a mesma senha"
+                       style="width: 100%; padding: 0.75rem 0.85rem; border-radius: 8px; border: 1px solid var(--border); font-size: 0.95rem;">
+            </div>
+
+            <button type="submit" class="btn btn-danger" style="width: 100%; font-size: 1rem; padding: 0.85rem; font-weight: bold; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <i class="ph ph-check-circle"></i> Salvar e Acessar o Sistema
+            </button>
+        </form>
+
+        <div style="text-align: center; margin-top: 1.75rem; padding-top: 1.25rem; border-top: 1px solid var(--border);">
+            <a href="{{ url_for('admin_login') }}" style="color: var(--text-muted); font-size: 0.88rem; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; font-weight: 500;">
+                <i class="ph ph-arrow-left"></i> Cancelar e Voltar ao Login
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

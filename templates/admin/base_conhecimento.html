@@ -22,12 +22,12 @@
 
     <!-- Barra de filtros -->
     <div class="card" style="padding:1rem 1.5rem; margin-bottom:1.5rem;">
-        <form method="GET" action="{{ url_for('admin.admin_base_conhecimento') }}" style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:flex-end;">
-            <div style="flex:2; min-width:180px;">
+        <form method="GET" action="{{ url_for('admin.admin_base_conhecimento') }}" class="base-conhecimento-filter-form">
+            <div class="filter-field-search">
                 <label style="font-size:0.8rem; font-weight:600; display:block; margin-bottom:4px;">Buscar</label>
                 <input type="text" name="q" value="{{ busca }}" placeholder="Título ou descrição do material..." style="padding:0.5rem 0.75rem; border-radius:6px; border:1px solid var(--border); font-size:0.9rem; width:100%;">
             </div>
-            <div style="min-width:180px;">
+            <div class="filter-field-cat">
                 <label style="font-size:0.8rem; font-weight:600; display:block; margin-bottom:4px;">Categoria</label>
                 <select name="cat" style="padding:0.5rem 0.75rem; border-radius:6px; border:1px solid var(--border); font-size:0.9rem; width:100%; background:var(--surface); color:var(--text-main);">
                     <option value="">Todas as categorias</option>
@@ -36,7 +36,7 @@
                     {% endfor %}
                 </select>
             </div>
-            <div style="display:flex; gap:0.5rem;">
+            <div class="filter-actions">
                 <button type="submit" class="btn btn-primary" style="padding:0.5rem 1rem;"><i class="ph ph-magnifying-glass"></i> Buscar</button>
                 {% if busca or cat_filtro %}
                 <a href="{{ url_for('admin.admin_base_conhecimento') }}" class="btn btn-secondary" style="padding:0.5rem 0.75rem;" title="Limpar"><i class="ph ph-x"></i></a>
@@ -45,7 +45,7 @@
         </form>
     </div>
 
-    <div style="display:grid; grid-template-columns: 280px 1fr; gap:1.5rem; align-items:start;">
+    <div class="base-conhecimento-grid">
 
         <!-- Painel de Categorias (sidebar) -->
         <div>

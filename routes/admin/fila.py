@@ -5,8 +5,7 @@ import re
 import uuid
 from database import closing, get_db_connection, get_config, generate_unique_code
 from utils.auth import is_logged_in_admin, tem_permissao
-from utils.helpers import datetime_now_str, date_hoje_str, pode_reservar, sanitize_field, registrar_auditoria
-from utils.qrcode_gen import generate_badge_code, generate_std_badge_code
+from utils.helpers import datetime_now_str, date_hoje_str, sanitize_field, registrar_auditoria
 from . import admin_bp
 
 RESERVAS_POR_PAGINA = 30
@@ -142,6 +141,23 @@ def admin_reservas_cancelar(id):
     if not tem_permissao('fila'): return redirect(url_for('admin.admin_dashboard'))
     
     hoje_str = date_hoje_str()
+    motivo = request.form.get('motivo_cancelamento', '').strip()
+    motivo_outro = request.form.get('motivo_cancelamento_outro', '').strip()
+
+    if motivo == 'Outro' and motivo_outro:
+        motivo_final = f"Outro: {motivo_outro}"
+    elif motivo:
+        motivo_final = motivo
+        if motivo_outro:
+            motivo_final += f" - {motivo_outro}"
+    elif motivo_outro:
+        motivo_final = motivo_outro
+    else:
+        motivo_final = "Cancelado pelo administrador sem motivo informado"
+
+    admin_user = session.get('admin_usuario', 'admin')
+    cancelado_por = f"ADMIN: {admin_user}"
+    data_cancelamento = datetime_now_str()
     
     with closing(get_db_connection()) as conn:
         reserva = conn.execute("""
@@ -152,10 +168,16 @@ def admin_reservas_cancelar(id):
             WHERE r.id = ? AND r.status = 'ATIVA' AND c.data >= ?
         """, (id, hoje_str)).fetchone()
         if reserva:
-            conn.execute("UPDATE reservas SET status = 'CANCELADA' WHERE id = ?", (id,))
+            conn.execute("""
+                UPDATE reservas 
+                SET status = 'CANCELADA',
+                    motivo_cancelamento = ?,
+                    cancelado_por = ?,
+                    data_cancelamento = ?
+                WHERE id = ?
+            """, (motivo_final, cancelado_por, data_cancelamento, id))
             conn.commit()
-            admin_user = session.get('admin_usuario', 'admin')
-            registrar_auditoria("Cancelar Reserva", f"Admin '{admin_user}' cancelou reserva ID {id} do aluno {reserva['aluno_nome']} para {reserva['cardapio_data']}")
+            registrar_auditoria("Cancelar Reserva (Admin)", f"Admin '{admin_user}' cancelou reserva ID {id} do aluno {reserva['aluno_nome']} para {reserva['cardapio_data']}. Motivo: {motivo_final}")
             flash('Reserva cancelada pelo administrador com sucesso.', 'success')
         else:
             flash('Reserva não encontrada ou já processada.', 'error')

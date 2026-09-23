@@ -4,6 +4,101 @@
 <!-- Chart.js CDN -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+<style>
+.btn-pedidos-fornecedor {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0.55rem 1rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-radius: 6px;
+    text-decoration: none;
+    background: #eff6ff;
+    border: 1px solid #93c5fd;
+    color: #1e40af !important;
+    transition: all 0.2s ease;
+}
+.btn-pedidos-fornecedor i {
+    font-size: 1.1rem;
+    color: #2563eb;
+    transition: color 0.2s ease;
+}
+.btn-pedidos-fornecedor:hover {
+    background: #2563eb !important;
+    border-color: #1d4ed8 !important;
+    color: #ffffff !important;
+    transform: translateY(-1px);
+}
+.btn-pedidos-fornecedor:hover i {
+    color: #ffffff !important;
+}
+
+.btn-rel-cancelamentos {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0.55rem 1rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-radius: 6px;
+    text-decoration: none;
+    background: #fef2f2;
+    border: 1px solid #fca5a5;
+    color: #b91c1c !important;
+    transition: all 0.2s ease;
+}
+.btn-rel-cancelamentos i {
+    font-size: 1.1rem;
+    color: #ef4444;
+    transition: color 0.2s ease;
+}
+.btn-rel-cancelamentos:hover {
+    background: #dc2626 !important;
+    border-color: #b91c1c !important;
+    color: #ffffff !important;
+    transform: translateY(-1px);
+}
+.btn-rel-cancelamentos:hover i {
+    color: #ffffff !important;
+}
+
+/* Modo Escuro */
+[data-theme="dark"] .btn-pedidos-fornecedor {
+    background: rgba(37, 99, 235, 0.15);
+    border-color: rgba(96, 165, 250, 0.4);
+    color: #93c5fd !important;
+}
+[data-theme="dark"] .btn-pedidos-fornecedor i {
+    color: #60a5fa;
+}
+[data-theme="dark"] .btn-pedidos-fornecedor:hover {
+    background: #2563eb !important;
+    border-color: #3b82f6 !important;
+    color: #ffffff !important;
+}
+[data-theme="dark"] .btn-pedidos-fornecedor:hover i {
+    color: #ffffff !important;
+}
+
+[data-theme="dark"] .btn-rel-cancelamentos {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(248, 113, 113, 0.4);
+    color: #fca5a5 !important;
+}
+[data-theme="dark"] .btn-rel-cancelamentos i {
+    color: #f87171;
+}
+[data-theme="dark"] .btn-rel-cancelamentos:hover {
+    background: #dc2626 !important;
+    border-color: #ef4444 !important;
+    color: #ffffff !important;
+}
+[data-theme="dark"] .btn-rel-cancelamentos:hover i {
+    color: #ffffff !important;
+}
+</style>
+
 <div class="fade-in">
     <div style="margin-bottom: 2rem;">
         <a href="{{ url_for('admin_dashboard') }}" style="color: var(--text-muted); display: inline-flex; align-items: center;"><i class="ph ph-arrow-left" style="margin-right: 4px;"></i> Voltar ao Painel</a>
@@ -12,11 +107,19 @@
                 <h1 style="margin-top: 1rem; margin-bottom: 0.25rem;"><i class="ph ph-file-text"></i> Relatórios de Refeições</h1>
                 <p style="color: var(--text-muted); margin-top: 0;">Filtre por dia, mês, ano ou período personalizado.</p>
             </div>
-            {% if session.get('admin_perfil') == 'admin_mestre' or 'eventos' in session.get('admin_permissoes', []) %}
-            <a href="{{ url_for('admin_relatorio_eventos') }}" class="btn btn-primary" style="text-decoration: none;">
-                <i class="ph ph-calendar-check"></i> Relatório de Eventos
-            </a>
-            {% endif %}
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem;">
+                <a href="{{ url_for('admin.admin_relatorios_fornecedor') }}" class="btn-pedidos-fornecedor">
+                    <i class="ph ph-truck"></i> Pedidos Fornecedor
+                </a>
+                <a href="{{ url_for('admin.admin_relatorios_cancelamentos') }}" class="btn-rel-cancelamentos">
+                    <i class="ph ph-x-circle"></i> Relatório de Cancelamentos
+                </a>
+                {% if session.get('admin_perfil') == 'admin_mestre' or 'eventos' in session.get('admin_permissoes', []) %}
+                <a href="{{ url_for('admin_relatorio_eventos') }}" class="btn btn-primary" style="text-decoration: none;">
+                    <i class="ph ph-calendar-check"></i> Relatório de Eventos
+                </a>
+                {% endif %}
+            </div>
         </div>
     </div>
 
@@ -209,34 +312,40 @@
                 </h2>
             </div>
 
-            <div style="display: flex; flex-direction: column; gap: 1rem;">
+            <div style="display: flex; flex-direction: column; gap: 0.85rem;">
                 {% for c in cardapios %}
-                    <a href="{{ url_for('admin_relatorio_dia', cardapio_id=c.id) }}" class="btn"
-                       style="background: #FFF; border: 1px solid var(--border); color: var(--text-main); justify-content: space-between; padding: 1rem; align-items: center; transition: all 0.2s ease;">
-                        <div>
-                            <strong style="font-size: 1.1rem;">{{ c.data | datetimeformat }}</strong>
-                            <span style="display:block; font-size: 0.85rem; color: var(--text-muted); font-weight: 400;">{{ c.descricao }}</span>
+                    <a href="{{ url_for('admin_relatorio_dia', cardapio_id=c.id) }}" class="card-item-relatorio">
+                        <div class="card-item-relatorio-header">
+                            <strong class="card-item-relatorio-date">
+                                <i class="ph ph-calendar-blank" style="color: var(--primary);"></i>
+                                {{ c.data | datetimeformat }}
+                            </strong>
                         </div>
-                        <div style="text-align: right; display: flex; align-items: center; gap: 1rem;">
-                            <div style="font-size: 0.85rem; line-height: 1.4; display: flex; gap: 1rem; text-align: left; background: var(--background); padding: 0.5rem 1rem; border-radius: 8px;">
-                                <div>
-                                    <span style="display:block; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">Total</span>
-                                    <strong style="color: var(--secondary); font-size: 1rem;">{{ c.total_consumidas }}</strong> / {{ c.total_reservas }}
+                        <div class="card-item-relatorio-stats-wrap">
+                            <div class="card-item-relatorio-stats">
+                                <div class="stat-pill-item">
+                                    <span class="stat-pill-label">Total</span>
+                                    <span class="stat-pill-value"><strong style="color: var(--secondary);">{{ c.total_consumidas }}</strong> / {{ c.total_reservas }}</span>
                                 </div>
-                                <div style="border-left: 1px solid var(--border); padding-left: 1rem;">
-                                    <span style="display:block; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">Regulares</span>
-                                    <strong style="font-size: 1rem;">{{ c.consumo_normal }}</strong>
+                                <div class="stat-pill-item stat-pill-bordered">
+                                    <span class="stat-pill-label">Regulares</span>
+                                    <span class="stat-pill-value"><strong>{{ c.consumo_normal }}</strong></span>
                                 </div>
-                                <div style="border-left: 1px solid var(--border); padding-left: 1rem;">
-                                    <span style="display:block; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">Extras</span>
-                                    <strong style="font-size: 1rem;">{{ c.consumo_extra }}</strong>
+                                <div class="stat-pill-item stat-pill-bordered">
+                                    <span class="stat-pill-label">Extras</span>
+                                    <span class="stat-pill-value"><strong>{{ c.consumo_extra }}</strong></span>
                                 </div>
-                                <div style="border-left: 1px solid var(--border); padding-left: 1rem;">
-                                    <span style="display:block; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">Eventos</span>
-                                    <strong style="font-size: 1rem;">{{ c.consumo_evento }}</strong>
+                                {% if c.consumo_evento > 0 %}
+                                <div class="stat-pill-item stat-pill-bordered">
+                                    <span class="stat-pill-label">Eventos</span>
+                                    <span class="stat-pill-value"><strong>{{ c.consumo_evento }}</strong></span>
                                 </div>
+                                {% endif %}
                             </div>
-                            <i class="ph ph-arrow-circle-right" style="font-size: 1.5rem; color: var(--primary);"></i>
+                            <div class="card-item-relatorio-action">
+                                <span class="card-item-relatorio-link-text">Ver detalhes</span>
+                                <i class="ph ph-arrow-circle-right" style="font-size: 1.5rem; color: var(--primary);"></i>
+                            </div>
                         </div>
                     </a>
                 {% else %}
@@ -565,9 +674,9 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div id="student-freq-results" style="max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;">
+                <div id="student-freq-results" style="max-height: 420px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px;">
                     <div style="text-align: center; color: var(--text-muted); font-style: italic; padding: 1rem; font-size: 0.9rem;">
-                        Digite algo para iniciar a busca...
+                        Digite algo ou filtre por turma para iniciar a busca...
                     </div>
                 </div>
             </div>
@@ -916,43 +1025,31 @@ function switchTab(tabId) {
             if (data.success && data.alunos && data.alunos.length > 0) {
                 resultsDiv.innerHTML = '';
                 data.alunos.forEach(aluno => {
-                    const btn = document.createElement('button');
-                    btn.className = 'btn';
-                    btn.style.width = '100%';
-                    btn.style.textAlign = 'left';
-                    btn.style.padding = '0.75rem';
-                    btn.style.border = '1px solid var(--border)';
-                    btn.style.borderRadius = '8px';
-                    btn.style.background = 'var(--surface)';
-                    btn.style.display = 'flex';
-                    btn.style.justifyContent = 'space-between';
-                    btn.style.alignItems = 'center';
-                    btn.style.color = 'var(--text-main)';
-                    btn.style.transition = 'var(--transition)';
-                    btn.style.cursor = 'pointer';
-                    btn.style.marginBottom = '6px';
+                    const item = document.createElement('div');
+                    item.className = 'student-freq-item';
+                    item.setAttribute('role', 'button');
+                    item.setAttribute('tabindex', '0');
 
-                    btn.innerHTML = `
-                        <div>
-                            <strong style="display:block; font-size:0.95rem;">${aluno.nome}</strong>
-                            <span style="font-size:0.8rem; color:var(--text-muted);">Matrícula: ${aluno.matricula} • ${aluno.turma_nome}</span>
+                    item.innerHTML = `
+                        <div class="student-freq-info">
+                            <strong class="student-freq-name">${aluno.nome}</strong>
+                            <div class="student-freq-sub">
+                                Matrícula: ${aluno.matricula} • ${aluno.turma_nome}
+                            </div>
                         </div>
-                        <div style="font-size:0.85rem; font-weight:bold; color:var(--primary); background:rgba(47,158,65,0.1); padding:2px 8px; border-radius:12px;">
+                        <div class="student-freq-badge">
                             ${aluno.total_consumidas}/${aluno.total_reservas}
                         </div>
                     `;
 
-                    btn.addEventListener('mouseenter', () => {
-                        btn.style.borderColor = 'var(--primary)';
-                        btn.style.background = 'rgba(47,158,65,0.02)';
+                    item.addEventListener('click', () => carregarDetalhesEstudante(aluno.id));
+                    item.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            carregarDetalhesEstudante(aluno.id);
+                        }
                     });
-                    btn.addEventListener('mouseleave', () => {
-                        btn.style.borderColor = 'var(--border)';
-                        btn.style.background = 'var(--surface)';
-                    });
-
-                    btn.addEventListener('click', () => carregarDetalhesEstudante(aluno.id));
-                    resultsDiv.appendChild(btn);
+                    resultsDiv.appendChild(item);
                 });
             } else {
                 resultsDiv.innerHTML = '<div style="text-align: center; color: var(--text-muted); font-style: italic; padding: 1rem; font-size: 0.9rem;">Nenhum estudante encontrado com esse filtro.</div>';

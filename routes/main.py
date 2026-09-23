@@ -15,6 +15,7 @@ main_bp = Blueprint('main', __name__)
 def handle_login_success(aluno):
     session['aluno_id'] = aluno['id']
     session['aluno_nome'] = aluno['nome']
+    session['aluno_modo_escuro'] = int(aluno['modo_escuro']) if ('modo_escuro' in aluno.keys() and aluno['modo_escuro']) else 0
     
     contextos = []
     contextos_ids = set()
@@ -246,9 +247,25 @@ def recuperar_senha(token):
 def logout():
     session.pop('aluno_id', None)
     session.pop('aluno_nome', None)
+    session.pop('aluno_modo_escuro', None)
     session.pop('pesquisa_aluno_id', None)
     session.pop('pesquisa_aluno_nome', None)
     return redirect(url_for('main.login'))
+
+@main_bp.route('/aluno/modo-escuro', methods=['POST'])
+def aluno_modo_escuro():
+    data = request.get_json(silent=True) or {}
+    modo_escuro = 1 if data.get('modo_escuro') in [1, '1', True] else 0
+    session['aluno_modo_escuro'] = modo_escuro
+    aluno_id = session.get('aluno_id')
+    if aluno_id:
+        with closing(get_db_connection()) as conn:
+            try:
+                conn.execute("UPDATE alunos SET modo_escuro = ? WHERE id = ?", (modo_escuro, aluno_id))
+                conn.commit()
+            except Exception:
+                pass
+    return {'status': 'ok', 'modo_escuro': modo_escuro}
 
 
 # --- ROTAS PÚBLICAS / ESTUDANTE: PREENCHIMENTO DE PESQUISAS ---
@@ -300,7 +317,7 @@ def pesquisa_responder(slug):
                         ja_respondeu = True
             else:
                 # Aluno não identificado: renderizar tela de login / identificação
-                modo_login = config.get('modo_login_aluno', 'DATA_NASC')
+                modo_login = dict(config).get('modo_login_aluno', 'DATA_NASC') if config else 'DATA_NASC'
                 return render_template(
                     'pesquisa_responder.html',
                     formulario=formulario,
@@ -341,7 +358,7 @@ def pesquisa_identificar(slug):
     """Autenticação/Identificação rápida do estudante para responder pesquisa identificada."""
     slug = slug.strip().upper()
     config = get_config()
-    modo_login = config.get('modo_login_aluno', 'DATA_NASC')
+    modo_login = dict(config).get('modo_login_aluno', 'DATA_NASC') if config else 'DATA_NASC'
 
     cpf_raw = request.form.get('cpf', '').strip()
     cpf_clean = re.sub(r'\D', '', cpf_raw)

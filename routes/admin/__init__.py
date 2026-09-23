@@ -12,3 +12,4 @@ from . import fila
 from . import relatorios
 from . import base_conhecimento
 from . import pesquisas
+from . import qualidade

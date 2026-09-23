@@ -5,109 +5,190 @@
     <div style="margin-bottom: 2rem;">
         <a href="{{ url_for('admin_dashboard') }}" style="color: var(--text-muted); display: inline-flex; align-items: center;"><i class="ph ph-arrow-left" style="margin-right: 4px;"></i> Voltar ao Painel</a>
         <h1 style="margin-top: 1rem;"><i class="ph ph-shield-check"></i> Gestão de Administradores</h1>
-        <p style="color: var(--text-muted);">Cadastre professores, vigias ou serventes para acesso ao sistema.</p>
+        <p style="color: var(--text-muted);">Cadastre e gerencie a equipe de colaboradores (nutricionistas, fiscais, vigias, direção e TI) com rastreabilidade completa e recuperação de senha.</p>
     </div>
 
-    <div class="grid">
+    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 1.5rem; align-items: start;">
         <!-- Formulário de novo admin -->
-        <div class="card">
-            <h2>Novo Administrador</h2>
+        <div class="card" style="padding: 1.75rem; border-radius: 12px; border: 1px solid var(--border);">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 1.25rem;">
+                <div style="background: #eef2ff; color: #4f46e5; width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+                    <i class="ph ph-user-plus"></i>
+                </div>
+                <h2 style="margin: 0; font-size: 1.25rem;">Novo Administrador</h2>
+            </div>
+
             <form method="POST" action="{{ url_for('admin_administradores') }}">
-                <div class="form-group">
-                    <label for="usuario">Usuário (Ex: joao.vigia)</label>
-                    <input type="text" id="usuario" name="usuario" required>
+                <!-- Nome e CPF -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;" class="flex-mobile-column">
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label for="nome" style="font-size: 0.85rem; font-weight: 600;">Nome Completo</label>
+                        <input type="text" id="nome" name="nome" placeholder="Ex: Ana Paula Silva" required style="padding: 0.55rem 0.75rem; border-radius: 8px;">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label for="cpf" style="font-size: 0.85rem; font-weight: 600;">CPF</label>
+                        <input type="text" id="cpf" name="cpf" placeholder="000.000.000-00" maxlength="14" oninput="formatarCPF(this)" style="padding: 0.55rem 0.75rem; border-radius: 8px;">
+                    </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="senha">Senha de Acesso</label>
-                    <input type="password" id="senha" name="senha" required>
+                <!-- Setor e E-mail -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;" class="flex-mobile-column">
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label for="setor" style="font-size: 0.85rem; font-weight: 600;">Setor / Lotação</label>
+                        <input type="text" id="setor" name="setor" list="setores_sugestoes" placeholder="Ex: Nutrição" style="padding: 0.55rem 0.75rem; border-radius: 8px;">
+                        <datalist id="setores_sugestoes">
+                            <option value="Nutrição e Dietética">
+                            <option value="Cantina / Refeitório">
+                            <option value="Portaria / Vigilância">
+                            <option value="Coordenação Pedagógica">
+                            <option value="Tecnologia da Informação">
+                            <option value="Direção Geral">
+                            <option value="Secretaria Escolar">
+                        </datalist>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label for="email" style="font-size: 0.85rem; font-weight: 600;">E-mail Corporativo</label>
+                        <input type="email" id="email" name="email" placeholder="colaborador@escola.edu.br" style="padding: 0.55rem 0.75rem; border-radius: 8px;">
+                    </div>
                 </div>
 
-                <div class="form-group">
-                    <label style="font-weight: bold; margin-bottom: 0.5rem; display: block;">Permissões de Acesso</label>
+                <!-- Usuário e Senha de Acesso -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;" class="flex-mobile-column">
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label for="usuario" style="font-size: 0.85rem; font-weight: 600;">Usuário de Acesso *</label>
+                        <input type="text" id="usuario" name="usuario" placeholder="Ex: ana.silva" required style="padding: 0.55rem 0.75rem; border-radius: 8px;">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label for="senha" style="font-size: 0.85rem; font-weight: 600;">Senha Inicial *</label>
+                        <input type="password" id="senha" name="senha" placeholder="Mínimo 4 caracteres" required style="padding: 0.55rem 0.75rem; border-radius: 8px;">
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top: 0.5rem; margin-bottom: 1.5rem;">
+                    <label style="font-weight: 700; margin-bottom: 0.5rem; display: block; font-size: 0.9rem;">
+                        <i class="ph ph-lock-key"></i> Permissões de Acesso
+                    </label>
 
                     <!-- Checkbox "Mestre" -->
-                    <label style="display: flex; align-items: center; gap: 8px; padding: 0.6rem 1rem; background: var(--primary); color: white; border-radius: 8px; margin-bottom: 0.75rem; cursor: pointer; font-weight: 600;">
-                        <input type="checkbox" id="chk_all_new" onchange="toggleAll('new', this.checked)" style="width:16px; height:16px; accent-color: white;">
+                    <label style="display: flex; align-items: center; gap: 8px; padding: 0.6rem 1rem; background: var(--primary); color: white; border-radius: 8px; margin-bottom: 0.75rem; cursor: pointer; font-weight: 600; user-select: none;">
+                        <input type="checkbox" name="permissoes[]" value="all" id="chk_all_new" onchange="toggleAll('new', this.checked)" style="width:16px; height:16px; accent-color: white;">
                         <i class="ph ph-crown-simple"></i> Mestre — todas as permissões
                     </label>
 
                     <div id="perms_new" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; background: #f9fafb; padding: 1rem; border-radius: 8px; border: 1px solid var(--border);">
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="turmas"    class="perm-new"> Gestão de Turmas</label>
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="alunos"    class="perm-new"> Gestão de Alunos</label>
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="cardapios" class="perm-new"> Cardápios</label>
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="relatorios" class="perm-new"> Relatórios / Excel</label>
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="avisos"    class="perm-new"> Mural de Avisos</label>
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="fila"      class="perm-new"> Modo Fila (Scanner)</label>
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="eventos"   class="perm-new"> Módulo Eventos</label>
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="admins"    class="perm-new"> Gestão de Admins</label>
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="config"    class="perm-new"> Config. de Marca</label>
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="smtp"      class="perm-new"> Config. de E-mail</label>
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="base_conhecimento" class="perm-new"> Base de Conhecimento</label>
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="pesquisas" class="perm-new"> Pesquisas e Formulários</label>
+                        <label style="font-size: 0.82rem; display: flex; align-items: center; gap: 5px; margin: 0; cursor: pointer;"><input type="checkbox" name="permissoes[]" value="turmas"    class="perm-new"> Gestão de Turmas</label>
+                        <label style="font-size: 0.82rem; display: flex; align-items: center; gap: 5px; margin: 0; cursor: pointer;"><input type="checkbox" name="permissoes[]" value="alunos"    class="perm-new"> Gestão de Alunos</label>
+                        <label style="font-size: 0.82rem; display: flex; align-items: center; gap: 5px; margin: 0; cursor: pointer;"><input type="checkbox" name="permissoes[]" value="cardapios" class="perm-new"> Cardápios</label>
+                        <label style="font-size: 0.82rem; display: flex; align-items: center; gap: 5px; margin: 0; cursor: pointer;"><input type="checkbox" name="permissoes[]" value="qualidade" class="perm-new"> Qualidade Térmica</label>
+                        <label style="font-size: 0.82rem; display: flex; align-items: center; gap: 5px; margin: 0; cursor: pointer;"><input type="checkbox" name="permissoes[]" value="relatorios" class="perm-new"> Relatórios / Excel</label>
+                        <label style="font-size: 0.82rem; display: flex; align-items: center; gap: 5px; margin: 0; cursor: pointer;"><input type="checkbox" name="permissoes[]" value="avisos"    class="perm-new"> Mural de Avisos</label>
+                        <label style="font-size: 0.82rem; display: flex; align-items: center; gap: 5px; margin: 0; cursor: pointer;"><input type="checkbox" name="permissoes[]" value="fila"      class="perm-new"> Modo Fila (Scanner)</label>
+                        <label style="font-size: 0.82rem; display: flex; align-items: center; gap: 5px; margin: 0; cursor: pointer;"><input type="checkbox" name="permissoes[]" value="eventos"   class="perm-new"> Módulo Eventos</label>
+                        <label style="font-size: 0.82rem; display: flex; align-items: center; gap: 5px; margin: 0; cursor: pointer;"><input type="checkbox" name="permissoes[]" value="admins"    class="perm-new"> Gestão de Admins</label>
+                        <label style="font-size: 0.82rem; display: flex; align-items: center; gap: 5px; margin: 0; cursor: pointer;"><input type="checkbox" name="permissoes[]" value="config"    class="perm-new"> Configurações Globais</label>
+                        <label style="font-size: 0.82rem; display: flex; align-items: center; gap: 5px; margin: 0; cursor: pointer;"><input type="checkbox" name="permissoes[]" value="smtp"      class="perm-new"> Servidor de E-mail (SMTP)</label>
+                        <label style="font-size: 0.82rem; display: flex; align-items: center; gap: 5px; margin: 0; cursor: pointer;"><input type="checkbox" name="permissoes[]" value="base_conhecimento" class="perm-new"> Base Conhecimento</label>
+                        <label style="font-size: 0.82rem; display: flex; align-items: center; gap: 5px; margin: 0; cursor: pointer;"><input type="checkbox" name="permissoes[]" value="pesquisas" class="perm-new"> Pesquisas / Forms</label>
                     </div>
-                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">
-                        Marque <strong>Mestre</strong> para acesso total, ou selecione permissões individuais.
-                        Sem nenhuma seleção, o admin será criado como <strong>Mestre</strong> por padrão.
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem; margin-bottom: 0;">
+                        O e-mail informado será utilizado para recuperação de senha caso o colaborador esqueça sua credencial.
                     </p>
                 </div>
 
-                <button type="submit" class="btn btn-primary" style="width: 100%;"><i class="ph ph-user-plus" style="margin-right: 8px;"></i> Cadastrar Acesso</button>
+                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem; font-weight: bold; border-radius: 8px;">
+                    <i class="ph ph-user-plus" style="margin-right: 6px;"></i> Cadastrar Administrador
+                </button>
             </form>
         </div>
 
         <!-- Tabela de admins existentes -->
-        <div class="card" style="grid-column: span 2;">
-            <h2>Credenciais Ativas</h2>
+        <div class="card" style="padding: 1.75rem; border-radius: 12px; border: 1px solid var(--border);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.5rem;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="background: #f0fdf4; color: #16a34a; width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+                        <i class="ph ph-users-three"></i>
+                    </div>
+                    <h2 style="margin: 0; font-size: 1.25rem;">Credenciais Ativas</h2>
+                </div>
+                <span class="badge" style="background: #e2e8f0; color: #334155; font-size: 0.8rem; font-weight: 600;">
+                    {{ admins | length }} cadastrado{{ 's' if admins | length != 1 else '' }}
+                </span>
+            </div>
+
             <div class="table-responsive">
                 <table>
                     <thead>
                         <tr>
-                            <th>Usuário</th>
+                            <th>Colaborador / Acesso</th>
+                            <th>CPF & Setor</th>
+                            <th>E-mail</th>
                             <th>Nível</th>
-                            <th>Permissões</th>
-                            <th>Ações</th>
+                            <th style="text-align: right;">Ações</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for a in admins %}
                         {% set perms = a.permissoes | fromjson if a.permissoes else [] %}
                         <tr>
-                            <td><strong>{{ a.usuario }}</strong></td>
                             <td>
-                                {% if 'all' in perms or a.perfil == 'admin_mestre' %}
-                                    <span class="badge" style="background:var(--primary);color:white;font-size:0.75rem;"><i class="ph ph-crown-simple"></i> Mestre</span>
+                                <strong style="display: block; font-size: 1rem; color: var(--text-main); margin-bottom: 2px;">
+                                    {{ a.nome if a.nome else a.usuario }}
+                                </strong>
+                                <span style="font-size: 0.85rem; color: var(--text-muted); display: inline-flex; align-items: center; gap: 4px;">
+                                    <i class="ph ph-user"></i> {{ a.usuario }}
+                                </span>
+                            </td>
+                            <td>
+                                <div style="font-size: 0.95rem; font-weight: 600; color: var(--text-main); font-family: monospace, sans-serif; letter-spacing: 0.02em; margin-bottom: 4px;">
+                                    {{ a.cpf if a.cpf else '—' }}
+                                </div>
+                                <span class="badge badge-setor" style="font-size: 0.82rem; font-weight: 500; padding: 3px 8px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px;">
+                                    <i class="ph ph-buildings"></i> {{ a.setor if a.setor else 'Geral' }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if a.email %}
+                                <a href="mailto:{{ a.email }}" style="color: var(--primary); font-size: 0.9rem; font-weight: 500; display: inline-flex; align-items: center; gap: 5px; text-decoration: none;" title="Enviar e-mail">
+                                    <i class="ph ph-envelope-simple"></i> {{ a.email }}
+                                </a>
                                 {% else %}
-                                    <span class="badge" style="background:#E5E7EB;color:#374151;font-size:0.75rem;"><i class="ph ph-user-circle"></i> Operador</span>
+                                <span style="font-size: 0.85rem; color: var(--text-muted);" title="Sem e-mail cadastrado (não consegue recuperar senha)">
+                                    <i class="ph ph-warning" style="color: #f59e0b;"></i> Sem e-mail
+                                </span>
                                 {% endif %}
                             </td>
                             <td>
-                                {% if 'all' in perms or a.perfil == 'admin_mestre' %}
-                                    <span style="font-size: 0.8rem; color: var(--text-muted);">Todas</span>
+                                {% if 'all' in perms or a.usuario == 'admin' %}
+                                    <span class="badge" style="background: var(--primary); color: white; font-size: 0.88rem; font-weight: 600; padding: 0.4rem 0.8rem; border-radius: 8px; display: inline-flex; align-items: center; gap: 5px;"><i class="ph ph-crown-simple"></i> Mestre</span>
                                 {% else %}
-                                    <span style="font-size: 0.8rem; color: var(--text-muted);">{{ perms | join(', ') if perms else '—' }}</span>
+                                    <span class="badge badge-operador" style="font-size: 0.88rem; font-weight: 600; padding: 0.4rem 0.8rem; border-radius: 8px; display: inline-flex; align-items: center; gap: 5px;"><i class="ph ph-user-circle"></i> Operador ({{ perms|length }})</span>
                                 {% endif %}
                             </td>
-                            <td style="display: flex; gap: 0.5rem; align-items: center; min-width: 320px;">
-                                <form method="POST" action="{{ url_for('admin_administradores_alterar_senha', id=a.id) }}" style="display: flex; gap: 0.25rem;">
-                                    <input type="password" name="nova_senha" placeholder="Nova Senha" style="width: 120px; font-size: 0.8rem; padding: 0.25rem;" required>
-                                    <button type="submit" class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;" title="Mudar Senha">
-                                        <i class="ph ph-key"></i> Salvar
+                            <td style="text-align: right;">
+                                <div style="display: inline-flex; gap: 6px; align-items: center;">
+                                    <!-- Botão Alterar Senha Rápida -->
+                                    <button type="button" class="btn btn-secondary" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; border-radius: 6px;"
+                                        title="Redefinir Senha do Usuário"
+                                        onclick="abrirMudarSenha('{{ a.id }}', '{{ a.usuario }}', '{{ a.nome or a.usuario }}')">
+                                        <i class="ph ph-key"></i> Senha
                                     </button>
-                                </form>
 
-                                <button type="button" class="btn" style="background:var(--secondary); color:white; padding: 0.25rem 0.5rem; font-size: 0.8rem; border-radius: 4px;" title="Editar Permissões"
-                                    onclick="abrirEdicaoAdmin('{{ a.id }}', '{{ a.usuario }}', '{{ a.perfil }}', '{{ a.permissoes | replace("'", "\\'") }}')">
-                                    <i class="ph ph-pencil"></i>
-                                </button>
-
-                                {% if a.usuario != 'admin' %}
-                                <form method="POST" action="{{ url_for('admin_administradores_excluir', id=a.id) }}">
-                                    <button type="submit" class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; border-radius: 4px;" onclick="return confirm('Excluir este acesso de administrador?');" title="Excluir Acesso">
-                                        <i class="ph ph-trash"></i>
+                                    <!-- Botão Editar Dados Completos e Permissões -->
+                                    <button type="button" class="btn btn-primary" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; border-radius: 6px;"
+                                        title="Editar Dados e Permissões"
+                                        onclick="abrirEdicaoAdmin('{{ a.id }}', '{{ a.usuario }}', '{{ (a.nome or '') | replace("'", "\\'") }}', '{{ a.cpf or '' }}', '{{ (a.setor or '') | replace("'", "\\'") }}', '{{ a.email or '' }}', '{{ a.perfil }}', '{{ (a.permissoes or '[]') | replace("'", "\\'") }}')">
+                                        <i class="ph ph-pencil"></i> Editar
                                     </button>
-                                </form>
-                                {% endif %}
+
+                                    <!-- Botão Excluir -->
+                                    {% if a.usuario != 'admin' and a.id != session.get('admin_id') %}
+                                    <form method="POST" action="{{ url_for('admin_administradores_excluir', id=a.id) }}" style="display: inline;" onsubmit="return confirm('Deseja realmente revogar o acesso deste administrador?');">
+                                        <button type="submit" class="btn btn-danger" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; border-radius: 6px;" title="Excluir Acesso">
+                                            <i class="ph ph-trash"></i>
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}
@@ -117,95 +198,190 @@
         </div>
     </div>
 
-    <!-- Modal de Edição -->
-    <div id="modalEditAdmin" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center;">
-        <div class="card fade-in" style="background: white; border-radius: 12px; width: 100%; max-width: 520px; padding: 2rem; margin: auto; position: relative; top: 10%; max-height: 80vh; overflow-y: auto;">
-            <h2 id="editAdminTitle" style="color: var(--primary); margin-bottom: 1rem;"><i class="ph ph-user-circle-gear"></i> Editar Permissões</h2>
+    <!-- Modal de Edição Completa -->
+    <div id="modalEditAdmin" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1050; align-items: center; justify-content: center; backdrop-filter: blur(2px);">
+        <div class="card fade-in" style="background: white; border-radius: 12px; width: 100%; max-width: 560px; padding: 2rem; margin: auto; position: relative; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+                <h2 id="editAdminTitle" style="color: var(--text-main); margin: 0; font-size: 1.25rem; display: flex; align-items: center; gap: 8px;">
+                    <i class="ph ph-user-gear" style="color: var(--primary);"></i> Editar Administrador
+                </h2>
+                <button type="button" onclick="document.getElementById('modalEditAdmin').style.display='none'" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); line-height: 1;">&times;</button>
+            </div>
 
             <form id="formEditAdmin" method="POST" action="">
+                <!-- Nome e CPF -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;" class="flex-mobile-column">
+                    <div>
+                        <label for="edit_nome" style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 4px;">Nome Completo</label>
+                        <input type="text" id="edit_nome" name="nome" required style="width: 100%; padding: 0.55rem 0.75rem; border-radius: 8px; border: 1px solid var(--border);">
+                    </div>
+                    <div>
+                        <label for="edit_cpf" style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 4px;">CPF</label>
+                        <input type="text" id="edit_cpf" name="cpf" maxlength="14" oninput="formatarCPF(this)" placeholder="000.000.000-00" style="width: 100%; padding: 0.55rem 0.75rem; border-radius: 8px; border: 1px solid var(--border);">
+                    </div>
+                </div>
 
-                <!-- Checkbox Mestre no modal -->
-                <div class="form-group">
-                    <label style="display: flex; align-items: center; gap: 8px; padding: 0.6rem 1rem; background: var(--primary); color: white; border-radius: 8px; margin-bottom: 0.75rem; cursor: pointer; font-weight: 600;">
-                        <input type="checkbox" id="chk_all_edit" onchange="toggleAll('edit', this.checked)" style="width:16px; height:16px; accent-color: white;">
+                <!-- Setor e E-mail -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;" class="flex-mobile-column">
+                    <div>
+                        <label for="edit_setor" style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 4px;">Setor / Lotação</label>
+                        <input type="text" id="edit_setor" name="setor" list="setores_sugestoes" placeholder="Ex: Nutrição" style="width: 100%; padding: 0.55rem 0.75rem; border-radius: 8px; border: 1px solid var(--border);">
+                    </div>
+                    <div>
+                        <label for="edit_email" style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 4px;">E-mail (Recuperação)</label>
+                        <input type="email" id="edit_email" name="email" placeholder="colaborador@escola.edu.br" style="width: 100%; padding: 0.55rem 0.75rem; border-radius: 8px; border: 1px solid var(--border);">
+                    </div>
+                </div>
+
+                <!-- Permissões no modal -->
+                <div class="form-group" style="margin-top: 1rem;">
+                    <label style="font-weight: 700; font-size: 0.9rem; margin-bottom: 0.5rem; display: block;">
+                        <i class="ph ph-lock-key"></i> Permissões de Acesso
+                    </label>
+
+                    <label style="display: flex; align-items: center; gap: 8px; padding: 0.6rem 1rem; background: var(--primary); color: white; border-radius: 8px; margin-bottom: 0.75rem; cursor: pointer; font-weight: 600; user-select: none;">
+                        <input type="checkbox" name="permissoes[]" value="all" id="chk_all_edit" onchange="toggleAll('edit', this.checked)" style="width:16px; height:16px; accent-color: white;">
                         <i class="ph ph-crown-simple"></i> Mestre — todas as permissões
                     </label>
 
                     <div id="perms_edit" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; background: #f9fafb; padding: 1rem; border-radius: 8px; border: 1px solid var(--border);">
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="turmas"     class="perm-edit"> Gestão de Turmas</label>
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="alunos"     class="perm-edit"> Gestão de Alunos</label>
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="cardapios"  class="perm-edit"> Cardápios</label>
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="relatorios" class="perm-edit"> Relatórios / Excel</label>
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="avisos"     class="perm-edit"> Mural de Avisos</label>
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="fila"       class="perm-edit"> Modo Fila (Scanner)</label>
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="eventos"    class="perm-edit"> Módulo Eventos</label>
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="admins"     class="perm-edit"> Gestão de Admins</label>
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="config"     class="perm-edit"> Config. de Marca</label>
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="smtp"       class="perm-edit"> Config. de E-mail</label>
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="base_conhecimento" class="perm-edit"> Base de Conhecimento</label>
-                        <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 5px;"><input type="checkbox" name="permissoes[]" value="pesquisas" class="perm-edit"> Pesquisas e Formulários</label>
+                        <label style="font-size: 0.82rem; display: flex; align-items: center; gap: 5px; margin: 0; cursor: pointer;"><input type="checkbox" name="permissoes[]" value="turmas"     class="perm-edit"> Gestão de Turmas</label>
+                        <label style="font-size: 0.82rem; display: flex; align-items: center; gap: 5px; margin: 0; cursor: pointer;"><input type="checkbox" name="permissoes[]" value="alunos"     class="perm-edit"> Gestão de Alunos</label>
+                        <label style="font-size: 0.82rem; display: flex; align-items: center; gap: 5px; margin: 0; cursor: pointer;"><input type="checkbox" name="permissoes[]" value="cardapios"  class="perm-edit"> Cardápios</label>
+                        <label style="font-size: 0.82rem; display: flex; align-items: center; gap: 5px; margin: 0; cursor: pointer;"><input type="checkbox" name="permissoes[]" value="qualidade"  class="perm-edit"> Qualidade Térmica</label>
+                        <label style="font-size: 0.82rem; display: flex; align-items: center; gap: 5px; margin: 0; cursor: pointer;"><input type="checkbox" name="permissoes[]" value="relatorios" class="perm-edit"> Relatórios / Excel</label>
+                        <label style="font-size: 0.82rem; display: flex; align-items: center; gap: 5px; margin: 0; cursor: pointer;"><input type="checkbox" name="permissoes[]" value="avisos"     class="perm-edit"> Mural de Avisos</label>
+                        <label style="font-size: 0.82rem; display: flex; align-items: center; gap: 5px; margin: 0; cursor: pointer;"><input type="checkbox" name="permissoes[]" value="fila"       class="perm-edit"> Modo Fila (Scanner)</label>
+                        <label style="font-size: 0.82rem; display: flex; align-items: center; gap: 5px; margin: 0; cursor: pointer;"><input type="checkbox" name="permissoes[]" value="eventos"    class="perm-edit"> Módulo Eventos</label>
+                        <label style="font-size: 0.82rem; display: flex; align-items: center; gap: 5px; margin: 0; cursor: pointer;"><input type="checkbox" name="permissoes[]" value="admins"     class="perm-edit"> Gestão de Admins</label>
+                        <label style="font-size: 0.82rem; display: flex; align-items: center; gap: 5px; margin: 0; cursor: pointer;"><input type="checkbox" name="permissoes[]" value="config"     class="perm-edit"> Configurações Globais</label>
+                        <label style="font-size: 0.82rem; display: flex; align-items: center; gap: 5px; margin: 0; cursor: pointer;"><input type="checkbox" name="permissoes[]" value="smtp"       class="perm-edit"> Servidor de E-mail (SMTP)</label>
+                        <label style="font-size: 0.82rem; display: flex; align-items: center; gap: 5px; margin: 0; cursor: pointer;"><input type="checkbox" name="permissoes[]" value="base_conhecimento" class="perm-edit"> Base Conhecimento</label>
+                        <label style="font-size: 0.82rem; display: flex; align-items: center; gap: 5px; margin: 0; cursor: pointer;"><input type="checkbox" name="permissoes[]" value="pesquisas" class="perm-edit"> Pesquisas / Forms</label>
                     </div>
-                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">
-                        Marque <strong>Mestre</strong> para conceder acesso total. O nível exibido na tabela será atualizado automaticamente.
-                    </p>
                 </div>
 
                 <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
-                    <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="document.getElementById('modalEditAdmin').style.display='none'">Cancelar</button>
-                    <button type="submit" class="btn btn-primary" style="flex: 1;"><i class="ph ph-floppy-disk" style="margin-right: 8px;"></i> Salvar Alterações</button>
+                    <button type="button" class="btn btn-secondary" style="flex: 1; border-radius: 8px;" onclick="document.getElementById('modalEditAdmin').style.display='none'">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" style="flex: 1; border-radius: 8px;"><i class="ph ph-floppy-disk" style="margin-right: 6px;"></i> Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Alterar Senha Rápida -->
+    <div id="modalMudarSenha" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1050; align-items: center; justify-content: center; backdrop-filter: blur(2px);">
+        <div class="card fade-in" style="background: white; border-radius: 12px; width: 100%; max-width: 400px; padding: 2rem; margin: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+                <h2 id="mudarSenhaTitle" style="color: var(--text-main); margin: 0; font-size: 1.2rem; display: flex; align-items: center; gap: 8px;">
+                    <i class="ph ph-key" style="color: var(--primary);"></i> Alterar Senha
+                </h2>
+                <button type="button" onclick="document.getElementById('modalMudarSenha').style.display='none'" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); line-height: 1;">&times;</button>
+            </div>
+
+            <form id="formMudarSenha" method="POST" action="">
+                <p id="mudarSenhaDesc" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;"></p>
+                <div class="form-group" style="margin-bottom: 1.25rem;">
+                    <label for="nova_senha" style="font-size: 0.85rem; font-weight: 600;">Nova Senha</label>
+                    <input type="password" id="nova_senha" name="nova_senha" placeholder="Mínimo 4 caracteres" minlength="4" required style="width: 100%; padding: 0.55rem 0.75rem; border-radius: 8px; border: 1px solid var(--border);">
+                </div>
+
+                <div style="display: flex; gap: 0.75rem;">
+                    <button type="button" class="btn btn-secondary" style="flex: 1; border-radius: 8px;" onclick="document.getElementById('modalMudarSenha').style.display='none'">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" style="flex: 1; border-radius: 8px;"><i class="ph ph-check" style="margin-right: 6px;"></i> Salvar Senha</button>
                 </div>
             </form>
         </div>
     </div>
 
     <script>
+        // Formata CPF automaticamente (000.000.000-00)
+        function formatarCPF(campo) {
+            let v = campo.value.replace(/\D/g, '');
+            if (v.length > 11) v = v.substring(0, 11);
+            if (v.length > 9) {
+                campo.value = v.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
+            } else if (v.length > 6) {
+                campo.value = v.replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3');
+            } else if (v.length > 3) {
+                campo.value = v.replace(/(\d{3})(\d{1,3})/, '$1.$2');
+            } else {
+                campo.value = v;
+            }
+        }
+
         // Marca/desmarca todos os checkboxes individuais
         function toggleAll(grupo, checked) {
             document.querySelectorAll('.perm-' + grupo).forEach(chk => {
                 chk.checked = checked;
-                chk.disabled = checked; // desabilita individuais quando mestre está marcado
             });
         }
 
-        // Abre o modal de edição preenchendo os campos
-        function abrirEdicaoAdmin(id, usuario, perfil, permissoes) {
+        // Abre o modal de edição completa preenchendo todos os dados
+        function abrirEdicaoAdmin(id, usuario, nome, cpf, setor, email, perfil, permissoes) {
             const modal = document.getElementById('modalEditAdmin');
             const title = document.getElementById('editAdminTitle');
             const form  = document.getElementById('formEditAdmin');
             const chkAll = document.getElementById('chk_all_edit');
 
-            title.innerHTML = `<i class="ph ph-user-circle-gear"></i> Editar Permissões: ${usuario}`;
+            title.innerHTML = `<i class="ph ph-user-gear" style="color: var(--primary);"></i> Editar: ${nome || usuario}`;
             form.action = `/admin/administradores/editar/${id}`;
+
+            document.getElementById('edit_nome').value = nome || '';
+            document.getElementById('edit_cpf').value = cpf || '';
+            document.getElementById('edit_setor').value = setor || '';
+            document.getElementById('edit_email').value = email || '';
 
             // Parse permissões JSON
             let perms = [];
             try { perms = JSON.parse(permissoes || '[]'); } catch(e) { perms = []; }
 
-            const isMestre = perms.includes('all') || perfil === 'admin_mestre';
-
-            // Configura o checkbox mestre
+            const isMestre = perms.includes('all') || usuario === 'admin';
             chkAll.checked = isMestre;
 
-            // Configura os checkboxes individuais
             document.querySelectorAll('.perm-edit').forEach(chk => {
-                chk.checked  = isMestre || perms.includes(chk.value);
-                chk.disabled = isMestre;
+                chk.checked = isMestre || perms.includes(chk.value);
             });
 
             modal.style.display = 'flex';
         }
 
-        // Fecha modal ao clicar fora
-        document.getElementById('modalEditAdmin').addEventListener('click', function(e) {
-            if (e.target === this) this.style.display = 'none';
+        // Abre modal para trocar senha rápida
+        function abrirMudarSenha(id, usuario, nome) {
+            const modal = document.getElementById('modalMudarSenha');
+            const form = document.getElementById('formMudarSenha');
+            const desc = document.getElementById('mudarSenhaDesc');
+
+            form.action = `/admin/administradores/alterar_senha/${id}`;
+            desc.innerHTML = `Definindo nova senha para <strong>${nome}</strong> (@${usuario}):`;
+            document.getElementById('nova_senha').value = '';
+            modal.style.display = 'flex';
+            document.getElementById('nova_senha').focus();
+        }
+
+        // Fecha modais ao clicar fora
+        window.addEventListener('click', function(e) {
+            const mEdit = document.getElementById('modalEditAdmin');
+            const mSenha = document.getElementById('modalMudarSenha');
+            if (e.target === mEdit) mEdit.style.display = 'none';
+            if (e.target === mSenha) mSenha.style.display = 'none';
         });
 
-        // Sincroniza checkbox mestre quando individuais são clicados (novo admin)
+        // Sincroniza checkbox mestre no form de novo admin
         document.querySelectorAll('.perm-new').forEach(chk => {
             chk.addEventListener('change', function() {
                 const todos = document.querySelectorAll('.perm-new');
                 const todosMarcados = Array.from(todos).every(c => c.checked);
                 document.getElementById('chk_all_new').checked = todosMarcados;
+            });
+        });
+
+        // Sincroniza checkbox mestre no modal de edição
+        document.querySelectorAll('.perm-edit').forEach(chk => {
+            chk.addEventListener('change', function() {
+                const todos = document.querySelectorAll('.perm-edit');
+                const todosMarcados = Array.from(todos).every(c => c.checked);
+                document.getElementById('chk_all_edit').checked = todosMarcados;
             });
         });
     </script>

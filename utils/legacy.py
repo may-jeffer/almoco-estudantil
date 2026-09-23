@@ -20,14 +20,16 @@ LEGACY_ENDPOINTS = {
     # admin
     'admin_login': 'admin.admin_login',
     'admin_logout': 'admin.admin_logout',
+    'admin_esqueci_senha': 'admin.admin_esqueci_senha',
+    'admin_recuperar_senha': 'admin.admin_recuperar_senha',
     'admin_dashboard': 'admin.admin_dashboard',
-    'admin_manual': 'admin.admin_manual',
     'admin_administradores': 'admin.admin_administradores',
     'admin_administradores_excluir': 'admin.admin_administradores_excluir',
     'admin_administradores_alterar_senha': 'admin.admin_administradores_alterar_senha',
     'admin_administradores_editar': 'admin.admin_administradores_editar',
     'admin_avisos': 'admin.admin_avisos',
     'admin_avisos_excluir': 'admin.admin_avisos_excluir',
+    'admin_avisos_editar': 'admin.admin_avisos_editar',
     'admin_reservas': 'admin.admin_reservas',
     'admin_reservas_manual': 'admin.admin_reservas_manual',
     'admin_reservas_cancelar': 'admin.admin_reservas_cancelar',
@@ -81,6 +83,16 @@ LEGACY_ENDPOINTS = {
     'pesquisa_responder': 'main.pesquisa_responder',
     'pesquisa_identificar': 'main.pesquisa_identificar',
     'pesquisa_enviar': 'main.pesquisa_enviar',
+
+    # qualidade / controle de recebimento e temperatura
+    'admin_qualidade': 'admin.admin_qualidade',
+    'admin_qualidade_novo': 'admin.admin_qualidade_novo',
+    'admin_qualidade_editar': 'admin.admin_qualidade_editar',
+    'admin_qualidade_excluir': 'admin.admin_qualidade_excluir',
+    'admin_qualidade_detalhes': 'admin.admin_qualidade_detalhes',
+    'admin_qualidade_imprimir': 'admin.admin_qualidade_imprimir',
+    'admin_qualidade_imprimir_em_branco': 'admin.admin_qualidade_imprimir_em_branco',
+    'admin_qualidade_salvar_padrao': 'admin.admin_qualidade_salvar_padrao',
 }
 
 original_url_for = flask.url_for

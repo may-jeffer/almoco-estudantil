@@ -12,10 +12,24 @@
     {% endif %}
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script>
+        (function() {
+            try {
+                const isAluno = {{ 1 if session.get('aluno_id') else 0 }};
+                const serverDark = {{ 1 if (session.get('admin_modo_escuro') or session.get('aluno_modo_escuro')) else 0 }};
+                const localDark = localStorage.getItem('aluno_dark_mode') || localStorage.getItem('app_dark_mode');
+                const isDark = localDark !== null ? (localDark === '1' || localDark === 'true') : (serverDark === 1);
+                if (isDark) {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                }
+            } catch(e) {}
+        })();
+    </script>
     <style>
         body {
             background-color: var(--background);
+            color: var(--text-main);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -24,13 +38,15 @@
             padding: 1rem;
         }
         .context-container {
-            background: white;
+            background: var(--surface);
+            color: var(--text-main);
             padding: 2.5rem;
             border-radius: 16px;
             box-shadow: var(--shadow-lg);
             width: 100%;
             max-width: 450px;
             text-align: center;
+            border: 1px solid var(--border);
         }
         .context-option {
             display: block;
@@ -39,8 +55,8 @@
             margin-bottom: 1rem;
             border: 2px solid var(--border);
             border-radius: 8px;
-            background: white;
-            color: var(--text);
+            background: var(--surface);
+            color: var(--text-main);
             font-size: 1rem;
             font-weight: 500;
             cursor: pointer;
@@ -49,7 +65,7 @@
         }
         .context-option:hover {
             border-color: var(--primary);
-            background: #f0f9ff;
+            background: var(--primary-light, #f0f9ff);
         }
         .context-option i {
             margin-right: 8px;
@@ -59,6 +75,7 @@
         }
     </style>
 </head>
+
 <body>
 
     <div class="context-container fade-in">

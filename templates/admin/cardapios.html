@@ -1,6 +1,38 @@
 {% extends "base.html" %}
 
 {% block content %}
+<style>
+.btn-table-action {
+    width: auto !important;
+    height: 28px !important;
+    min-height: 28px !important;
+    max-height: 28px !important;
+    padding: 0 0.55rem !important;
+    font-size: 0.8rem !important;
+    border-radius: 4px !important;
+    color: #ffffff !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    vertical-align: middle !important;
+    box-sizing: border-box !important;
+    text-decoration: none !important;
+    font-weight: 500 !important;
+    line-height: 1 !important;
+    border: none !important;
+    cursor: pointer !important;
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+}
+.btn-table-action, .btn-table-action:visited, .btn-table-action:hover, .btn-table-action:active {
+    color: #ffffff !important;
+}
+.btn-table-action i {
+    color: #ffffff !important;
+    font-size: 0.95rem;
+}
+</style>
 <div class="fade-in">
     <div style="margin-bottom: 2rem;">
         <a href="{{ url_for('admin_dashboard') }}" style="color: var(--text-muted); display: inline-flex; align-items: center;"><i class="ph ph-arrow-left" style="margin-right: 4px;"></i> Voltar ao Painel</a>
@@ -10,9 +42,14 @@
     <div class="card">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
             <h2 style="margin:0;">Cardápios e Refeições <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: normal;">({{ total }} no total)</span></h2>
-            <button type="button" class="btn btn-primary" onclick="abrirNovoCardapio()">
-                <i class="ph ph-plus-circle" style="margin-right: 8px;"></i> Novo Cardápio
-            </button>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <a href="{{ url_for('admin_qualidade') }}" class="btn btn-secondary" style="font-size: 0.9rem;">
+                    <i class="ph ph-thermometer" style="margin-right: 6px;"></i> Controle de Qualidade
+                </a>
+                <button type="button" class="btn btn-primary" onclick="abrirNovoCardapio()">
+                    <i class="ph ph-plus-circle" style="margin-right: 8px;"></i> Novo Cardápio
+                </button>
+            </div>
         </div>
         <div class="table-responsive">
             <table>
@@ -49,25 +86,35 @@
                             {% endif %}
                         </td>
                         <td style="vertical-align: middle; white-space: nowrap;">
-                            <button type="button" class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; border-radius: 4px;" 
-                                onclick="abrirEdicaoCardapio(this)"
-                                data-id="{{ c.id }}"
-                                data-tipo="{{ c.tipo_refeicao }}"
-                                data-acompanhamento="{{ c.acompanhamento or '' }}"
-                                data-salada="{{ c.salada or '' }}"
-                                data-proteinas="{{ c.proteinas or '' }}"
-                                data-sobremesa="{{ c.sobremesa or '' }}"
-                                data-outros="{{ c.outros or '' }}"
-                                data-permitir="{{ c.permitir_reserva }}"
-                                data-qtd="{{ c.qtd_solicitada if c.qtd_solicitada is not none else '' }}">
-                                <i class="ph ph-pencil-simple"></i> Editar
-                            </button>
-                            
-                            <form method="POST" action="{{ url_for('admin_cardapios_excluir', id=c.id) }}" style="display: inline-block;">
-                                <button type="submit" class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; border-radius: 4px;" onclick="return confirm('Deseja realmente excluir este cardápio?');">
-                                    <i class="ph ph-trash"></i>
+                            <div class="table-actions-group">
+                                <a href="{{ url_for('admin_qualidade_novo', cardapio_id=c.id) }}" class="btn btn-secondary btn-table-action" title="Registrar Recebimento e Controle Térmico">
+                                    <i class="ph ph-thermometer"></i> Qualidade
+                                </a>
+
+                                <a href="{{ url_for('admin_qualidade_imprimir_em_branco', cardapio_id=c.id) }}" target="_blank" class="btn btn-secondary btn-table-action" title="Imprimir Ficha de Recebimento em Branco deste Cardápio (Preenchimento Manual)">
+                                    <i class="ph ph-printer"></i> Ficha Manual
+                                </a>
+
+                                <button type="button" class="btn btn-secondary btn-table-action" 
+                                    onclick="abrirEdicaoCardapio(this)"
+                                    data-id="{{ c.id }}"
+                                    data-tipo="{{ c.tipo_refeicao }}"
+                                    data-acompanhamento="{{ c.acompanhamento or '' }}"
+                                    data-salada="{{ c.salada or '' }}"
+                                    data-proteinas="{{ c.proteinas or '' }}"
+                                    data-sobremesa="{{ c.sobremesa or '' }}"
+                                    data-outros="{{ c.outros or '' }}"
+                                    data-permitir="{{ c.permitir_reserva }}"
+                                    data-qtd="{{ c.qtd_solicitada if c.qtd_solicitada is not none else '' }}">
+                                    <i class="ph ph-pencil-simple"></i> Editar
                                 </button>
-                            </form>
+                                
+                                <form method="POST" action="{{ url_for('admin_cardapios_excluir', id=c.id) }}" style="display: inline-flex; margin: 0; vertical-align: middle;">
+                                    <button type="submit" class="btn btn-danger btn-table-action" style="padding: 0 0.45rem !important;" onclick="return confirm('Deseja realmente excluir este cardápio?');" title="Excluir Cardápio">
+                                        <i class="ph ph-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                     {% else %}

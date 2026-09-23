@@ -1,0 +1,390 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="fade-in">
+    <!-- Cabeçalho da Página -->
+    <div style="margin-bottom: 2rem;">
+        <a href="{{ url_for('admin_dashboard') }}" style="color: var(--text-muted); display: inline-flex; align-items: center;">
+            <i class="ph ph-arrow-left" style="margin-right: 4px;"></i> Voltar ao Painel
+        </a>
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-top: 1rem;">
+            <div>
+                <h1 style="margin: 0; display: flex; align-items: center; gap: 10px;">
+                    <i class="ph ph-thermometer" style="color: #2F9E41;"></i> Recebimento, Temperatura e Qualidade
+                </h1>
+                <p style="color: var(--text-muted); margin: 0.35rem 0 0 0;">
+                    Controle sanitário de recebimento das refeições, medições térmicas e aspecto sensorial vinculado ao cardápio.
+                </p>
+            </div>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <button type="button" class="btn btn-secondary" onclick="abrirModalPadrao()" style="padding: 0.6rem 0.9rem; font-size: 0.88rem;" title="Editar orientações, notas técnicas e padrões de temperatura">
+                    <i class="ph ph-note-pencil" style="margin-right: 4px;"></i> Instruções e Padrões
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="abrirModalImprimirBranco()" style="padding: 0.6rem 1rem; font-size: 0.88rem;" title="Imprimir ficha vazia para preenchimento manual à caneta">
+                    <i class="ph ph-printer" style="margin-right: 4px;"></i> Ficha em Branco
+                </button>
+                <a href="{{ url_for('admin_cardapios') }}" class="btn btn-secondary" style="padding: 0.6rem 0.9rem; font-size: 0.88rem;">
+                    <i class="ph ph-calendar-plus" style="margin-right: 4px;"></i> Cardápios
+                </a>
+                <a href="{{ url_for('admin_qualidade_novo') }}" class="btn btn-primary" style="padding: 0.6rem 1.15rem; font-size: 0.92rem;">
+                    <i class="ph ph-plus-circle" style="margin-right: 6px;"></i> Novo Recebimento
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cards Superiores com Indicadores de Qualidade (KPIs) -->
+    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+        <div class="card" style="padding: 1.25rem; margin: 0; display: flex; align-items: center; gap: 1rem;">
+            <div style="width: 48px; height: 48px; border-radius: 12px; background: #E8F5E9; display: flex; align-items: center; justify-content: center; color: #2F9E41; font-size: 1.6rem;">
+                <i class="ph ph-clipboard-text"></i>
+            </div>
+            <div>
+                <span style="font-size: 1.5rem; font-weight: 700; display: block; color: var(--text-main);">{{ total_inspecoes }}</span>
+                <span style="font-size: 0.82rem; color: var(--text-muted);">Vistorias Registradas</span>
+            </div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem; margin: 0; display: flex; align-items: center; gap: 1rem;">
+            <div style="width: 48px; height: 48px; border-radius: 12px; background: #EEF2FF; display: flex; align-items: center; justify-content: center; color: #4F46E5; font-size: 1.6rem;">
+                <i class="ph ph-cooking-pot"></i>
+            </div>
+            <div>
+                <span style="font-size: 1.5rem; font-weight: 700; display: block; color: var(--text-main);">{{ total_itens }}</span>
+                <span style="font-size: 0.82rem; color: var(--text-muted);">Preparos Analisados</span>
+            </div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem; margin: 0; display: flex; align-items: center; gap: 1rem;">
+            <div style="width: 48px; height: 48px; border-radius: 12px; background: {% if taxa_conformidade >= 90 %}#ECFDF5{% else %}#FEF3C7{% endif %}; display: flex; align-items: center; justify-content: center; color: {% if taxa_conformidade >= 90 %}#059669{% else %}#D97706{% endif %}; font-size: 1.6rem;">
+                <i class="ph ph-shield-check"></i>
+            </div>
+            <div>
+                <span style="font-size: 1.5rem; font-weight: 700; display: block; color: var(--text-main);">{{ taxa_conformidade }}%</span>
+                <span style="font-size: 0.82rem; color: var(--text-muted);">Conformidade Geral</span>
+            </div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem; margin: 0; display: flex; align-items: center; gap: 1rem;">
+            <div style="width: 48px; height: 48px; border-radius: 12px; background: {% if total_nao_conformes > 0 %}#FEE2E2{% else %}#F3F4F6{% endif %}; display: flex; align-items: center; justify-content: center; color: {% if total_nao_conformes > 0 %}#DC2626{% else %}#6B7280{% endif %}; font-size: 1.6rem;">
+                <i class="ph ph-warning-circle"></i>
+            </div>
+            <div>
+                <span style="font-size: 1.5rem; font-weight: 700; display: block; color: {% if total_nao_conformes > 0 %}#DC2626{% else %}var(--text-main){% endif %};">{{ total_nao_conformes }}</span>
+                <span style="font-size: 0.82rem; color: var(--text-muted);">Não Conformidades</span>
+            </div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem; margin: 0; display: flex; align-items: center; gap: 1rem;">
+            <div style="width: 48px; height: 48px; border-radius: 12px; background: #FFFBEB; display: flex; align-items: center; justify-content: center; color: #D97706; font-size: 1.6rem;">
+                <i class="ph ph-thermometer-hot"></i>
+            </div>
+            <div>
+                <span style="font-size: 1.5rem; font-weight: 700; display: block; color: var(--text-main);">{{ media_temp }} °C</span>
+                <span style="font-size: 0.82rem; color: var(--text-muted);">Média Térmica</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros e Busca -->
+    <div class="card" style="margin-bottom: 1.5rem; padding: 1.5rem;">
+        <form method="GET" action="{{ url_for('admin_qualidade') }}">
+            <div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end;">
+                <div class="form-group" style="margin: 0; flex: 2; min-width: 220px;">
+                    <label for="q" style="font-size: 0.85rem; font-weight: 600;">Buscar</label>
+                    <input type="text" id="q" name="q" value="{{ busca }}" placeholder="Campus, fornecedor, preparo, responsável..."
+                           style="padding: 0.6rem 0.85rem; border-radius: 8px; border: 1px solid var(--border); font-size: 0.9rem; width: 100%;">
+                </div>
+
+                <div class="form-group" style="margin: 0; flex: 1; min-width: 140px;">
+                    <label for="data_inicio" style="font-size: 0.85rem; font-weight: 600;">Data Inicial</label>
+                    <input type="date" id="data_inicio" name="data_inicio" value="{{ data_inicio }}"
+                           style="padding: 0.6rem 0.85rem; border-radius: 8px; border: 1px solid var(--border); font-size: 0.9rem; width: 100%;">
+                </div>
+
+                <div class="form-group" style="margin: 0; flex: 1; min-width: 140px;">
+                    <label for="data_fim" style="font-size: 0.85rem; font-weight: 600;">Data Final</label>
+                    <input type="date" id="data_fim" name="data_fim" value="{{ data_fim }}"
+                           style="padding: 0.6rem 0.85rem; border-radius: 8px; border: 1px solid var(--border); font-size: 0.9rem; width: 100%;">
+                </div>
+
+                <div class="form-group" style="margin: 0; flex: 1; min-width: 160px;">
+                    <label for="conformidade" style="font-size: 0.85rem; font-weight: 600;">Conformidade</label>
+                    <select id="conformidade" name="conformidade" style="padding: 0.6rem 0.85rem; border-radius: 8px; border: 1px solid var(--border); font-size: 0.9rem; width: 100%;">
+                        <option value="" {% if not conformidade_filtro %}selected{% endif %}>Todas</option>
+                        <option value="sim" {% if conformidade_filtro == 'sim' %}selected{% endif %}>100% Conforme</option>
+                        <option value="nao" {% if conformidade_filtro == 'nao' %}selected{% endif %}>Com Não Conformidades</option>
+                    </select>
+                </div>
+
+                <div style="display: flex; gap: 0.5rem; align-items: flex-end;">
+                    <button type="submit" class="btn btn-primary" style="padding: 0.6rem 1.1rem; font-size: 0.9rem;">
+                        <i class="ph ph-magnifying-glass"></i> Filtrar
+                    </button>
+                    <a href="{{ url_for('admin_qualidade') }}" class="btn btn-secondary" style="padding: 0.6rem 1rem; font-size: 0.9rem;" title="Limpar Filtros">
+                        <i class="ph ph-x"></i>
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Tabela Principal de Registros -->
+    <div class="card" style="padding: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+            <h2 style="margin: 0; font-size: 1.25rem;">Registros de Recebimento ({{ total }})</h2>
+        </div>
+
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 130px;">Recebimento</th>
+                        <th>Campus & Fornecedor</th>
+                        <th>Cardápio Vinculado</th>
+                        <th>Preparos e Temperaturas</th>
+                        <th style="text-align: center; width: 130px;">Conformidade</th>
+                        <th style="text-align: right; width: 170px;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in registros %}
+                    {% set itens = itens_por_registro.get(r.id, []) %}
+                    <tr>
+                        <!-- Data e Horário -->
+                        <td style="vertical-align: middle; white-space: nowrap;">
+                            <strong style="color: var(--text-main); font-size: 0.95rem;">{{ r.data_recebimento | datetimeformat }}</strong>
+                            <span style="display: block; font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
+                                <i class="ph ph-clock" style="vertical-align: middle;"></i> {{ r.horario_recebimento }}
+                            </span>
+                        </td>
+
+                        <!-- Campus e Fornecedor -->
+                        <td style="vertical-align: middle;">
+                            <span style="font-weight: 600; color: var(--text-main); display: block; font-size: 0.95rem;">
+                                <i class="ph ph-map-pin" style="color: #2F9E41; margin-right: 4px;"></i> {{ r.campus }}
+                            </span>
+                            <span style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-top: 2px;">
+                                <i class="ph ph-truck" style="color: #6B7280; margin-right: 4px;"></i> {{ r.fornecedor }}
+                            </span>
+                        </td>
+
+                        <!-- Cardápio Vinculado -->
+                        <td style="vertical-align: middle; max-width: 260px;">
+                            <span class="badge" style="background: #EEF2FF; color: #4338CA; font-size: 0.75rem; font-weight: 600;">
+                                {{ r.cardapio_tipo }} ({{ r.cardapio_data | datetimeformat }})
+                            </span>
+                            <span style="display: block; font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                {{ r.cardapio_descricao }}
+                            </span>
+                        </td>
+
+                        <!-- Preparos & Temperaturas -->
+                        <td style="vertical-align: middle;">
+                            <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+                                {% for it in itens %}
+                                    {% set prep_nome = it.tipo_preparo_outro if it.tipo_preparo == 'Outros' and it.tipo_preparo_outro else it.tipo_preparo %}
+                                    <span style="display: inline-flex; align-items: center; gap: 4px; background: {% if it.conformidade == 'Sim' %}#F3F4F6{% else %}#FEE2E2{% endif %}; border: 1px solid {% if it.conformidade == 'Sim' %}var(--border){% else %}#FECACA{% endif %}; border-radius: 6px; padding: 2px 7px; font-size: 0.78rem;">
+                                        <strong>{{ prep_nome }}:</strong>
+                                        <span style="color: {% if it.temperatura is not none and it.temperatura >= 60 %}#B45309{% elif it.temperatura is not none and it.temperatura <= 10 %}#0284C7{% else %}var(--text-main){% endif %}; font-weight: 600;">
+                                            {{ it.temperatura ~ ' °C' if it.temperatura is not none else 'S/T' }}
+                                        </span>
+                                        {% if it.conformidade == 'Sim' %}
+                                            <i class="ph ph-check-circle" style="color: #059669;" title="Conforme"></i>
+                                        {% else %}
+                                            <i class="ph ph-x-circle" style="color: #DC2626;" title="Não Conforme"></i>
+                                        {% endif %}
+                                    </span>
+                                {% endfor %}
+                            </div>
+                        </td>
+
+                        <!-- Status Geral de Conformidade -->
+                        <td style="vertical-align: middle; text-align: center;">
+                            {% if r.itens_nao_conformes > 0 %}
+                                <span class="badge" style="background: #FEE2E2; color: #991B1B; font-weight: 600; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 4px;">
+                                    <i class="ph ph-warning"></i> {{ r.itens_nao_conformes }} Não Conf.
+                                </span>
+                            {% else %}
+                                <span class="badge" style="background: #D1FAE5; color: #065F46; font-weight: 600; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 4px;">
+                                    <i class="ph ph-check"></i> 100% Conforme
+                                </span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Ações -->
+                        <td style="vertical-align: middle; text-align: right; white-space: nowrap;">
+                            <div class="table-actions-group">
+                                <!-- Ver Detalhes -->
+                                <a href="{{ url_for('admin_qualidade_detalhes', id=r.id) }}" class="btn btn-secondary btn-table-action" title="Ver Ficha Completa">
+                                    <i class="ph ph-eye"></i>
+                                </a>
+
+                                <!-- Imprimir Ficha A4 -->
+                                <a href="{{ url_for('admin_qualidade_imprimir', id=r.id) }}" target="_blank" class="btn btn-secondary btn-table-action" title="Imprimir Relatório A4">
+                                    <i class="ph ph-printer"></i>
+                                </a>
+
+                                <!-- Editar -->
+                                <a href="{{ url_for('admin_qualidade_editar', id=r.id) }}" class="btn btn-secondary btn-table-action" title="Editar Registro">
+                                    <i class="ph ph-pencil-simple"></i>
+                                </a>
+
+                                <!-- Excluir -->
+                                <form method="POST" action="{{ url_for('admin_qualidade_excluir', id=r.id) }}" style="display: inline-flex; margin: 0;" onsubmit="return confirm('Deseja realmente excluir este registro de qualidade? Esta ação não pode ser desfeita.');">
+                                    <button type="submit" class="btn btn-danger btn-table-action" title="Excluir">
+                                        <i class="ph ph-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
+                            <i class="ph ph-thermometer" style="font-size: 3rem; color: #9CA3AF; display: block; margin-bottom: 0.5rem;"></i>
+                            Nenhum registro de recebimento e temperatura encontrado.
+                            <div style="margin-top: 1rem;">
+                                <a href="{{ url_for('admin_qualidade_novo') }}" class="btn btn-primary" style="font-size: 0.9rem;">
+                                    <i class="ph ph-plus-circle" style="margin-right: 6px;"></i> Registrar Primeiro Recebimento
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Paginação -->
+        {% if total_paginas > 1 %}
+        <div style="display: flex; align-items: center; justify-content: center; gap: 0.4rem; margin-top: 1.75rem; flex-wrap: wrap;">
+            {% if pagina > 1 %}
+            <a href="{{ url_for('admin_qualidade', page=pagina-1, q=busca, data_inicio=data_inicio, data_fim=data_fim, conformidade=conformidade_filtro, cardapio_id=cardapio_filtro) }}" class="btn btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;">
+                <i class="ph ph-caret-left"></i>
+            </a>
+            {% endif %}
+            {% for p in range(1, total_paginas + 1) %}
+                {% if p == pagina %}
+                <span class="btn btn-primary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem; cursor: default;">{{ p }}</span>
+                {% elif p == 1 or p == total_paginas or (p >= pagina - 2 and p <= pagina + 2) %}
+                <a href="{{ url_for('admin_qualidade', page=p, q=busca, data_inicio=data_inicio, data_fim=data_fim, conformidade=conformidade_filtro, cardapio_id=cardapio_filtro) }}" class="btn btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;">{{ p }}</a>
+                {% elif p == pagina - 3 or p == pagina + 3 %}
+                <span style="color: var(--text-muted); padding: 0 0.25rem;">…</span>
+                {% endif %}
+            {% endfor %}
+            {% if pagina < total_paginas %}
+            <a href="{{ url_for('admin_qualidade', page=pagina+1, q=busca, data_inicio=data_inicio, data_fim=data_fim, conformidade=conformidade_filtro, cardapio_id=cardapio_filtro) }}" class="btn btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;">
+                <i class="ph ph-caret-right"></i>
+            </a>
+            {% endif %}
+            <span style="font-size: 0.8rem; color: var(--text-muted); margin-left: 0.5rem;">Página {{ pagina }} de {{ total_paginas }}</span>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block modals %}
+<!-- Modal Imprimir Ficha em Branco -->
+<div id="modalImprimirBranco" class="modal-overlay">
+    <div class="modal-box" style="max-width: 520px;">
+        <h2 style="color: var(--primary); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 8px;">
+            <i class="ph ph-printer"></i> Imprimir Ficha em Branco
+        </h2>
+        <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1.5rem;">
+            Ideal para dias sem conexão de internet ou para conferência inicial direta no refeitório à caneta.
+        </p>
+
+        <!-- Opção 1: Ficha Avulsa -->
+        <div style="background: #F8FAFC; border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; margin-bottom: 1.25rem;">
+            <strong style="color: var(--text-main); display: block; font-size: 0.95rem; margin-bottom: 4px;">
+                <i class="ph ph-file-text" style="color: #0284C7;"></i> 1. Ficha Totalmente em Branco (Avulsa)
+            </strong>
+            <p style="color: var(--text-muted); font-size: 0.82rem; margin-bottom: 0.75rem;">
+                Gera uma folha limpa sem cardápio vinculado, com linhas abertas para qualquer dia ou turno.
+            </p>
+            <a href="{{ url_for('admin_qualidade_imprimir_em_branco') }}" target="_blank" class="btn btn-secondary" style="padding: 0.4rem 0.85rem; font-size: 0.85rem;" onclick="fecharModalImprimirBranco()">
+                <i class="ph ph-printer" style="margin-right: 4px;"></i> Imprimir Ficha Avulsa
+            </a>
+        </div>
+
+        <!-- Opção 2: Ficha com Cardápio do Dia -->
+        <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 8px; padding: 1.25rem;">
+            <strong style="color: #166534; display: block; font-size: 0.95rem; margin-bottom: 4px;">
+                <i class="ph ph-calendar-check" style="color: #166534;"></i> 2. Ficha com Cardápio Cadastrado
+            </strong>
+            <p style="color: #15803D; font-size: 0.82rem; margin-bottom: 0.75rem;">
+                Sai com o cabeçalho e os pratos do cardápio já impressos, mas com a tabela em branco para preencher à mão.
+            </p>
+            <div class="form-group" style="margin-bottom: 0.75rem;">
+                <label for="sel_cardapio_branco" style="font-size: 0.82rem; font-weight: 600;">Selecione o Cardápio:</label>
+                <select id="sel_cardapio_branco" style="font-size: 0.85rem; padding: 0.5rem; width: 100%;">
+                    {% for c in cardapios %}
+                    <option value="{{ c.id }}">{{ c.data | datetimeformat }} — {{ c.tipo_refeicao }} ({{ c.descricao | truncate(45) }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="button" class="btn btn-primary" style="padding: 0.45rem 1rem; font-size: 0.85rem;" onclick="imprimirComCardapio()">
+                <i class="ph ph-printer" style="margin-right: 4px;"></i> Imprimir Ficha deste Cardápio
+            </button>
+        </div>
+
+        <div style="margin-top: 1.5rem; text-align: right;">
+            <button type="button" class="btn btn-secondary" onclick="fecharModalImprimirBranco()" style="padding: 0.5rem 1rem;">Fechar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Configurar Instruções e Padrões -->
+<div id="modalConfigPadrao" class="modal-overlay">
+    <div class="modal-box" style="max-width: 580px;">
+        <h2 style="color: var(--primary); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 8px;">
+            <i class="ph ph-note-pencil"></i> Instruções, Normas e Padrões da Ficha
+        </h2>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.25rem;">
+            Este campo é totalmente flexível. Aqui a nutricionista pode definir padrões de temperatura (ex: RDC 216), orientações de recebimento, normas internas da instituição ou qualquer outra observação que deva sair impressa no rodapé das fichas de controle.
+        </p>
+
+        <form method="POST" action="{{ url_for('admin_qualidade_salvar_padrao') }}">
+            <div class="form-group">
+                <label for="padrao_qualidade_texto" style="font-size: 0.88rem; font-weight: 600;">Instruções e Padrões do Rodapé:</label>
+                <textarea id="padrao_qualidade_texto" name="padrao_qualidade_texto" rows="6" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 8px; font-family: monospace; font-size: 0.88rem; line-height: 1.5;">{{ config.padrao_qualidade_texto if config and config.padrao_qualidade_texto else '' }}</textarea>
+                <small style="color: var(--text-muted); display: block; margin-top: 4px; font-size: 0.75rem;">
+                    Exemplo: temperaturas de corte (quentes &ge;60°C, frios &le;10°C), regras de conferência de lacres de entrega, higiene, etc.
+                </small>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.25rem;">
+                <button type="button" class="btn btn-secondary" onclick="fecharModalPadrao()">Cancelar</button>
+                <button type="submit" class="btn btn-primary"><i class="ph ph-floppy-disk" style="margin-right: 6px;"></i> Salvar Instruções</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function abrirModalImprimirBranco() {
+    document.getElementById('modalImprimirBranco').classList.add('is-open');
+    document.body.style.overflow = 'hidden';
+}
+function fecharModalImprimirBranco() {
+    document.getElementById('modalImprimirBranco').classList.remove('is-open');
+    document.body.style.overflow = '';
+}
+function imprimirComCardapio() {
+    const sel = document.getElementById('sel_cardapio_branco');
+    if (!sel || !sel.value) return;
+    window.open(`/admin/qualidade/imprimir-em-branco?cardapio_id=${sel.value}`, '_blank');
+    fecharModalImprimirBranco();
+}
+function abrirModalPadrao() {
+    document.getElementById('modalConfigPadrao').classList.add('is-open');
+    document.body.style.overflow = 'hidden';
+}
+function fecharModalPadrao() {
+    document.getElementById('modalConfigPadrao').classList.remove('is-open');
+    document.body.style.overflow = '';
+}
+</script>
+{% endblock %}

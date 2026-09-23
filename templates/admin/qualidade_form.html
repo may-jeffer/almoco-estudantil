@@ -1,0 +1,584 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="fade-in" style="max-width: 1000px; margin: 0 auto;">
+    <div style="margin-bottom: 2rem;">
+        <a href="{{ url_for('admin_qualidade') }}" style="color: var(--text-muted); display: inline-flex; align-items: center;">
+            <i class="ph ph-arrow-left" style="margin-right: 4px;"></i> Voltar à Lista de Recebimentos
+        </a>
+        <h1 style="margin-top: 1rem; display: flex; align-items: center; gap: 10px;">
+            <i class="ph ph-thermometer" style="color: #2F9E41;"></i>
+            {% if modo == 'editar' %}
+                Editar Controle de Recebimento e Qualidade #{{ registro.id }}
+            {% else %}
+                Novo Controle de Recebimento, Temperatura e Qualidade
+            {% endif %}
+        </h1>
+        <p style="color: var(--text-muted);">
+            Preencha os dados do recebimento térmico e conformidade dos preparos vinculados ao cardápio escolar.
+        </p>
+    </div>
+
+    <form method="POST" id="formQualidade" action="{% if modo == 'editar' %}{{ url_for('admin_qualidade_editar', id=registro.id) }}{% else %}{{ url_for('admin_qualidade_novo') }}{% endif %}">
+        <!-- 1. VÍNCULO COM O CARDÁPIO -->
+        <div class="card" style="margin-bottom: 1.5rem; border-left: 5px solid #2F9E41;">
+            <h2 style="font-size: 1.25rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; color: var(--text-main);">
+                <i class="ph ph-calendar-check" style="color: #2F9E41;"></i> 1. Cardápio de Referência
+            </h2>
+            
+            <div class="form-group" style="margin-bottom: 1rem;">
+                <label for="cardapio_id" style="font-weight: 600;">Selecione o Cardápio Cadastrado: <span style="color: #DC2626;">*</span></label>
+                <select id="cardapio_id" name="cardapio_id" required onchange="aoMudarCardapio(true)" style="font-weight: 500;">
+                    <option value="" disabled {% if not cardapio_selecionado_id %}selected{% endif %}>-- Escolha o cardápio do dia --</option>
+                    {% for c in cardapios %}
+                    <option value="{{ c.id }}" 
+                        {% if cardapio_selecionado_id == c.id %}selected{% endif %}
+                        data-data="{{ c.data }}"
+                        data-tipo="{{ c.tipo_refeicao }}"
+                        data-desc="{{ c.descricao }}"
+                        data-prot="{{ c.proteinas or '' }}"
+                        data-acomp="{{ c.acompanhamento or '' }}"
+                        data-salada="{{ c.salada or '' }}"
+                        data-outros="{{ c.outros or '' }}">
+                        {{ c.data | datetimeformat }} — {{ c.tipo_refeicao }} ({{ c.descricao | truncate(60) }})
+                    </option>
+                    {% endfor %}
+                </select>
+                <small style="color: var(--text-muted); display: block; margin-top: 4px;">
+                    O controle de temperatura e qualidade fica permanentemente associado ao cardápio registrado.
+                </small>
+            </div>
+
+            <!-- Caixa de Detalhes do Cardápio Selecionado -->
+            <div id="cardapio_info_box" style="display: none; background: #F8FAFC; border: 1px dashed var(--border); border-radius: 8px; padding: 1rem; margin-top: 0.75rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+                    <span id="info_cardapio_titulo" style="font-weight: 700; color: #1E293B; font-size: 0.95rem;"></span>
+                    <button type="button" class="btn btn-secondary" onclick="preencherPreparosDoCardapio()" style="padding: 0.35rem 0.75rem; font-size: 0.8rem;">
+                        <i class="ph ph-lightning" style="margin-right: 4px;"></i> Preencher Preparos do Cardápio
+                    </button>
+                </div>
+                <div id="info_cardapio_itens" style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.6;"></div>
+            </div>
+        </div>
+
+        <!-- 2. DADOS DO RECEBIMENTO (CABEÇALHO) -->
+        <div class="card" style="margin-bottom: 1.5rem; border-left: 5px solid #0284C7;">
+            <h2 style="font-size: 1.25rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; color: var(--text-main);">
+                <i class="ph ph-map-pin" style="color: #0284C7;"></i> 2. Identificação do Recebimento
+            </h2>
+
+            <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 0;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="campus" style="font-weight: 600;">Campus: <span style="color: #DC2626;">*</span></label>
+                    <input type="text" id="campus" name="campus" required 
+                           value="{{ registro.campus if registro else (global_config.sigla_instituicao if global_config else 'Campus Principal') }}" 
+                           placeholder="Ex: Campus Central / Campus I">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="data_recebimento" style="font-weight: 600;">Data do Recebimento: <span style="color: #DC2626;">*</span></label>
+                    <input type="date" id="data_recebimento" name="data_recebimento" required 
+                           value="{{ registro.data_recebimento if registro else data_padrao }}">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="horario_recebimento" style="font-weight: 600;">Horário de Recebimento: <span style="color: #DC2626;">*</span></label>
+                    <input type="time" id="horario_recebimento" name="horario_recebimento" required 
+                           value="{{ registro.horario_recebimento if registro else horario_padrao }}">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="fornecedor" style="font-weight: 600;">Nome do Fornecedor / Empresa: <span style="color: #DC2626;">*</span></label>
+                    <input type="text" id="fornecedor" name="fornecedor" required 
+                           value="{{ registro.fornecedor if registro else '' }}" 
+                           placeholder="Ex: Sabor & Cia Alimentos / Fornecedora XYZ">
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. PREPAROS, TEMPERATURA E QUALIDADE -->
+        <div class="card" style="margin-bottom: 2rem; border-left: 5px solid #F59E0B;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    <h2 style="font-size: 1.25rem; margin: 0; display: flex; align-items: center; gap: 8px; color: var(--text-main);">
+                        <i class="ph ph-cooking-pot" style="color: #F59E0B;"></i> 3. Preparos, Temperatura e Aspectos Sensoriais
+                    </h2>
+                    <span style="font-size: 0.85rem; color: var(--text-muted);">
+                        Adicione os itens do cardápio recebidos (Proteína, Arroz, Feijão, Macarrão, Outros) e registre as medições.
+                    </span>
+                </div>
+
+                <!-- Botão de Replicar Responsáveis -->
+                <button type="button" class="btn btn-secondary" onclick="replicarResponsaveis()" style="padding: 0.4rem 0.85rem; font-size: 0.85rem;" title="Copia o medidor, recebedor e fornecedor do 1º item para todos os outros">
+                    <i class="ph ph-copy" style="margin-right: 5px;"></i> Replicar Responsáveis para Todos
+                </button>
+            </div>
+
+            <!-- Barra de Adição Rápida de Preparos -->
+            <div style="background: #F9FAFB; padding: 0.85rem 1rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+                <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
+                    <i class="ph ph-plus-circle" style="color: var(--primary);"></i> Adicionar Preparo:
+                </span>
+                <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-secondary" style="padding: 0.35rem 0.75rem; font-size: 0.82rem;" onclick="adicionarItem('Proteína')">
+                        + Proteína
+                    </button>
+                    <button type="button" class="btn btn-secondary" style="padding: 0.35rem 0.75rem; font-size: 0.82rem;" onclick="adicionarItem('Feijão')">
+                        + Feijão
+                    </button>
+                    <button type="button" class="btn btn-secondary" style="padding: 0.35rem 0.75rem; font-size: 0.82rem;" onclick="adicionarItem('Arroz')">
+                        + Arroz
+                    </button>
+                    <button type="button" class="btn btn-secondary" style="padding: 0.35rem 0.75rem; font-size: 0.82rem;" onclick="adicionarItem('Macarrão')">
+                        + Macarrão
+                    </button>
+                    <button type="button" class="btn btn-primary" style="padding: 0.35rem 0.85rem; font-size: 0.82rem;" onclick="adicionarItem('Outros')">
+                        + Outros
+                    </button>
+                </div>
+            </div>
+
+            <!-- Container dos Itens Dinâmicos -->
+            <div id="itens_container" style="display: flex; flex-direction: column; gap: 1.25rem;">
+                <!-- Os itens serão gerados aqui dinamicamente ou carregados do banco -->
+            </div>
+
+            <!-- Botão Adicionar Item no final -->
+            <div style="text-align: center; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px dashed var(--border);">
+                <button type="button" class="btn btn-secondary" onclick="adicionarItem()" style="padding: 0.5rem 1.25rem; font-size: 0.9rem;">
+                    <i class="ph ph-plus" style="margin-right: 6px;"></i> Adicionar Outro Item de Preparo
+                </button>
+            </div>
+        </div>
+
+        <!-- Botões de Ação do Formulário -->
+        <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-bottom: 3rem;">
+            <a href="{{ url_for('admin_qualidade') }}" class="btn btn-secondary" style="padding: 0.75rem 1.5rem;">
+                Cancelar
+            </a>
+            <button type="submit" class="btn btn-primary" style="padding: 0.75rem 2rem; font-size: 1.05rem;">
+                <i class="ph ph-check-circle" style="margin-right: 8px;"></i>
+                {% if modo == 'editar' %}Salvar Alterações{% else %}Salvar Recebimento e Qualidade{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- TEMPLATE OCULTO PARA O CARD DE ITEM -->
+<template id="item_template">
+    <div class="item-card" style="background: white; border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; box-shadow: var(--shadow-sm); position: relative; transition: border-color 0.2s;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid #F3F4F6; padding-bottom: 0.6rem;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="badge badge-item-num" style="background: #111827; color: white; font-size: 0.75rem;">#1</span>
+                <strong class="item-title" style="color: var(--text-main); font-size: 1rem;">Item de Preparo</strong>
+            </div>
+            <button type="button" class="btn btn-danger" onclick="removerItem(this)" style="padding: 0.25rem 0.5rem; font-size: 0.78rem; border-radius: 6px;" title="Remover este preparo">
+                <i class="ph ph-trash"></i> Remover
+            </button>
+        </div>
+
+        <!-- Linha 1: Tipo de Preparo + Especificação se "Outros" -->
+        <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+            <div class="form-group" style="margin: 0;">
+                <label style="font-size: 0.85rem; font-weight: 600;">Tipo de Preparo: <span style="color: #DC2626;">*</span></label>
+                <select name="tipo_preparo[]" class="tipo-preparo-select" onchange="aoMudarTipoPreparo(this)" required>
+                    <option value="Proteína">Proteína (Carnes, Aves, Peixes, Ovos, etc.)</option>
+                    <option value="Feijão">Feijão / Leguminosas</option>
+                    <option value="Arroz">Arroz</option>
+                    <option value="Macarrão">Macarrão / Massas</option>
+                    <option value="Outros">Outros (Especifique)</option>
+                </select>
+            </div>
+
+            <div class="form-group campo-outro-container" style="margin: 0; display: none;">
+                <label style="font-size: 0.85rem; font-weight: 600;">Qual o outro preparo? <span style="color: #DC2626;">*</span></label>
+                <input type="text" name="tipo_preparo_outro[]" class="tipo-preparo-outro-input" placeholder="Ex: Salada cozida, Farofa, Sopa, Suco...">
+            </div>
+        </div>
+
+        <!-- Linha 2: Temperatura, Conformidade e Aspecto Sensorial -->
+        <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1rem; background: #F8FAFC; padding: 1rem; border-radius: 8px; border: 1px solid var(--border);">
+            <!-- Temperatura -->
+            <div class="form-group" style="margin: 0;">
+                <label style="font-size: 0.85rem; font-weight: 600; display: flex; justify-content: space-between;">
+                    <span>Temperatura (°C):</span>
+                    <span class="temp-indicator" style="font-size: 0.75rem; color: var(--text-muted);"></span>
+                </label>
+                <input type="number" step="0.1" name="temperatura[]" class="temperatura-input" placeholder="Ex: 68.5" oninput="avaliarTemperatura(this)">
+                <small style="color: var(--text-muted); font-size: 0.72rem; display: block; margin-top: 3px;">Quente: &ge; 60°C | Frio: &le; 10°C</small>
+            </div>
+
+            <!-- Conformidade -->
+            <div class="form-group" style="margin: 0;">
+                <label style="font-size: 0.85rem; font-weight: 600;">Em Conformidade? <span style="color: #DC2626;">*</span></label>
+                <select name="conformidade[]" class="conformidade-select" required style="font-weight: 600;">
+                    <option value="Sim" selected style="color: #065F46;">✓ Sim (Conforme)</option>
+                    <option value="Não" style="color: #991B1B;">✗ Não (Não Conforme)</option>
+                </select>
+                <small style="color: var(--text-muted); font-size: 0.72rem; display: block; margin-top: 3px;">Atende padrões higiênico-sanitários</small>
+            </div>
+
+            <!-- Aspecto Sensorial -->
+            <div class="form-group" style="margin: 0;">
+                <label style="font-size: 0.85rem; font-weight: 600;">Aspecto Sensorial: <span style="color: #DC2626;">*</span></label>
+                <select name="aspecto_sensorial[]" class="sensorial-select" required style="font-weight: 600;">
+                    <option value="Adequado" selected style="color: #065F46;">Adequado (Aparência, odor, textura)</option>
+                    <option value="Inadequado" style="color: #991B1B;">Inadequado</option>
+                </select>
+                <small style="color: var(--text-muted); font-size: 0.72rem; display: block; margin-top: 3px;">Cor, aroma e ponto de cozimento</small>
+            </div>
+        </div>
+
+        <!-- Linha 3: Profissional da Medição, Recebedor e Representante Fornecedor -->
+        <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+            <div class="form-group" style="margin: 0;">
+                <label style="font-size: 0.85rem; font-weight: 600;">Profissional da Medição: <span style="color: #DC2626;">*</span></label>
+                <input type="text" name="profissional_medicao[]" class="prof-medicao" required placeholder="Nome de quem aferiu a temp.">
+            </div>
+
+            <div class="form-group" style="margin: 0;">
+                <label style="font-size: 0.85rem; font-weight: 600;">Responsável que Recebeu: <span style="color: #DC2626;">*</span></label>
+                <input type="text" name="responsavel_recebimento[]" class="resp-recebimento" required placeholder="Nome do servidor/recebedor">
+            </div>
+
+            <div class="form-group" style="margin: 0;">
+                <label style="font-size: 0.85rem; font-weight: 600;">Responsável da Empresa: <span style="color: #DC2626;">*</span></label>
+                <input type="text" name="responsavel_fornecedor[]" class="resp-fornecedor" required placeholder="Entregador / Representante">
+            </div>
+        </div>
+
+        <!-- Linha 4: Observações -->
+        <div class="form-group" style="margin: 0;">
+            <label style="font-size: 0.85rem; font-weight: 600;">Observações do Preparo:</label>
+            <input type="text" name="observacoes[]" class="observacoes-input" placeholder="Ex: Higienização da cuba, lacre de transporte, observações adicionais...">
+        </div>
+    </div>
+</template>
+
+<script>
+// Dados pré-carregados para o modo de edição
+const itensPreCarregados = [
+    {% if itens %}
+        {% for it in itens %}
+        {
+            tipo_preparo: "{{ it.tipo_preparo | escape }}",
+            tipo_preparo_outro: "{{ it.tipo_preparo_outro or '' | escape }}",
+            temperatura: "{{ it.temperatura if it.temperatura is not none else '' }}",
+            conformidade: "{{ it.conformidade }}",
+            aspecto_sensorial: "{{ it.aspecto_sensorial }}",
+            profissional_medicao: "{{ it.profissional_medicao | escape }}",
+            responsavel_recebimento: "{{ it.responsavel_recebimento | escape }}",
+            responsavel_fornecedor: "{{ it.responsavel_fornecedor | escape }}",
+            observacoes: "{{ it.observacoes or '' | escape }}"
+        },
+        {% endfor %}
+    {% endif %}
+];
+
+function aoMudarCardapio(autoPreencherPreparos = false) {
+    const sel = document.getElementById('cardapio_id');
+    if (!sel || sel.selectedIndex < 0) return;
+    const opt = sel.options[sel.selectedIndex];
+    const box = document.getElementById('cardapio_info_box');
+    const titulo = document.getElementById('info_cardapio_titulo');
+    const itensInfo = document.getElementById('info_cardapio_itens');
+    const dataInput = document.getElementById('data_recebimento');
+
+    if (!opt || !opt.value) {
+        box.style.display = 'none';
+        return;
+    }
+
+    const dataCardapio = opt.getAttribute('data-data');
+    const tipoRefeicao = opt.getAttribute('data-tipo');
+    const desc = opt.getAttribute('data-desc');
+    const prot = opt.getAttribute('data-prot');
+    const acomp = opt.getAttribute('data-acomp');
+    const salada = opt.getAttribute('data-salada');
+    const outros = opt.getAttribute('data-outros');
+
+    // Se estiver no modo novo, atualiza a data sugerida
+    {% if modo != 'editar' %}
+    if (dataCardapio) {
+        dataInput.value = dataCardapio;
+    }
+    {% endif %}
+
+    titulo.innerHTML = `<i class="ph ph-fork-knife" style="color: #2F9E41;"></i> ${tipoRefeicao} — Data: ${dataCardapio}`;
+    
+    let htmlPartes = [];
+    if (prot) htmlPartes.push(`<strong>Proteínas:</strong> ${prot}`);
+    if (acomp) htmlPartes.push(`<strong>Acompanhamento:</strong> ${acomp}`);
+    if (salada) htmlPartes.push(`<strong>Salada:</strong> ${salada}`);
+    if (outros) htmlPartes.push(`<strong>Outros:</strong> ${outros}`);
+    if (htmlPartes.length === 0 && desc) htmlPartes.push(`<strong>Descrição:</strong> ${desc}`);
+
+    itensInfo.innerHTML = htmlPartes.join(' | ') || 'Sem itens detalhados cadastrados.';
+    box.style.display = 'block';
+
+    {% if modo != 'editar' %}
+    if (autoPreencherPreparos) {
+        preencherPreparosDoCardapio(true);
+    }
+    {% endif %}
+}
+
+function preencherPreparosDoCardapio(substituir = true) {
+    const sel = document.getElementById('cardapio_id');
+    if (!sel || sel.selectedIndex < 0) return;
+    const opt = sel.options[sel.selectedIndex];
+    if (!opt || !opt.value) return;
+
+    const prot = opt.getAttribute('data-prot') || '';
+    const acomp = opt.getAttribute('data-acomp') || '';
+    const salada = opt.getAttribute('data-salada') || '';
+    const outros = opt.getAttribute('data-outros') || '';
+
+    const container = document.getElementById('itens_container');
+
+    // Se já existem itens na tela
+    if (container.children.length > 0 && substituir) {
+        let temTemperaturas = false;
+        container.querySelectorAll('.temperatura-input').forEach(input => {
+            if (input.value && input.value.trim() !== '') temTemperaturas = true;
+        });
+
+        // Se o usuário já tiver digitado alguma medição/temperatura, pede confirmação
+        if (temTemperaturas) {
+            if (!confirm('Você já inseriu temperaturas ou dados em alguns itens. Deseja substituir a lista atual pelos preparos deste cardápio?')) {
+                return;
+            }
+        }
+        // Limpa os itens atuais para NÃO duplicar
+        container.innerHTML = '';
+    }
+
+    // 1. Proteína
+    adicionarItem('Proteína', '', {
+        tipo_preparo: 'Proteína',
+        observacoes: prot ? `Proteína: ${prot}` : ''
+    });
+
+    // 2. Feijão
+    adicionarItem('Feijão');
+
+    // 3. Arroz
+    adicionarItem('Arroz');
+
+    // 4. Macarrão (se mencionado no acompanhamento ou descrição)
+    if (acomp && acomp.toLowerCase().includes('macarr')) {
+        adicionarItem('Macarrão', '', {
+            tipo_preparo: 'Macarrão',
+            observacoes: acomp
+        });
+    }
+
+    // 5. Salada (se cadastrada)
+    if (salada && salada.trim() !== '') {
+        adicionarItem('Outros', `Salada: ${salada}`, {
+            tipo_preparo: 'Outros',
+            tipo_preparo_outro: `Salada: ${salada}`
+        });
+    }
+
+    // 6. Outros adicionais (se cadastrados)
+    if (outros && outros.trim() !== '') {
+        adicionarItem('Outros', outros, {
+            tipo_preparo: 'Outros',
+            tipo_preparo_outro: outros
+        });
+    }
+
+    atualizarNumeracaoItens();
+}
+
+function adicionarItem(tipoPredefinido = 'Proteína', outroTexto = '', dados = null) {
+    const container = document.getElementById('itens_container');
+    const template = document.getElementById('item_template');
+    const clone = template.content.cloneNode(true);
+    const card = clone.querySelector('.item-card');
+
+    const tipoSelect = card.querySelector('.tipo-preparo-select');
+    const campoOutroContainer = card.querySelector('.campo-outro-container');
+    const campoOutroInput = card.querySelector('.tipo-preparo-outro-input');
+    const tempInput = card.querySelector('.temperatura-input');
+    const confSelect = card.querySelector('.conformidade-select');
+    const sensSelect = card.querySelector('.sensorial-select');
+    const profInput = card.querySelector('.prof-medicao');
+    const recInput = card.querySelector('.resp-recebimento');
+    const fornInput = card.querySelector('.resp-fornecedor');
+    const obsInput = card.querySelector('.observacoes-input');
+
+    if (dados) {
+        tipoSelect.value = dados.tipo_preparo || (tipoPredefinido || 'Proteína');
+        campoOutroInput.value = dados.tipo_preparo_outro || outroTexto || '';
+        tempInput.value = dados.temperatura || '';
+        confSelect.value = dados.conformidade || 'Sim';
+        sensSelect.value = dados.aspecto_sensorial || 'Adequado';
+
+        const primeiroItem = container.querySelector('.item-card');
+        if (dados.profissional_medicao) {
+            profInput.value = dados.profissional_medicao;
+        } else if (primeiroItem && primeiroItem.querySelector('.prof-medicao').value) {
+            profInput.value = primeiroItem.querySelector('.prof-medicao').value;
+        } else {
+            profInput.value = "{{ session.get('admin_usuario', '') }}";
+        }
+
+        if (dados.responsavel_recebimento) {
+            recInput.value = dados.responsavel_recebimento;
+        } else if (primeiroItem && primeiroItem.querySelector('.resp-recebimento').value) {
+            recInput.value = primeiroItem.querySelector('.resp-recebimento').value;
+        }
+
+        if (dados.responsavel_fornecedor) {
+            fornInput.value = dados.responsavel_fornecedor;
+        } else if (primeiroItem && primeiroItem.querySelector('.resp-fornecedor').value) {
+            fornInput.value = primeiroItem.querySelector('.resp-fornecedor').value;
+        }
+
+        obsInput.value = dados.observacoes || '';
+    } else {
+        if (tipoPredefinido) {
+            tipoSelect.value = tipoPredefinido;
+        }
+        if (outroTexto) {
+            campoOutroInput.value = outroTexto;
+        }
+        // Pré-preenche responsáveis com base no primeiro item, se existir
+        const primeiroItem = container.querySelector('.item-card');
+        if (primeiroItem) {
+            profInput.value = primeiroItem.querySelector('.prof-medicao').value;
+            recInput.value = primeiroItem.querySelector('.resp-recebimento').value;
+            fornInput.value = primeiroItem.querySelector('.resp-fornecedor').value;
+        } else {
+            profInput.value = "{{ session.get('admin_usuario', '') }}";
+        }
+    }
+
+    if (tipoSelect.value === 'Outros') {
+        campoOutroContainer.style.display = 'block';
+        campoOutroInput.required = true;
+    } else {
+        campoOutroContainer.style.display = 'none';
+        campoOutroInput.required = false;
+    }
+
+    container.appendChild(card);
+    atualizarNumeracaoItens();
+    avaliarTemperatura(tempInput);
+}
+
+function removerItem(btn) {
+    const card = btn.closest('.item-card');
+    const container = document.getElementById('itens_container');
+    if (container.children.length <= 1) {
+        alert('É necessário manter pelo menos um item de preparo para a inspeção.');
+        return;
+    }
+    card.remove();
+    atualizarNumeracaoItens();
+}
+
+function aoMudarTipoPreparo(select) {
+    const card = select.closest('.item-card');
+    const campoOutroContainer = card.querySelector('.campo-outro-container');
+    const campoOutroInput = card.querySelector('.tipo-preparo-outro-input');
+    const titulo = card.querySelector('.item-title');
+
+    if (select.value === 'Outros') {
+        campoOutroContainer.style.display = 'block';
+        campoOutroInput.required = true;
+        titulo.innerText = 'Preparo: Outros';
+    } else {
+        campoOutroContainer.style.display = 'none';
+        campoOutroInput.required = false;
+        titulo.innerText = `Preparo: ${select.value}`;
+    }
+}
+
+function avaliarTemperatura(input) {
+    const card = input.closest('.item-card');
+    const indicator = card.querySelector('.temp-indicator');
+    const val = parseFloat(input.value);
+
+    if (isNaN(val)) {
+        indicator.innerText = '';
+        return;
+    }
+
+    if (val >= 60) {
+        indicator.innerHTML = '<span style="color: #059669; font-weight: 600;">🔥 Quente (&ge;60°C)</span>';
+    } else if (val <= 10) {
+        indicator.innerHTML = '<span style="color: #0284C7; font-weight: 600;">❄️ Frio (&le;10°C)</span>';
+    } else {
+        indicator.innerHTML = '<span style="color: #D97706; font-weight: 600;">⚠️ Faixa de Risco Térmico</span>';
+    }
+}
+
+function atualizarNumeracaoItens() {
+    const cards = document.querySelectorAll('#itens_container .item-card');
+    cards.forEach((card, index) => {
+        const badge = card.querySelector('.badge-item-num');
+        const title = card.querySelector('.item-title');
+        const tipoSelect = card.querySelector('.tipo-preparo-select');
+        badge.innerText = `#${index + 1}`;
+        if (tipoSelect.value === 'Outros') {
+            title.innerText = `Preparo #${index + 1}: Outros`;
+        } else {
+            title.innerText = `Preparo #${index + 1}: ${tipoSelect.value}`;
+        }
+    });
+}
+
+function replicarResponsaveis() {
+    const container = document.getElementById('itens_container');
+    const cards = container.querySelectorAll('.item-card');
+    if (cards.length <= 1) {
+        alert('Adicione mais de um item para usar a replicação de responsáveis.');
+        return;
+    }
+
+    const primeiroCard = cards[0];
+    const prof = primeiroCard.querySelector('.prof-medicao').value;
+    const rec = primeiroCard.querySelector('.resp-recebimento').value;
+    const forn = primeiroCard.querySelector('.resp-fornecedor').value;
+
+    if (!prof && !rec && !forn) {
+        alert('Preencha os responsáveis no primeiro item antes de replicar para os demais.');
+        return;
+    }
+
+    cards.forEach((card, idx) => {
+        if (idx > 0) {
+            if (prof) card.querySelector('.prof-medicao').value = prof;
+            if (rec) card.querySelector('.resp-recebimento').value = rec;
+            if (forn) card.querySelector('.resp-fornecedor').value = forn;
+        }
+    });
+
+    alert('Responsáveis replicados com sucesso para todos os itens!');
+}
+
+// Inicialização da Página
+document.addEventListener('DOMContentLoaded', function() {
+    if (itensPreCarregados && itensPreCarregados.length > 0) {
+        aoMudarCardapio(false);
+        itensPreCarregados.forEach(d => adicionarItem(null, null, d));
+    } else {
+        const sel = document.getElementById('cardapio_id');
+        if (sel && sel.value) {
+            // Se já veio com cardápio selecionado (ex: clicou direto no cardápio), preenche seus preparos sem duplicar
+            aoMudarCardapio(false);
+            preencherPreparosDoCardapio(true);
+        } else {
+            aoMudarCardapio(false);
+            // Se nenhum cardápio estiver selecionado ainda, adiciona os 3 preparos básicos iniciais
+            adicionarItem('Proteína');
+            adicionarItem('Feijão');
+            adicionarItem('Arroz');
+        }
+    }
+});
+</script>
+{% endblock %}

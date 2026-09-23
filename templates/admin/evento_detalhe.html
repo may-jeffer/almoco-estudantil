@@ -20,13 +20,13 @@
         </div>
         
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-            <button class="btn" style="background: white; border: 1px solid var(--primary); color: var(--primary);" onclick="abrirModal('modalEditar')">
+            <button class="btn" style="background: var(--surface); border: 1px solid var(--primary); color: var(--primary);" onclick="abrirModal('modalEditar')">
                 <i class="ph ph-note-pencil"></i> Editar Datas
             </button>
-            <button class="btn" style="background: white; border: 1px solid var(--primary); color: var(--primary);" onclick="window.location.href='{{ url_for('admin_evento_imprimir', id=evento.id) }}'">
+            <button class="btn" style="background: var(--surface); border: 1px solid var(--primary); color: var(--primary);" onclick="window.location.href='{{ url_for('admin_evento_imprimir', id=evento.id) }}'">
                 <i class="ph ph-printer"></i> Imprimir Crachás
             </button>
-            <button class="btn" style="background: var(--background); border: 1px solid var(--border); color: var(--text);" onclick="window.location.href='{{ url_for('admin_evento_csv_template') }}'">
+            <button class="btn" style="background: var(--surface); border: 1px solid var(--border); color: var(--text-main);" onclick="window.location.href='{{ url_for('admin_evento_csv_template') }}'">
                 <i class="ph ph-download-simple"></i> Modelo CSV
             </button>
             <button class="btn btn-secondary" onclick="abrirModal('modalImportar')">
@@ -70,24 +70,26 @@
                             <td>{{ c.data_nascimento | datetimeformat }}</td>
                             <td>{{ c.instituicao if c.instituicao else '-' }}</td>
                             <td style="text-align: center; white-space: nowrap;">
-                                <a href="{{ url_for('admin_evento_imprimir', id=evento.id, aluno_id=c.id) }}" class="btn btn-sm btn-secondary" title="Imprimir Crachá" style="padding: 0.4rem; background: white; border: 1px solid var(--border); color: var(--text);">
-                                    <i class="ph ph-printer"></i>
-                                </a>
-                                <button type="button" class="btn btn-sm btn-secondary" title="Editar Participante" style="padding: 0.4rem; background: white; border: 1px solid var(--border); color: var(--text);"
-                                        onclick="abrirEdicaoConvidado(this)"
-                                        data-id="{{ c.id }}"
-                                        data-nome="{{ c.nome }}"
-                                        data-cpf="{{ c.cpf }}"
-                                        data-data_nascimento="{{ c.data_nascimento }}"
-                                        data-email="{{ c.email or '' }}"
-                                        data-instituicao="{{ c.instituicao or '' }}">
-                                    <i class="ph ph-pencil-simple"></i>
-                                </button>
-                                <form method="POST" action="{{ url_for('admin_evento_remover_participante', id=evento.id, aluno_id=c.id) }}" style="display: inline;" onsubmit="return confirm('Remover este participante do evento?')">
-                                    <button type="submit" class="btn btn-sm btn-danger" title="Remover do Evento" style="padding: 0.4rem;">
-                                        <i class="ph ph-user-minus"></i>
+                                <div class="table-actions-group">
+                                    <a href="{{ url_for('admin_evento_imprimir', id=evento.id, aluno_id=c.id) }}" class="btn btn-sm btn-secondary btn-table-action" title="Imprimir Crachá">
+                                        <i class="ph ph-printer"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-secondary btn-table-action" title="Editar Participante"
+                                            onclick="abrirEdicaoConvidado(this)"
+                                            data-id="{{ c.id }}"
+                                            data-nome="{{ c.nome }}"
+                                            data-cpf="{{ c.cpf }}"
+                                            data-data_nascimento="{{ c.data_nascimento }}"
+                                            data-email="{{ c.email or '' }}"
+                                            data-instituicao="{{ c.instituicao or '' }}">
+                                        <i class="ph ph-pencil-simple"></i>
                                     </button>
-                                </form>
+                                    <form method="POST" action="{{ url_for('admin_evento_remover_participante', id=evento.id, aluno_id=c.id) }}" style="display: inline;" onsubmit="return confirm('Remover este participante do evento?')">
+                                        <button type="submit" class="btn btn-sm btn-danger btn-table-action" title="Remover do Evento">
+                                            <i class="ph ph-user-minus"></i>
+                                        </button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}
@@ -200,7 +202,7 @@
                     </div>
                 </div>
                 <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-                    <button type="button" class="btn" style="flex: 1; background: #e5e7eb; color: #374151;" onclick="fecharModal('modalEditar')">Cancelar</button>
+                    <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="fecharModal('modalEditar')">Cancelar</button>
                     <button type="submit" class="btn btn-primary" style="flex: 1;">Salvar Alterações</button>
                 </div>
             </form>
@@ -238,7 +240,7 @@
                     <input type="text" id="inst_manual" name="instituicao" placeholder="Ex: Campus Centro">
                 </div>
                 <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-                    <button type="button" class="btn" style="flex: 1; background: #e5e7eb; color: #374151;" onclick="fecharModal('modalAdicionar')">Cancelar</button>
+                    <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="fecharModal('modalAdicionar')">Cancelar</button>
                     <button type="submit" class="btn btn-primary" style="flex: 1;">Salvar Participante</button>
                 </div>
             </form>
@@ -260,7 +262,7 @@
                     <input type="file" id="arquivo_csv" name="arquivo_csv" accept=".csv" required style="padding: 0.5rem 0;">
                 </div>
                 <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-                    <button type="button" class="btn" style="flex: 1; background: #e5e7eb; color: #374151;" onclick="fecharModal('modalImportar')">Cancelar</button>
+                    <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="fecharModal('modalImportar')">Cancelar</button>
                     <button type="submit" class="btn btn-primary" style="flex: 1;">Processar Importação</button>
                 </div>
             </form>
@@ -283,7 +285,7 @@
             
             <form method="POST" action="{{ url_for('admin_evento_deletar', id=evento.id) }}">
                 <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-                    <button type="button" class="btn" style="flex: 1; background: #e5e7eb; color: #374151;" onclick="fecharModal('modalDeletar')">Cancelar</button>
+                    <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="fecharModal('modalDeletar')">Cancelar</button>
                     <button type="submit" class="btn btn-danger" style="flex: 1;"><i class="ph ph-trash"></i> Sim, Excluir Tudo</button>
                 </div>
             </form>
@@ -321,7 +323,7 @@
                     <input type="text" id="edit_inst_conv" name="instituicao">
                 </div>
                 <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-                    <button type="button" class="btn" style="flex: 1; background: #e5e7eb; color: #374151;" onclick="fecharModal('modalEditarConvidado')">Cancelar</button>
+                    <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="fecharModal('modalEditarConvidado')">Cancelar</button>
                     <button type="submit" class="btn btn-primary" style="flex: 1;">Salvar Alterações</button>
                 </div>
             </form>

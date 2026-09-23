@@ -2,139 +2,811 @@
 
 {% block content %}
 <div class="fade-in">
-    <div style="margin-bottom: 2rem;">
-        <a href="{{ url_for('admin_dashboard') }}" style="color: var(--text-muted); display: inline-flex; align-items: center;"><i class="ph ph-arrow-left" style="margin-right: 4px;"></i> Voltar ao Painel</a>
-        <h1 style="margin-top: 1rem;"><i class="ph ph-chalkboard-teacher"></i> Gerenciar Turmas</h1>
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;">
+        <div>
+            <a href="{{ url_for('admin_dashboard') }}" style="color: var(--text-muted); display: inline-flex; align-items: center; text-decoration: none;">
+                <i class="ph ph-arrow-left" style="margin-right: 4px;"></i> Voltar ao Painel
+            </a>
+            <h1 style="margin-top: 0.5rem; margin-bottom: 0.25rem;"><i class="ph ph-chalkboard-teacher"></i> Gerenciamento de Turmas</h1>
+            <p style="color: var(--text-muted); margin: 0; font-size: 0.95rem;">Controle de turmas, anos letivos e virada de ano no padrão SUAP.</p>
+        </div>
+        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+            <button type="button" class="btn btn-secondary" onclick="abrirModalVirada()" style="font-weight: 600; color: #ffffff;">
+                <i class="ph ph-arrows-left-right" style="margin-right: 6px;"></i> Virada de Ano / Conselho
+            </button>
+            <button type="button" class="btn btn-primary" onclick="abrirModalNovaTurma()">
+                <i class="ph ph-plus-circle" style="margin-right: 6px;"></i> Nova Turma
+            </button>
+        </div>
     </div>
 
-    <div class="grid">
-        <!-- Formulário Nova Turma -->
-        <div class="card">
-            <h2>Nova Turma</h2>
-            <form method="POST" action="{{ url_for('admin_turmas') }}">
-                <div class="form-group">
-                    <label for="nome">Nome da Turma (Ex: Informática 1º Ano)</label>
-                    <input type="text" id="nome" name="nome" required>
-                </div>
-                <button type="submit" class="btn btn-primary"><i class="ph ph-plus-circle" style="margin-right: 8px;"></i> Cadastrar Turma</button>
-            </form>
+    <!-- Barra de Filtros e Busca -->
+    <div class="card" style="margin-bottom: 1.5rem; padding: 1rem 1.25rem;">
+        <form method="GET" action="{{ url_for('admin.admin_turmas') }}" style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
+            <div style="flex: 2; min-width: 200px;">
+                <input type="text" name="q" value="{{ busca }}" placeholder="Buscar por nome, código ou curso..." style="width: 100%; padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text-main);">
+            </div>
+            <div style="flex: 1; min-width: 130px;">
+                <select name="ano_letivo" style="width: 100%; padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text-main);">
+                    <option value="">Todos os Anos</option>
+                    {% for a in anos_existentes %}
+                        <option value="{{ a }}" {% if filtro_ano == a|string %}selected{% endif %}>{{ a }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="flex: 1; min-width: 160px;">
+                <select name="curso" style="width: 100%; padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text-main);">
+                    <option value="">Todos os Cursos</option>
+                    {% for c in cursos_existentes %}
+                        <option value="{{ c }}" {% if filtro_curso == c %}selected{% endif %}>{{ c }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="flex: 1; min-width: 130px;">
+                <select name="ativa" style="width: 100%; padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text-main);">
+                    <option value="1" {% if filtro_ativa == '1' %}selected{% endif %}>Ativas</option>
+                    <option value="0" {% if filtro_ativa == '0' %}selected{% endif %}>Arquivadas</option>
+                    <option value="" {% if filtro_ativa == '' %}selected{% endif %}>Todas</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="submit" class="btn btn-primary" style="padding: 0.5rem 1rem;">
+                    <i class="ph ph-funnel"></i> Filtrar
+                </button>
+                {% if busca or filtro_ano or filtro_curso or filtro_ativa != '1' %}
+                <a href="{{ url_for('admin.admin_turmas') }}" class="btn btn-secondary" style="padding: 0.5rem 0.75rem;" title="Limpar Filtros">
+                    <i class="ph ph-x"></i>
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Tabela de Turmas -->
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h2 style="margin: 0; font-size: 1.25rem;">
+                Turmas Cadastradas <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: normal;">({{ total }} encontradas)</span>
+            </h2>
         </div>
 
-        <!-- Lista de Turmas -->
-        <div class="card" style="grid-column: span 2;">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
-                <h2 style="margin:0;">Turmas Cadastradas <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: normal;">({{ total }} no total)</span></h2>
-            </div>
-            <div class="table-responsive">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Nome</th>
-                            <th style="text-align: right;">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for t in turmas %}
-                        <tr>
-                            <td style="color: var(--text-muted); font-size: 0.85rem;">#{{ t.id }}</td>
-                            <td><strong>{{ t.nome }}</strong></td>
-                            <td style="text-align: right;">
-                                <div style="display: flex; gap: 0.5rem; justify-content: flex-end; flex-wrap: wrap;">
-                                    <a href="{{ url_for('admin_alunos_imprimir', turma_id=t.id) }}" class="btn btn-sm btn-secondary">
-                                        <i class="ph ph-printer"></i> Crachás
-                                    </a>
-                                    <button type="button" class="btn btn-sm"
-                                        style="background: #f59e0b; color: white;"
-                                        onclick="abrirModalEditar({{ t.id }}, '{{ t.nome | replace("'", "\\'") }}')">
-                                        <i class="ph ph-pencil"></i> Editar
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nome da Turma</th>
+                        <th>Curso</th>
+                        <th style="text-align: center;">Ano Letivo</th>
+                        <th style="text-align: center;">Série / Ano</th>
+                        <th style="text-align: center;">Turno</th>
+                        <th style="text-align: center;">Alunos Ativos</th>
+                        <th style="text-align: center;">Status</th>
+                        <th style="text-align: right;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in turmas %}
+                    <tr>
+                        <td>
+                            <strong>{{ t.nome }}</strong>
+                            {% if t.dias_bloqueados %}
+                                <br><span class="badge" style="background: rgba(239, 68, 68, 0.1); color: #dc2626; font-size: 0.75rem; margin-top: 3px; display: inline-flex; align-items: center; gap: 4px;" title="Almoço bloqueado nestes dias da semana">
+                                    <i class="ph ph-prohibit"></i> Bloqueio: {{ formatar_dias_bloqueados(t.dias_bloqueados, abrev=True) }}
+                                </span>
+                            {% endif %}
+                            {% if t.modalidade %}
+                                <br><span style="font-size: 0.75rem; color: var(--text-muted);">{{ t.modalidade }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if t.curso %}
+                                <span>{{ t.curso }}</span>
+                            {% else %}
+                                <span style="color: var(--text-muted); font-size: 0.85rem;">Não especificado</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: center;">
+                            {% if t.ano_letivo %}
+                                <span class="badge" style="background: rgba(59, 130, 246, 0.1); color: #2563eb; font-weight: bold;">{{ t.ano_letivo }}{% if t.periodo_letivo and t.periodo_letivo > 1 %}.{{ t.periodo_letivo }}{% endif %}</span>
+                            {% else %}
+                                <span style="color: var(--text-muted); font-size: 0.85rem;">---</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: center;">
+                            {% if t.serie_ano %}
+                                <span class="badge" style="background: rgba(16, 185, 129, 0.1); color: #059669; font-weight: bold;">{{ t.serie_ano }}º Ano/Per.</span>
+                            {% else %}
+                                <span style="color: var(--text-muted); font-size: 0.85rem;">---</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: center;">
+                            {% if t.turno %}
+                                <span style="font-size: 0.85rem;">{{ t.turno }}</span>
+                            {% else %}
+                                <span style="color: var(--text-muted); font-size: 0.85rem;">---</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: center;">
+                            <a href="{{ url_for('admin.admin_alunos') }}?turma_id={{ t.id }}" style="text-decoration: none; font-weight: bold; color: var(--text-main);">
+                                <span class="badge" style="background: rgba(0,0,0,0.06); color: var(--text-main);">{{ t.total_matriculados }} matriculado(s)</span>
+                            </a>
+                        </td>
+                        <td style="text-align: center;">
+                            {% if t.ativa == 1 or t.ativa is none %}
+                                <span class="badge" style="background: #dcfce7; color: #15803d; font-size: 0.75rem;">Ativa</span>
+                            {% else %}
+                                <span class="badge" style="background: #f3f4f6; color: #6b7280; font-size: 0.75rem;">Arquivada</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: right;">
+                            <div style="display: flex; gap: 0.4rem; justify-content: flex-end; flex-wrap: wrap;">
+                                <a href="{{ url_for('admin.admin_alunos_imprimir', turma_id=t.id) }}" class="btn btn-sm btn-secondary" title="Imprimir crachás da turma">
+                                    <i class="ph ph-printer"></i>
+                                </a>
+                                <button type="button" class="btn btn-sm btn-secondary"
+                                    title="Editar turma"
+                                    onclick="abrirModalEditar(this)"
+                                    data-id="{{ t.id }}"
+                                    data-nome="{{ t.nome }}"
+                                    data-curso="{{ t.curso or '' }}"
+                                    data-ano_letivo="{{ t.ano_letivo or '' }}"
+                                    data-periodo_letivo="{{ t.periodo_letivo or '1' }}"
+                                    data-serie_ano="{{ t.serie_ano or '' }}"
+                                    data-turno="{{ t.turno or '' }}"
+                                    data-modalidade="{{ t.modalidade or '' }}"
+                                    data-ativa="{{ t.ativa if t.ativa is not none else '1' }}"
+                                    data-dias_bloqueados="{{ t.dias_bloqueados or '' }}">
+                                    <i class="ph ph-pencil"></i>
+                                </button>
+                                <form method="POST" action="{{ url_for('admin.admin_turmas_excluir', id=t.id) }}"
+                                    onsubmit="return confirm('Excluir a turma \'{{ t.nome }}\'? Esta ação é irreversível.')" style="display: inline;">
+                                    <button type="submit" class="btn btn-sm btn-danger" title="Excluir turma">
+                                        <i class="ph ph-trash"></i>
                                     </button>
-                                    <form method="POST" action="{{ url_for('admin_turmas_excluir', id=t.id) }}"
-                                        onsubmit="return confirm('Excluir a turma \'{{ t.nome }}\'? Esta ação é irreversível.')">
-                                        <button type="submit" class="btn btn-sm btn-danger">
-                                            <i class="ph ph-trash"></i> Excluir
-                                        </button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="3" style="text-align: center; color: var(--text-muted);">Nenhuma turma cadastrada.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-
-            {% if total_paginas > 1 %}
-            <div style="display: flex; align-items: center; justify-content: center; gap: 0.4rem; margin-top: 1.5rem; flex-wrap: wrap;">
-                {% if pagina > 1 %}
-                <a href="{{ url_for('admin_turmas', page=pagina-1) }}" class="btn btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;"><i class="ph ph-caret-left"></i></a>
-                {% endif %}
-                {% for p in range(1, total_paginas + 1) %}
-                    {% if p == pagina %}
-                    <span class="btn btn-primary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem; cursor: default;">{{ p }}</span>
-                    {% elif p == 1 or p == total_paginas or (p >= pagina - 2 and p <= pagina + 2) %}
-                    <a href="{{ url_for('admin_turmas', page=p) }}" class="btn btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;">{{ p }}</a>
-                    {% elif p == pagina - 3 or p == pagina + 3 %}
-                    <span style="color: var(--text-muted); padding: 0 0.25rem;">…</span>
-                    {% endif %}
-                {% endfor %}
-                {% if pagina < total_paginas %}
-                <a href="{{ url_for('admin_turmas', page=pagina+1) }}" class="btn btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;"><i class="ph ph-caret-right"></i></a>
-                {% endif %}
-                <span style="font-size: 0.8rem; color: var(--text-muted); margin-left: 0.5rem;">Página {{ pagina }} de {{ total_paginas }}</span>
-            </div>
-            {% endif %}
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 2rem;">Nenhuma turma encontrada com os filtros selecionados.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
+
+        {% if total_paginas > 1 %}
+        <div style="display: flex; align-items: center; justify-content: center; gap: 0.4rem; margin-top: 1.5rem; flex-wrap: wrap;">
+            {% if pagina > 1 %}
+            <a href="{{ url_for('admin.admin_turmas', page=pagina-1, q=busca, ano_letivo=filtro_ano, curso=filtro_curso, ativa=filtro_ativa) }}" class="btn btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;"><i class="ph ph-caret-left"></i></a>
+            {% endif %}
+            {% for p in range(1, total_paginas + 1) %}
+                {% if p == pagina %}
+                <span class="btn btn-primary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem; cursor: default;">{{ p }}</span>
+                {% elif p == 1 or p == total_paginas or (p >= pagina - 2 and p <= pagina + 2) %}
+                <a href="{{ url_for('admin.admin_turmas', page=p, q=busca, ano_letivo=filtro_ano, curso=filtro_curso, ativa=filtro_ativa) }}" class="btn btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;">{{ p }}</a>
+                {% elif p == pagina - 3 or p == pagina + 3 %}
+                <span style="color: var(--text-muted); padding: 0 0.25rem;">…</span>
+                {% endif %}
+            {% endfor %}
+            {% if pagina < total_paginas %}
+            <a href="{{ url_for('admin.admin_turmas', page=pagina+1, q=busca, ano_letivo=filtro_ano, curso=filtro_curso, ativa=filtro_ativa) }}" class="btn btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;"><i class="ph ph-caret-right"></i></a>
+            {% endif %}
+            <span style="font-size: 0.8rem; color: var(--text-muted); margin-left: 0.5rem;">Página {{ pagina }} de {{ total_paginas }}</span>
+        </div>
+        {% endif %}
     </div>
 </div>
+{% endblock %}
 
-<!-- Modal Editar Turma -->
-<div id="modal-editar" class="modal-overlay">
-    <div class="modal-box" style="max-width: 480px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
-            <h2 style="margin:0;"><i class="ph ph-pencil" style="margin-right:8px; color:#f59e0b;"></i>Editar Turma</h2>
-            <button onclick="fecharModal()" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--text-muted); line-height:1;">&times;</button>
+{% block modals %}
+<!-- Modal Nova Turma -->
+<div id="modal-nova-turma" class="modal-overlay">
+    <div class="modal-box" style="max-width: 600px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+            <h2 style="margin:0; font-size: 1.25rem;"><i class="ph ph-chalkboard-teacher" style="margin-right:8px; color:var(--primary);"></i>Cadastrar Nova Turma</h2>
+            <button onclick="fecharModalNovaTurma()" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--text-muted); line-height:1;">&times;</button>
         </div>
-        <form id="form-editar" method="POST" action="">
-            <div class="form-group">
-                <label for="nome_editar">Nome da Turma</label>
-                <input type="text" id="nome_editar" name="nome" required autocomplete="off">
+        <form method="POST" action="{{ url_for('admin.admin_turmas') }}">
+            <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                <div class="form-group" style="grid-column: span 2;">
+                    <label for="nome_novo">Nome da Turma *</label>
+                    <input type="text" id="nome_novo" name="nome" placeholder="Ex: Téc. Informática 1º Ano Matutino 2026" required>
+                </div>
+                <div class="form-group" style="grid-column: span 2;">
+                    <label for="curso_novo">Curso</label>
+                    <input type="text" id="curso_novo" name="curso" placeholder="Ex: Técnico Integrado em Informática, Agropecuária">
+                </div>
+                <div class="form-group">
+                    <label for="ano_letivo_novo">Ano Letivo</label>
+                    <input type="number" id="ano_letivo_novo" name="ano_letivo" placeholder="Ex: 2026" min="2000" max="2100">
+                </div>
+                <div class="form-group">
+                    <label for="periodo_letivo_novo">Período Letivo</label>
+                    <select id="periodo_letivo_novo" name="periodo_letivo">
+                        <option value="1" selected>1 (Anual / 1º Semestre)</option>
+                        <option value="2">2 (2º Semestre)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="serie_ano_novo">Série / Ano Escolar</label>
+                    <select id="serie_ano_novo" name="serie_ano">
+                        <option value="">Não especificado</option>
+                        <option value="1">1º Ano / 1º Período</option>
+                        <option value="2">2º Ano / 2º Período</option>
+                        <option value="3">3º Ano / 3º Período</option>
+                        <option value="4">4º Ano / 4º Período</option>
+                        <option value="5">5º Período</option>
+                        <option value="6">6º Período</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="turno_novo">Turno</label>
+                    <select id="turno_novo" name="turno">
+                        <option value="">Não especificado</option>
+                        <option value="Matutino">Matutino</option>
+                        <option value="Vespertino">Vespertino</option>
+                        <option value="Noturno">Noturno</option>
+                        <option value="Integral">Integral</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="modalidade_novo">Modalidade</label>
+                    <select id="modalidade_novo" name="modalidade">
+                        <option value="">Não especificado</option>
+                        <option value="Integrado">Técnico Integrado</option>
+                        <option value="Subsequente">Técnico Subsequente</option>
+                        <option value="Superior">Ensino Superior / Graduação</option>
+                        <option value="PROEJA">PROEJA</option>
+                        <option value="Outro">Outro</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="ativa_novo">Status da Turma</label>
+                    <select id="ativa_novo" name="ativa">
+                        <option value="1" selected>Ativa (Período Vigente)</option>
+                        <option value="0">Arquivada (Anos Anteriores)</option>
+                    </select>
+                </div>
+                <div class="form-group" style="grid-column: span 2; background: rgba(239, 68, 68, 0.04); border: 1px dashed rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 0.85rem 1rem;">
+                    <label style="font-weight: 700; color: #b91c1c; display: flex; align-items: center; gap: 6px; margin-bottom: 0.35rem;">
+                        <i class="ph ph-prohibit"></i> Bloqueio de Almoço por Dia da Semana
+                    </label>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0 0 0.6rem 0;">
+                        Marque os dias em que esta turma <strong>NÃO</strong> poderá reservar almoço (ex: dias sem aula no contraturno):
+                    </p>
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        {% set dias_semana_opcoes = [('0', 'Segunda'), ('1', 'Terça'), ('2', 'Quarta'), ('3', 'Quinta'), ('4', 'Sexta'), ('5', 'Sábado'), ('6', 'Domingo')] %}
+                        {% for val, rotulo in dias_semana_opcoes %}
+                        <label style="display: flex; align-items: center; gap: 4px; padding: 0.35rem 0.65rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; font-size: 0.82rem; font-weight: 600;">
+                            <input type="checkbox" name="dias_bloqueados" value="{{ val }}" class="novo-dia-bloqueado" style="accent-color: #dc2626; width: 14px; height: 14px;">
+                            {{ rotulo }}
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
             </div>
-            <div style="display:flex; gap:0.75rem; margin-top:1rem;">
-                <button type="button" onclick="fecharModal()" class="btn btn-secondary" style="flex:1;">Cancelar</button>
-                <button type="submit" class="btn btn-primary" style="flex:1; background:#f59e0b;">
-                    <i class="ph ph-floppy-disk" style="margin-right:6px;"></i>Salvar
+            <div style="display:flex; gap:0.75rem; margin-top:1.25rem;">
+                <button type="button" onclick="fecharModalNovaTurma()" class="btn btn-secondary" style="flex:1;">Cancelar</button>
+                <button type="submit" class="btn btn-primary" style="flex:1;">
+                    <i class="ph ph-plus-circle" style="margin-right:6px;"></i>Cadastrar Turma
                 </button>
             </div>
         </form>
     </div>
 </div>
 
+<!-- Modal Editar Turma -->
+<div id="modal-editar" class="modal-overlay">
+    <div class="modal-box" style="max-width: 600px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+            <h2 style="margin:0; font-size: 1.25rem;"><i class="ph ph-pencil" style="margin-right:8px; color:var(--primary);"></i>Editar Turma</h2>
+            <button onclick="fecharModalEditar()" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--text-muted); line-height:1;">&times;</button>
+        </div>
+        <form id="form-editar" method="POST" action="">
+            <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                <div class="form-group" style="grid-column: span 2;">
+                    <label for="edit_nome">Nome da Turma *</label>
+                    <input type="text" id="edit_nome" name="nome" required autocomplete="off">
+                </div>
+                <div class="form-group" style="grid-column: span 2;">
+                    <label for="edit_curso">Curso</label>
+                    <input type="text" id="edit_curso" name="curso">
+                </div>
+                <div class="form-group">
+                    <label for="edit_ano_letivo">Ano Letivo</label>
+                    <input type="number" id="edit_ano_letivo" name="ano_letivo" min="2000" max="2100">
+                </div>
+                <div class="form-group">
+                    <label for="edit_periodo_letivo">Período Letivo</label>
+                    <select id="edit_periodo_letivo" name="periodo_letivo">
+                        <option value="1">1 (Anual / 1º Semestre)</option>
+                        <option value="2">2 (2º Semestre)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="edit_serie_ano">Série / Ano Escolar</label>
+                    <select id="edit_serie_ano" name="serie_ano">
+                        <option value="">Não especificado</option>
+                        <option value="1">1º Ano / 1º Período</option>
+                        <option value="2">2º Ano / 2º Período</option>
+                        <option value="3">3º Ano / 3º Período</option>
+                        <option value="4">4º Ano / 4º Período</option>
+                        <option value="5">5º Período</option>
+                        <option value="6">6º Período</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="edit_turno">Turno</label>
+                    <select id="edit_turno" name="turno">
+                        <option value="">Não especificado</option>
+                        <option value="Matutino">Matutino</option>
+                        <option value="Vespertino">Vespertino</option>
+                        <option value="Noturno">Noturno</option>
+                        <option value="Integral">Integral</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="edit_modalidade">Modalidade</label>
+                    <select id="edit_modalidade" name="modalidade">
+                        <option value="">Não especificado</option>
+                        <option value="Integrado">Técnico Integrado</option>
+                        <option value="Subsequente">Técnico Subsequente</option>
+                        <option value="Superior">Ensino Superior / Graduação</option>
+                        <option value="PROEJA">PROEJA</option>
+                        <option value="Outro">Outro</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="edit_ativa">Status da Turma</label>
+                    <select id="edit_ativa" name="ativa">
+                        <option value="1">Ativa (Período Vigente)</option>
+                        <option value="0">Arquivada (Anos Anteriores)</option>
+                    </select>
+                </div>
+                <div class="form-group" style="grid-column: span 2; background: rgba(239, 68, 68, 0.04); border: 1px dashed rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 0.85rem 1rem;">
+                    <label style="font-weight: 700; color: #b91c1c; display: flex; align-items: center; gap: 6px; margin-bottom: 0.35rem;">
+                        <i class="ph ph-prohibit"></i> Bloqueio de Almoço por Dia da Semana
+                    </label>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0 0 0.6rem 0;">
+                        Marque os dias em que esta turma <strong>NÃO</strong> poderá reservar almoço. Ao salvar, reservas futuras ativas desses dias serão canceladas automaticamente:
+                    </p>
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        {% for val, rotulo in dias_semana_opcoes %}
+                        <label style="display: flex; align-items: center; gap: 4px; padding: 0.35rem 0.65rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; font-size: 0.82rem; font-weight: 600;">
+                            <input type="checkbox" name="dias_bloqueados" value="{{ val }}" class="edit-dia-bloqueado" style="accent-color: #dc2626; width: 14px; height: 14px;">
+                            {{ rotulo }}
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div style="display:flex; gap:0.75rem; margin-top:1.25rem;">
+                <button type="button" onclick="fecharModalEditar()" class="btn btn-secondary" style="flex:1;">Cancelar</button>
+                <button type="submit" class="btn btn-primary" style="flex:1;">
+                    <i class="ph ph-floppy-disk" style="margin-right:6px;"></i>Salvar Alterações
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Assistente de Virada de Ano / Conselho de Turma -->
+<div id="modal-virada" class="modal-overlay">
+    <div class="modal-box" style="max-width: 900px; width: 95%;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem;">
+            <div>
+                <h2 style="margin:0; font-size: 1.35rem; color: var(--primary);">
+                    <i class="ph ph-arrows-left-right" style="margin-right:8px;"></i>Virada de Ano / Conselho de Turma
+                </h2>
+                <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: var(--text-muted);">
+                    Transição de ano letivo com registro de histórico acadêmico, retenção (repetência), evasão e formatura.
+                </p>
+            </div>
+            <button onclick="fecharModalVirada()" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--text-muted); line-height:1;">&times;</button>
+        </div>
+
+        <!-- Passo 1: Selecionar Turma de Origem -->
+        <div style="background: var(--surface); border: 1px solid var(--border); padding: 1rem; border-radius: 8px; margin-bottom: 1.25rem;">
+            <div style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
+                <div style="flex: 2; min-width: 250px;">
+                    <label style="display: block; font-weight: 600; font-size: 0.9rem; margin-bottom: 0.4rem;">1. Selecione a Turma de Origem (Ano Anterior):</label>
+                    <select id="virada_turma_origem" onchange="carregarAlunosVirada()" style="width: 100%; padding: 0.55rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text-main); font-weight: 600;">
+                        <option value="">-- Selecione uma turma para processar a virada --</option>
+                        {% for t in turmas_ativas_todas %}
+                            <option value="{{ t.id }}">
+                                {% if t.curso %}{{ t.curso }}{% if t.serie_ano %} - {{ t.serie_ano }}º Ano{% endif %} ({{ t.nome }}){% else %}{{ t.nome }}{% endif %}{% if t.ano_letivo %} - Ano {{ t.ano_letivo }}{% endif %}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div id="loading_alunos_virada" style="display: none; align-items: center; gap: 0.5rem; color: var(--primary); font-weight: 600; padding-bottom: 0.55rem;">
+                    <i class="ph ph-spinner ph-spin" style="font-size: 1.2rem;"></i> Carregando estudantes...
+                </div>
+            </div>
+        </div>
+
+        <!-- Área de Ações Rápidas em Massa -->
+        <div id="virada_acoes_em_massa" style="display: none; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2); padding: 0.85rem 1rem; border-radius: 8px; margin-bottom: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+                <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+                    <span style="font-weight: 600; font-size: 0.85rem; color: var(--primary);">Turma Padrão de Promoção:</span>
+                    <select id="virada_turma_padrao_promocao" style="padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text-main); font-size: 0.85rem;">
+                        <option value="">Selecione a turma do próximo ano...</option>
+                    </select>
+                    <button type="button" onclick="aplicarPromocaoEmMassa()" class="btn btn-sm btn-primary" style="font-size: 0.8rem;">
+                        <i class="ph ph-check-circle"></i> Aplicar como Promovidos
+                    </button>
+                </div>
+                <div style="font-size: 0.85rem; color: var(--text-muted);">
+                    Total: <strong id="virada_total_alunos_label">0</strong> aluno(s)
+                </div>
+            </div>
+        </div>
+
+        <!-- Passo 2: Tabela de Alunos da Turma com Decisão Individual -->
+        <div id="virada_container_alunos" style="display: none; max-height: 380px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 1.25rem;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                <thead style="position: sticky; top: 0; background: var(--surface); border-bottom: 2px solid var(--border); z-index: 2;">
+                    <tr>
+                        <th style="padding: 0.6rem 0.75rem; text-align: left;">Estudante</th>
+                        <th style="padding: 0.6rem 0.75rem; text-align: left;">Matrícula / CPF</th>
+                        <th style="padding: 0.6rem 0.75rem; text-align: left; width: 170px;">Resultado</th>
+                        <th style="padding: 0.6rem 0.75rem; text-align: left; width: 260px;">Turma Destino</th>
+                    </tr>
+                </thead>
+                <tbody id="virada_tbody_alunos">
+                    <!-- Preenchido via JavaScript -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Botões de Ação do Assistente -->
+        <div id="virada_botoes_footer" style="display: none; justify-content: space-between; align-items: center; gap: 1rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+            <button type="button" onclick="fecharModalVirada()" class="btn btn-secondary">Cancelar</button>
+            <button type="button" onclick="abrirConfirmacaoVirada()" class="btn btn-primary" style="font-weight: 700; padding: 0.6rem 1.5rem;">
+                <i class="ph ph-arrow-right" style="margin-right: 6px;"></i> Avançar para Confirmação
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmação Final com Contadores Pré-Execução -->
+<div id="modal-confirmacao-virada" class="modal-overlay" style="z-index: 10050;">
+    <div class="modal-box" style="max-width: 520px;">
+        <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:1rem;">
+            <div style="background: rgba(245, 158, 11, 0.15); color: #d97706; padding: 0.6rem; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                <i class="ph ph-warning" style="font-size: 1.75rem;"></i>
+            </div>
+            <div>
+                <h3 style="margin: 0; font-size: 1.25rem;">Confirmar Virada de Ano Letivo</h3>
+                <span style="font-size: 0.85rem; color: var(--text-muted);">Esta operação registrará a trajetória acadêmica em lote.</span>
+            </div>
+        </div>
+
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem;">
+            <p style="margin: 0 0 0.5rem 0; font-size: 0.95rem;">
+                Turma de Origem: <strong id="conf_turma_origem_nome">---</strong>
+            </p>
+            <p style="margin: 0 0 0.75rem 0; font-size: 0.95rem;">
+                Total de Estudantes: <strong id="conf_total_alunos">0</strong>
+            </p>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; font-size: 0.9rem;">
+                <div style="background: rgba(16, 185, 129, 0.1); color: #059669; padding: 0.5rem 0.75rem; border-radius: 6px; font-weight: 600;">
+                    🟢 Promovidos: <span id="conf_cnt_promovidos">0</span>
+                </div>
+                <div style="background: rgba(245, 158, 11, 0.1); color: #d97706; padding: 0.5rem 0.75rem; border-radius: 6px; font-weight: 600;">
+                    🟡 Retidos (Repetentes): <span id="conf_cnt_retidos">0</span>
+                </div>
+                <div style="background: rgba(107, 114, 128, 0.1); color: #4b5563; padding: 0.5rem 0.75rem; border-radius: 6px; font-weight: 600;">
+                    ⚪ Transferidos: <span id="conf_cnt_transferidos">0</span>
+                </div>
+                <div style="background: rgba(239, 68, 68, 0.1); color: #dc2626; padding: 0.5rem 0.75rem; border-radius: 6px; font-weight: 600;">
+                    🔴 Evadidos: <span id="conf_cnt_evadidos">0</span>
+                </div>
+                <div style="grid-column: span 2; background: rgba(59, 130, 246, 0.1); color: #2563eb; padding: 0.5rem 0.75rem; border-radius: 6px; font-weight: 600;">
+                    🔵 Formados (Concluintes): <span id="conf_cnt_formados">0</span>
+                </div>
+            </div>
+
+            <p style="margin: 0.75rem 0 0 0; font-size: 0.8rem; color: var(--text-muted);">
+                * Estudantes promovidos ou retidos herdam a série da sua turma de destino. Estudantes transferidos, evadidos e formados têm o acesso ao almoço bloqueado automaticamente.
+            </p>
+        </div>
+
+        <div style="display:flex; gap:0.75rem;">
+            <button type="button" onclick="fecharConfirmacaoVirada()" class="btn btn-secondary" style="flex:1;">
+                Voltar e Revisar
+            </button>
+            <button type="button" id="btn_executar_virada" onclick="executarViradaDeAno()" class="btn btn-primary" style="flex:1.5; font-weight: 700; background: #059669;">
+                <i class="ph ph-check-circle" style="margin-right: 6px;"></i> CONFIRMAR VIRADA
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
-    function abrirModalEditar(id, nome) {
-        document.getElementById('form-editar').action = '/admin/turmas/editar/' + id;
-        document.getElementById('nome_editar').value = nome;
-        const modal = document.getElementById('modal-editar');
-        modal.classList.add('is-open');
-        setTimeout(() => document.getElementById('nome_editar').focus(), 50);
+    // ─── Modais Básicos de Turma ──────────────────────────────────────────────
+    function abrirModalNovaTurma() {
+        document.querySelectorAll('.novo-dia-bloqueado').forEach(chk => chk.checked = false);
+        document.getElementById('modal-nova-turma').classList.add('is-open');
+        setTimeout(() => document.getElementById('nome_novo').focus(), 50);
+    }
+    function fecharModalNovaTurma() {
+        document.getElementById('modal-nova-turma').classList.remove('is-open');
     }
 
-    function fecharModal() {
+    function abrirModalEditar(btn) {
+        const id = btn.getAttribute('data-id');
+        document.getElementById('form-editar').action = '/admin/turmas/editar/' + id;
+        document.getElementById('edit_nome').value = btn.getAttribute('data-nome');
+        document.getElementById('edit_curso').value = btn.getAttribute('data-curso');
+        document.getElementById('edit_ano_letivo').value = btn.getAttribute('data-ano_letivo');
+        document.getElementById('edit_periodo_letivo').value = btn.getAttribute('data-periodo_letivo');
+        document.getElementById('edit_serie_ano').value = btn.getAttribute('data-serie_ano');
+        document.getElementById('edit_turno').value = btn.getAttribute('data-turno');
+        document.getElementById('edit_modalidade').value = btn.getAttribute('data-modalidade');
+        document.getElementById('edit_ativa').value = btn.getAttribute('data-ativa');
+
+        const diasBloqStr = btn.getAttribute('data-dias_bloqueados') || '';
+        const diasBloqArr = diasBloqStr ? diasBloqStr.split(',').map(s => s.trim()) : [];
+        document.querySelectorAll('.edit-dia-bloqueado').forEach(chk => {
+            chk.checked = diasBloqArr.includes(chk.value);
+        });
+
+        document.getElementById('modal-editar').classList.add('is-open');
+        setTimeout(() => document.getElementById('edit_nome').focus(), 50);
+    }
+    function fecharModalEditar() {
         document.getElementById('modal-editar').classList.remove('is-open');
     }
 
-    // Fechar ao clicar no overlay (fora do card)
-    document.getElementById('modal-editar').addEventListener('click', function(e) {
-        if (e.target === this) fecharModal();
-    });
+    // ─── Assistente de Virada de Ano / Conselho de Turma ───────────────────────
+    let viradaDadosCache = null;
 
-    // Fechar com ESC
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') fecharModal();
+    function abrirModalVirada() {
+        document.getElementById('virada_turma_origem').value = '';
+        document.getElementById('virada_acoes_em_massa').style.display = 'none';
+        document.getElementById('virada_container_alunos').style.display = 'none';
+        document.getElementById('virada_botoes_footer').style.display = 'none';
+        document.getElementById('modal-virada').classList.add('is-open');
+    }
+    function fecharModalVirada() {
+        document.getElementById('modal-virada').classList.remove('is-open');
+    }
+
+    async function carregarAlunosVirada() {
+        const turmaOrigemId = document.getElementById('virada_turma_origem').value;
+        if (!turmaOrigemId) {
+            document.getElementById('virada_acoes_em_massa').style.display = 'none';
+            document.getElementById('virada_container_alunos').style.display = 'none';
+            document.getElementById('virada_botoes_footer').style.display = 'none';
+            return;
+        }
+
+        const loading = document.getElementById('loading_alunos_virada');
+        loading.style.display = 'flex';
+
+        try {
+            const resp = await fetch(`/admin/turmas/virada_ano/dados?turma_origem_id=${turmaOrigemId}`);
+            if (!resp.ok) throw new Error("Erro ao carregar dados da turma.");
+            
+            viradaDadosCache = await resp.json();
+            renderizarAlunosVirada(viradaDadosCache);
+        } catch (err) {
+            alert(err.message || "Erro de conexão ao carregar turma.");
+        } finally {
+            loading.style.display = 'none';
+        }
+    }
+
+    function renderizarAlunosVirada(dados) {
+        const tbody = document.getElementById('virada_tbody_alunos');
+        tbody.innerHTML = '';
+
+        const selectPadrao = document.getElementById('virada_turma_padrao_promocao');
+        selectPadrao.innerHTML = '<option value="">Selecione a turma destino do próximo ano...</option>';
+
+        dados.turmas_destino.forEach(t => {
+            if (t.id != dados.turma_origem.id) {
+                const opt = document.createElement('option');
+                opt.value = t.id;
+                opt.textContent = t.nome_exibicao || `${t.nome} (Ano ${t.ano_letivo || '---'}, ${t.serie_ano ? t.serie_ano + 'º Ano' : 'série s/n'})`;
+                selectPadrao.appendChild(opt);
+            }
+        });
+
+        document.getElementById('virada_total_alunos_label').textContent = dados.alunos.length;
+
+        if (dados.alunos.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 1.5rem; color: var(--text-muted);">Esta turma não possui alunos cadastrados.</td></tr>';
+            document.getElementById('virada_acoes_em_massa').style.display = 'none';
+            document.getElementById('virada_container_alunos').style.display = 'block';
+            document.getElementById('virada_botoes_footer').style.display = 'none';
+            return;
+        }
+
+        dados.alunos.forEach((a, idx) => {
+            const tr = document.createElement('tr');
+            tr.style.borderBottom = '1px solid var(--border)';
+
+            let optionsTurmas = '<option value="">-- Selecione turma de destino --</option>';
+            dados.turmas_destino.forEach(t => {
+                const labelT = t.nome_exibicao || `${t.nome} (Ano ${t.ano_letivo || '---'}, ${t.serie_ano ? t.serie_ano + 'º' : 's/n'})`;
+                optionsTurmas += `<option value="${t.id}">${labelT}</option>`;
+            });
+
+            tr.innerHTML = `
+                <td style="padding: 0.6rem 0.75rem;">
+                    <strong>${a.nome}</strong>
+                    <input type="hidden" class="virada-aluno-id" value="${a.id}">
+                </td>
+                <td style="padding: 0.6rem 0.75rem; color: var(--text-muted); font-size: 0.85rem;">
+                    ${a.matricula} <br> ${a.cpf || ''}
+                </td>
+                <td style="padding: 0.6rem 0.75rem;">
+                    <select class="virada-resultado" onchange="alterarResultadoAluno(this)" style="width: 100%; padding: 0.4rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text-main); font-weight: 600;">
+                        <option value="PROMOVIDO" selected style="color: #059669;">🟢 Promovido</option>
+                        <option value="RETIDO" style="color: #d97706;">🟡 Retido</option>
+                        <option value="TRANSFERIDO" style="color: #4b5563;">⚪ Transferido</option>
+                        <option value="EVADIDO" style="color: #dc2626;">🔴 Evadido</option>
+                        <option value="FORMADO" style="color: #2563eb;">🔵 Formado</option>
+                    </select>
+                </td>
+                <td style="padding: 0.6rem 0.75rem;">
+                    <select class="virada-turma-dest" style="width: 100%; padding: 0.4rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text-main); font-size: 0.85rem;">
+                        ${optionsTurmas}
+                    </select>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        document.getElementById('virada_acoes_em_massa').style.display = 'block';
+        document.getElementById('virada_container_alunos').style.display = 'block';
+        document.getElementById('virada_botoes_footer').style.display = 'flex';
+    }
+
+    function alterarResultadoAluno(selectResultado) {
+        const tr = selectResultado.closest('tr');
+        const selectTurma = tr.querySelector('.virada-turma-dest');
+        const res = selectResultado.value;
+
+        if (res === 'TRANSFERIDO' || res === 'EVADIDO' || res === 'FORMADO') {
+            selectTurma.disabled = true;
+            selectTurma.style.opacity = '0.4';
+            selectTurma.value = '';
+        } else {
+            selectTurma.disabled = false;
+            selectTurma.style.opacity = '1';
+        }
+    }
+
+    function aplicarPromocaoEmMassa() {
+        const turmaDestPadrao = document.getElementById('virada_turma_padrao_promocao').value;
+        if (!turmaDestPadrao) {
+            alert("Selecione primeiro uma Turma Padrão de Promoção.");
+            return;
+        }
+
+        const rows = document.querySelectorAll('#virada_tbody_alunos tr');
+        rows.forEach(tr => {
+            const selectRes = tr.querySelector('.virada-resultado');
+            const selectTurma = tr.querySelector('.virada-turma-dest');
+            if (selectRes && selectTurma) {
+                selectRes.value = 'PROMOVIDO';
+                selectTurma.disabled = false;
+                selectTurma.style.opacity = '1';
+                selectTurma.value = turmaDestPadrao;
+            }
+        });
+    }
+
+    // ─── Modal de Confirmação com Contadores Pré-Execução ─────────────────────
+    function abrirConfirmacaoVirada() {
+        const rows = document.querySelectorAll('#virada_tbody_alunos tr');
+        if (rows.length === 0) return;
+
+        let total = 0, promovidos = 0, retidos = 0, transferidos = 0, evadidos = 0, formados = 0;
+        let erroDestino = false;
+
+        rows.forEach(tr => {
+            const alunoId = tr.querySelector('.virada-aluno-id');
+            if (!alunoId) return;
+            total++;
+
+            const res = tr.querySelector('.virada-resultado').value;
+            const dest = tr.querySelector('.virada-turma-dest').value;
+
+            if ((res === 'PROMOVIDO' || res === 'RETIDO') && !dest) {
+                erroDestino = true;
+            }
+
+            if (res === 'PROMOVIDO') promovidos++;
+            else if (res === 'RETIDO') retidos++;
+            else if (res === 'TRANSFERIDO') transferidos++;
+            else if (res === 'EVADIDO') evadidos++;
+            else if (res === 'FORMADO') formados++;
+        });
+
+        if (erroDestino) {
+            alert("Atenção: Todos os alunos marcados como Promovidos ou Retidos precisam ter uma Turma de Destino selecionada.");
+            return;
+        }
+
+        document.getElementById('conf_turma_origem_nome').textContent = viradaDadosCache.turma_origem.nome;
+        document.getElementById('conf_total_alunos').textContent = total;
+        document.getElementById('conf_cnt_promovidos').textContent = promovidos;
+        document.getElementById('conf_cnt_retidos').textContent = retidos;
+        document.getElementById('conf_cnt_transferidos').textContent = transferidos;
+        document.getElementById('conf_cnt_evadidos').textContent = evadidos;
+        document.getElementById('conf_cnt_formados').textContent = formados;
+
+        document.getElementById('modal-confirmacao-virada').classList.add('is-open');
+    }
+
+    function fecharConfirmacaoVirada() {
+        document.getElementById('modal-confirmacao-virada').classList.remove('is-open');
+    }
+
+    async function executarViradaDeAno() {
+        const btn = document.getElementById('btn_executar_virada');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ph ph-spinner ph-spin" style="margin-right:6px;"></i> Processando Lote...';
+
+        const rows = document.querySelectorAll('#virada_tbody_alunos tr');
+        const movimentacoes = [];
+
+        rows.forEach(tr => {
+            const alunoId = tr.querySelector('.virada-aluno-id');
+            if (!alunoId) return;
+
+            const res = tr.querySelector('.virada-resultado').value;
+            const dest = tr.querySelector('.virada-turma-dest').value;
+
+            movimentacoes.push({
+                aluno_id: parseInt(alunoId.value),
+                resultado: res,
+                turma_destino_id: dest ? parseInt(dest) : null
+            });
+        });
+
+        try {
+            const resp = await fetch('/admin/turmas/virada_ano', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    turma_origem_id: viradaDadosCache.turma_origem.id,
+                    movimentacoes: movimentacoes
+                })
+            });
+
+            const json = await resp.json();
+            if (!resp.ok || !json.success) {
+                throw new Error(json.error || "Erro ao processar a virada de ano.");
+            }
+
+            alert("Virada de Ano / Conselho de Turma concluída com sucesso!");
+            window.location.reload();
+        } catch (err) {
+            alert(err.message || "Falha na comunicação com o servidor.");
+            btn.disabled = false;
+            btn.innerHTML = '<i class="ph ph-check-circle" style="margin-right: 6px;"></i> CONFIRMAR VIRADA';
+        }
+    }
+
+    // Fechar ao clicar fora
+    document.querySelectorAll('.modal-overlay').forEach(modal => {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                if (this.id === 'modal-confirmacao-virada') fecharConfirmacaoVirada();
+                else if (this.id === 'modal-virada') fecharModalVirada();
+                else if (this.id === 'modal-nova-turma') fecharModalNovaTurma();
+                else if (this.id === 'modal-editar') fecharModalEditar();
+            }
+        });
     });
 </script>
 {% endblock %}
-

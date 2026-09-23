@@ -2,183 +2,301 @@
 
 {% block content %}
 <div class="fade-in">
-    <div style="margin-bottom: 2rem;">
-        <a href="{{ url_for('admin_dashboard') }}" style="color: var(--text-muted); display: inline-flex; align-items: center;"><i class="ph ph-arrow-left" style="margin-right: 4px;"></i> Voltar ao Painel</a>
-        <h1 style="margin-top: 1rem;"><i class="ph ph-student"></i> Gerenciar Alunos</h1>
-    </div>
-
-    <!-- Área de Importação Massiva (CSV) -->
-    <div class="card" style="background: linear-gradient(to right, var(--primary), var(--primary-hover)); color: white; margin-bottom: 2rem;">
-        <h2 style="color: white; margin-bottom: 0.5rem;"><i class="ph ph-file-csv" style="margin-right: 8px;"></i> Importação em Lote via Planilha</h2>
-        <p style="margin-bottom: 1.5rem; font-size: 0.95rem; opacity: 0.9;">Utilize essa ferramenta para importar alunos rapidamente. Respeite sempre a formatação de colunas do modelo oficial.</p>
-        
-        <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
-            <a href="{{ url_for('admin_alunos_csv_template') }}" class="btn" style="background: white; color: var(--primary); font-weight: bold;">
-                <i class="ph ph-download-simple" style="margin-right: 8px;"></i> Baixar Modelo (CSV)
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;">
+        <div>
+            <a href="{{ url_for('admin_dashboard') }}" style="color: var(--text-muted); display: inline-flex; align-items: center; text-decoration: none;">
+                <i class="ph ph-arrow-left" style="margin-right: 4px;"></i> Voltar ao Painel
             </a>
-            
-            <form method="POST" action="{{ url_for('admin_alunos_importar') }}" enctype="multipart/form-data" style="display: flex; gap: 0.5rem; background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 8px; flex: 1;">
-                <input type="file" name="arquivo_csv" accept=".csv" required style="color: white; border: none; padding: 0.5rem;">
-                <button type="submit" class="btn" style="background: var(--secondary); color: white;">
-                    <i class="ph ph-upload-simple" style="margin-right: 8px;"></i> Importar Alunos
-                </button>
-            </form>
+            <h1 style="margin-top: 0.5rem; margin-bottom: 0.25rem;"><i class="ph ph-student"></i> Gerenciamento de Alunos</h1>
+            <p style="color: var(--text-muted); margin: 0; font-size: 0.95rem;">Controle cadastral, situação de matrícula e trajetória acadêmica integrada.</p>
         </div>
-        
-        <div style="margin-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 1rem; text-align: right;">
-            <button onclick="abrirSuap()" class="btn" style="background: transparent; border: 1px dashed white; color: white; opacity: 1;">
-                <i class="ph ph-plugs-connected" style="margin-right: 8px;"></i> Conectar Turma via SUAP API
+        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+            <button type="button" class="btn btn-secondary" onclick="abrirSuap()">
+                <i class="ph ph-plugs-connected" style="margin-right: 6px;"></i> Sincronização SUAP
+            </button>
+            <button type="button" class="btn btn-primary" onclick="abrirNovoAluno()">
+                <i class="ph ph-user-plus" style="margin-right: 6px;"></i> Novo Aluno
             </button>
         </div>
     </div>
 
+    <!-- Área de Importação Massiva (CSV) com Proteção Anti-Sujeira -->
+    <div class="card" style="background: linear-gradient(135deg, var(--primary), var(--primary-hover)); color: white; margin-bottom: 1.5rem; padding: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+            <div style="max-width: 650px;">
+                <h2 style="color: white; margin-bottom: 0.35rem; font-size: 1.15rem;">
+                    <i class="ph ph-file-csv" style="margin-right: 8px;"></i> Importação de Alunos via Planilha (CSV)
+                </h2>
+                <p style="margin-bottom: 0.75rem; font-size: 0.85rem; opacity: 0.95; line-height: 1.4;">
+                    Estruturada por <strong>Curso</strong> e <strong>Ano/Série</strong> (ex: 2º - Técnico em Agroecologia). A turma é gerada e vinculada automaticamente. Estudantes ausentes da planilha têm a reserva bloqueada automaticamente (não matriculados).
+                </p>
+                <a href="{{ url_for('admin.admin_alunos_csv_template') }}" class="btn btn-sm" style="background: white; color: var(--primary); font-weight: 700;">
+                    <i class="ph ph-download-simple" style="margin-right: 6px;"></i> Baixar Modelo Oficial (CSV)
+                </a>
+            </div>
+            
+            <form method="POST" action="{{ url_for('admin.admin_alunos_importar') }}" enctype="multipart/form-data" style="background: rgba(0,0,0,0.22); padding: 0.85rem 1rem; border-radius: 8px; flex: 1; min-width: 280px;">
+                <div style="margin-bottom: 0.5rem;">
+                    <input type="file" name="arquivo_csv" accept=".csv" required style="color: white; border: none; font-size: 0.85rem; width: 100%;">
+                </div>
+                <div style="margin-bottom: 0.5rem;">
+                    <label style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; cursor: pointer; color: white;">
+                        <input type="checkbox" name="criar_turmas_novas" value="1" style="width: 15px; height: 15px;">
+                        <span>Criar turmas inexistentes automaticamente</span>
+                    </label>
+                    <span style="font-size: 0.75rem; opacity: 0.8; display: block; margin-top: 2px;">
+                        (Desmarcado por padrão para proteger contra erros de digitação de turmas)
+                    </span>
+                </div>
+                <div style="margin-bottom: 0.75rem;">
+                    <label style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; cursor: pointer; color: white;">
+                        <input type="checkbox" name="bloquear_ausentes" value="1" checked style="width: 15px; height: 15px;">
+                        <span>Bloquear reservas de alunos ausentes nesta planilha</span>
+                    </label>
+                    <span style="font-size: 0.75rem; opacity: 0.8; display: block; margin-top: 2px;">
+                        (Alunos que não constarem nesta importação terão reservas bloqueadas por não estarem matriculados)
+                    </span>
+                </div>
+                <button type="submit" class="btn btn-sm" style="background: var(--secondary); color: white; width: 100%; font-weight: 700;">
+                    <i class="ph ph-upload-simple" style="margin-right: 6px;"></i> Processar Importação
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Barra de Filtros e Busca de Alunos -->
+    <div class="card" style="margin-bottom: 1.5rem; padding: 1rem 1.25rem;">
+        <form method="GET" action="{{ url_for('admin.admin_alunos') }}" style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
+            <div style="flex: 2; min-width: 220px;">
+                <input type="text" name="q" value="{{ busca }}" placeholder="Buscar por nome, matrícula ou CPF..." style="width: 100%; padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text-main);">
+            </div>
+            <div style="flex: 1.5; min-width: 180px;">
+                <select name="turma_id" style="width: 100%; padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text-main);">
+                    <option value="">Todas as Turmas / Cursos</option>
+                    <option value="sem_turma" {% if filtro_turma == 'sem_turma' %}selected{% endif %}>-- Sem Turma Fixa --</option>
+                    {% for t in turmas %}
+                        <option value="{{ t.id }}" {% if filtro_turma == t.id|string %}selected{% endif %}>{{ t.nome_exibicao }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="flex: 1; min-width: 140px;">
+                <select name="serie_ano" style="width: 100%; padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text-main);">
+                    <option value="">Todas as Séries</option>
+                    {% for s in range(1, 11) %}
+                    <option value="{{ s }}" {% if filtro_serie == s|string %}selected{% endif %}>{{ s }}º Ano / Per.</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="flex: 1; min-width: 150px;">
+                <select name="situacao_matricula" style="width: 100%; padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text-main);">
+                    <option value="">Todas as Situações</option>
+                    <option value="Matriculado" {% if filtro_situacao == 'Matriculado' %}selected{% endif %}>Matriculado</option>
+                    <option value="Trancado" {% if filtro_situacao == 'Trancado' %}selected{% endif %}>Trancado</option>
+                    <option value="Formado" {% if filtro_situacao == 'Formado' %}selected{% endif %}>Formado</option>
+                    <option value="Transferido" {% if filtro_situacao == 'Transferido' %}selected{% endif %}>Transferido</option>
+                    <option value="Evadido" {% if filtro_situacao == 'Evadido' %}selected{% endif %}>Evadido</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="submit" class="btn btn-primary" style="padding: 0.5rem 1rem;">
+                    <i class="ph ph-funnel"></i> Filtrar
+                </button>
+                {% if busca or filtro_turma or filtro_serie or filtro_situacao %}
+                <a href="{{ url_for('admin.admin_alunos') }}" class="btn btn-secondary" style="padding: 0.5rem 0.75rem;" title="Limpar Filtros">
+                    <i class="ph ph-x"></i>
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
 
     <!-- Lista de Alunos -->
     <div class="card">
-            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
-                <div style="display: flex; gap: 0.5rem; align-items: center;">
-                    <h2 style="margin: 0; margin-right: 1rem;">Alunos Cadastrados <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: normal;">({{ total }} no total)</span></h2>
-                </div>
-                
-                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                    <button type="button" class="btn btn-primary" onclick="abrirNovoAluno()" style="font-size: 0.8rem; padding: 0.5rem 0.75rem;">
-                        <i class="ph ph-user-plus"></i> Novo Aluno
-                    </button>
-                    <a href="{{ url_for('admin_alunos_imprimir') }}" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.5rem 0.75rem;">
-                        <i class="ph ph-printer"></i> Imprimir Tudo
-                    </a>
-                    <select onchange="if(this.value) { window.open('{{ url_for('admin_alunos_imprimir') }}?turma_id=' + this.value, '_blank'); this.value = ''; }" style="font-size: 0.8rem; padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text-main); font-weight: bold; cursor: pointer; outline: none; transition: var(--transition);" title="Imprimir cartões QR de uma turma específica">
-                        <option value="" disabled selected hidden>🖨️ Imprimir por Turma...</option>
-                        {% for t in turmas %}
-                            <option value="{{ t.id }}">{{ t.nome }}</option>
-                        {% endfor %}
-                    </select>
-                    <form method="GET" action="{{ url_for('admin_alunos') }}" style="display: flex; gap: 0.5rem; flex: 1; max-width: 380px;">
-                        <input type="text" name="q" value="{{ busca }}" placeholder="Buscar por nome, matrícula ou CPF…" style="flex: 1; padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid var(--border); font-size: 0.9rem;">
-                        <button type="submit" class="btn btn-primary" style="padding: 0.5rem 0.75rem;"><i class="ph ph-magnifying-glass"></i></button>
-                        {% if busca %}
-                        <a href="{{ url_for('admin_alunos') }}" class="btn btn-secondary" style="padding: 0.5rem 0.75rem;" title="Limpar busca"><i class="ph ph-x"></i></a>
-                        {% endif %}
-                    </form>
-                </div>
-            </div>
-
-            {% if busca %}
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">
-                Mostrando resultados para: <strong>"{{ busca }}"</strong>
-            </p>
-            {% endif %}
-
-            <div class="table-responsive">
-                <table>
-                    <thead>
-                        <tr>
-                            <th style="width:36px; text-align:center;">
-                                <input type="checkbox" id="checkTodos" title="Selecionar todos" onchange="toggleTodos(this)" style="width:16px; height:16px; cursor:pointer;">
-                            </th>
-                            <th>Nome</th>
-                            <th>CPF</th>
-                            <th>Nº Matr.</th>
-                            <th>Nascimento</th>
-                            <th>Ações</th>
-                            <th>Bloqueio de Portal</th>
-                            <th>Restrições</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for a in alunos %}
-                        <tr id="row-aluno-{{ a.id }}">
-                            <td style="text-align:center; vertical-align:middle;">
-                                <input type="checkbox" class="check-aluno" value="{{ a.id }}"
-                                       onchange="atualizarSelecao(this)"
-                                       style="width:16px; height:16px; cursor:pointer;">
-                            </td>
-                            <td>
-                                <strong>{{ a.nome }}</strong><br>
-                                <span style="font-size: 0.85rem; color: var(--text-muted);">
-                                    Matr.: {{ a.matricula }} | CPF: {{ a.cpf | format_cpf }} <br>
-                                    Turma: {{ a.turma_nome if a.turma_nome else '---' }} <br>
-                                    Email: {{ a.email if a.email else 'Não cadastrado' }}
-                                </span>
-                            </td>
-                            <td>{{ a.cpf | format_cpf }}</td>
-                            <td>{{ a.matricula }}</td>
-                            <td>{{ a.data_nascimento|datetimeformat }}</td>
-                            <td>
-                                {% if global_config.modo_login_aluno == 'SENHA' and a.senha_hash %}
-                                <form method="POST" action="{{ url_for('admin_alunos_resetar_senha', id=a.id) }}" style="display:inline;">
-                                    <button type="submit" class="btn" style="background:var(--warning); color:black; font-size: 0.75rem; padding: 0.25rem 0.5rem;" title="O aluno precisará recadastrar a senha." onclick="return confirm('Deseja resetar a senha deste aluno para a Data de Nascimento?');">Resetar Senha</button>
-                                </form>
-                                {% endif %}
-                                <a href="{{ url_for('admin_alunos_imprimir', aluno_id=a.id) }}" class="btn" style="background: transparent; border: 1px solid var(--primary); color: var(--primary); font-size: 0.75rem; padding: 0.25rem 0.5rem;" title="Imprimir Crachá"><i class="ph ph-printer"></i></a>
-                                <button type="button" class="btn" style="background: transparent; border: 1px solid var(--border); color: var(--text); font-size: 0.75rem; padding: 0.25rem 0.5rem;" title="Editar Aluno" onclick="abrirEdicaoAluno(this)" data-id="{{ a.id }}" data-nome="{{ a.nome }}" data-matricula="{{ a.matricula }}" data-cpf="{{ a.cpf }}" data-data_nascimento="{{ a.data_nascimento }}" data-email="{{ a.email or '' }}" data-turma_id="{{ a.turma_id or '' }}" data-restricoes="{{ a.restricoes or '' }}" data-permitido_almoco="{{ a.permitido_almoco }}"><i class="ph ph-pencil-simple"></i></button>
-                                
-                                <form method="POST" action="{{ url_for('admin_alunos_excluir', id=a.id) }}" style="display:inline;">
-                                    <button type="submit" class="btn" style="background: transparent; border: 1px solid var(--danger); color: var(--danger); font-size: 0.75rem; padding: 0.25rem 0.5rem;" title="Excluir Aluno permanentemente" onclick="return confirm('Tem certeza que deseja EXCLUIR permanentemente este aluno e todas as suas reservas? Esta ação não pode ser desfeita!');"><i class="ph ph-trash"></i></button>
-                                </form>
-                            </td>
-                            <td>
-                                {% if a.permitido_almoco == 1 %}
-                                    <span style="color: var(--success); font-size: 0.85rem;"><i class="ph ph-check-circle"></i> Liberado</span>
-                                {% else %}
-                                    <span style="color: var(--danger); font-size: 0.85rem; font-weight: bold;"><i class="ph ph-lock-key"></i> Bloqueado</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if a.restricoes %}
-                                    <span class="badge" style="background: #FEE2E2; color: #991B1B;">{{ a.restricoes }}</span>
-                                {% else %}
-                                    <span style="color: var(--text-muted); font-size: 0.9rem;">Nenhuma</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="8" style="text-align: center; color: var(--text-muted);">Nenhum aluno encontrado.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Paginação -->
-            {% if total_paginas > 1 %}
-            <div style="display: flex; align-items: center; justify-content: center; gap: 0.4rem; margin-top: 1.5rem; flex-wrap: wrap;">
-                {% if pagina > 1 %}
-                <a href="{{ url_for('admin_alunos', page=pagina-1, q=busca) }}" class="btn btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;">
-                    <i class="ph ph-caret-left"></i>
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
+            <h2 style="margin: 0; font-size: 1.25rem;">
+                Alunos Encontrados <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: normal;">({{ total }} no total)</span>
+            </h2>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <a href="{{ url_for('admin.admin_alunos_imprimir') }}" class="btn btn-sm btn-secondary" title="Imprimir crachás de todos os alunos filtrados">
+                    <i class="ph ph-printer"></i> Imprimir Tudo
                 </a>
-                {% endif %}
-
-                {% for p in range(1, total_paginas + 1) %}
-                    {% if p == pagina %}
-                    <span class="btn btn-primary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem; cursor: default;">{{ p }}</span>
-                    {% elif p == 1 or p == total_paginas or (p >= pagina - 2 and p <= pagina + 2) %}
-                    <a href="{{ url_for('admin_alunos', page=p, q=busca) }}" class="btn btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;">{{ p }}</a>
-                    {% elif p == pagina - 3 or p == pagina + 3 %}
-                    <span style="color: var(--text-muted); padding: 0 0.25rem;">…</span>
-                    {% endif %}
-                {% endfor %}
-
-                {% if pagina < total_paginas %}
-                <a href="{{ url_for('admin_alunos', page=pagina+1, q=busca) }}" class="btn btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;">
-                    <i class="ph ph-caret-right"></i>
-                </a>
-                {% endif %}
-
-                <span style="font-size: 0.8rem; color: var(--text-muted); margin-left: 0.5rem;">
-                    Página {{ pagina }} de {{ total_paginas }}
-                </span>
             </div>
-            {% endif %}
         </div>
+
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 36px; text-align: center;">
+                            <input type="checkbox" id="checkTodos" title="Selecionar todos" onchange="toggleTodos(this)" style="width: 16px; height: 16px; cursor: pointer;">
+                        </th>
+                        <th>Estudante / Matrícula</th>
+                        <th>Curso / Turma</th>
+                        <th style="text-align: center;">Série / Ano</th>
+                        <th style="text-align: center;">Situação</th>
+                        <th style="text-align: center;">Acesso Almoço</th>
+                        <th>Restrições</th>
+                        <th style="text-align: right;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in alunos %}
+                    <tr id="row-aluno-{{ a.id }}">
+                        <td style="text-align: center; vertical-align: middle;">
+                            <input type="checkbox" class="check-aluno" value="{{ a.id }}" onchange="atualizarSelecao(this)" style="width: 16px; height: 16px; cursor: pointer;">
+                        </td>
+                        <td>
+                            <strong>{{ a.nome }}</strong><br>
+                            <span style="font-size: 0.8rem; color: var(--text-muted);">
+                                Matr: <code>{{ a.matricula }}</code> | CPF: {{ a.cpf | format_cpf }}
+                                {% if a.ano_ingresso %}| Ingr: {{ a.ano_ingresso }}{% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            {% if a.curso_efetivo %}
+                                <strong style="color: var(--text-main); display: block; font-size: 0.9rem;">{{ a.curso_efetivo }}</strong>
+                                {% if a.turma_nome %}
+                                    <span style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace;">
+                                        Turma: {{ a.turma_nome }}
+                                    </span>
+                                {% else %}
+                                    <span style="font-size: 0.75rem; color: #b45309; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                                        <i class="ph ph-user-circle"></i> Sem turma fixa
+                                    </span>
+                                {% endif %}
+                            {% elif a.turma_nome %}
+                                <strong style="font-weight: 600; display: block;">{{ a.turma_nome }}</strong>
+                            {% else %}
+                                <span style="color: var(--text-muted); font-size: 0.85rem;">Sem turma</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: center;">
+                            {% set serie_exibir = a.serie_ano_atual or a.turma_serie %}
+                            {% if serie_exibir %}
+                                <span class="badge" style="background: rgba(16, 185, 129, 0.1); color: #059669; font-weight: bold;">
+                                    {{ serie_exibir }}º Ano
+                                </span>
+                            {% else %}
+                                <span class="badge" style="background: #f3f4f6; color: #9ca3af;" title="Não especificado no cadastro">
+                                    Indefinido
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: center;">
+                            {% if a.situacao_matricula == 'Matriculado' %}
+                                <span class="badge" style="background: #dcfce7; color: #15803d; font-size: 0.75rem;">Matriculado</span>
+                            {% elif a.situacao_matricula == 'Trancado' %}
+                                <span class="badge" style="background: #fef3c7; color: #b45309; font-size: 0.75rem;">Trancado</span>
+                            {% elif a.situacao_matricula == 'Formado' %}
+                                <span class="badge" style="background: #dbeafe; color: #1d4ed8; font-size: 0.75rem;">Formado</span>
+                            {% elif a.situacao_matricula == 'Transferido' %}
+                                <span class="badge" style="background: #e5e7eb; color: #4b5563; font-size: 0.75rem;">Transferido</span>
+                            {% elif a.situacao_matricula == 'Evadido' %}
+                                <span class="badge" style="background: #fee2e2; color: #b91c1c; font-size: 0.75rem;">Evadido</span>
+                            {% else %}
+                                <span class="badge" style="background: #f3f4f6; color: #6b7280; font-size: 0.75rem;">{{ a.situacao_matricula or 'Indefinido' }}</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: center;">
+                            {% if a.permitido_almoco == 1 %}
+                                <span style="color: var(--success); font-size: 0.85rem; font-weight: 600;"><i class="ph ph-check-circle"></i> Liberado</span>
+                            {% else %}
+                                <span style="color: var(--danger); font-size: 0.85rem; font-weight: 700;"><i class="ph ph-lock-key"></i> Bloqueado</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if a.restricoes %}
+                                <span class="badge" style="background: #fee2e2; color: #991b1b; font-size: 0.75rem;">{{ a.restricoes }}</span>
+                            {% else %}
+                                <span style="color: var(--text-muted); font-size: 0.85rem;">Nenhuma</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: right;">
+                            <div style="display: flex; gap: 0.35rem; justify-content: flex-end; flex-wrap: wrap;">
+                                <button type="button" class="btn btn-sm btn-secondary" title="Ver Trajetória Acadêmica / Histórico" onclick="abrirTrajetoria({{ a.id }})">
+                                    <i class="ph ph-clock-counter-clockwise"></i>
+                                </button>
+                                <a href="{{ url_for('admin.admin_alunos_imprimir', aluno_id=a.id) }}" class="btn btn-sm btn-secondary" title="Imprimir Crachá">
+                                    <i class="ph ph-printer"></i>
+                                </a>
+                                <button type="button" class="btn btn-sm btn-secondary" title="Editar Aluno" onclick="abrirEdicaoAluno(this)"
+                                    data-id="{{ a.id }}"
+                                    data-nome="{{ a.nome }}"
+                                    data-matricula="{{ a.matricula }}"
+                                    data-cpf="{{ a.cpf }}"
+                                    data-data_nascimento="{{ a.data_nascimento }}"
+                                    data-email="{{ a.email or '' }}"
+                                    data-curso="{{ a.curso or a.turma_curso or '' }}"
+                                    data-turma_id="{{ a.turma_id or '' }}"
+                                    data-serie_ano_atual="{{ a.serie_ano_atual or '' }}"
+                                    data-ano_ingresso="{{ a.ano_ingresso or '' }}"
+                                    data-situacao_matricula="{{ a.situacao_matricula or 'Matriculado' }}"
+                                    data-restricoes="{{ a.restricoes or '' }}"
+                                    data-permitido_almoco="{{ a.permitido_almoco }}">
+                                    <i class="ph ph-pencil-simple"></i>
+                                </button>
+                                {% if global_config.modo_login_aluno == 'SENHA' and a.senha_hash %}
+                                <form method="POST" action="{{ url_for('admin.admin_alunos_resetar_senha', id=a.id) }}" style="display:inline;">
+                                    <button type="submit" class="btn btn-sm btn-secondary" title="Resetar senha de acesso" onclick="return confirm('Deseja resetar a senha deste aluno? O próximo acesso será pela data de nascimento.');">
+                                        <i class="ph ph-key"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                                <form method="POST" action="{{ url_for('admin.admin_alunos_excluir', id=a.id) }}" style="display:inline;" onsubmit="return confirm('ATENÇÃO: Excluir permanentemente este aluno e todo seu histórico?');">
+                                    <button type="submit" class="btn btn-sm btn-danger" title="Excluir Aluno">
+                                        <i class="ph ph-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">Nenhum estudante encontrado para os filtros aplicados.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Paginação -->
+        {% if total_paginas > 1 %}
+        <div style="display: flex; align-items: center; justify-content: center; gap: 0.4rem; margin-top: 1.5rem; flex-wrap: wrap;">
+            {% if pagina > 1 %}
+            <a href="{{ url_for('admin.admin_alunos', page=pagina-1, q=busca, turma_id=filtro_turma, serie_ano=filtro_serie, situacao_matricula=filtro_situacao) }}" class="btn btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;">
+                <i class="ph ph-caret-left"></i>
+            </a>
+            {% endif %}
+
+            {% for p in range(1, total_paginas + 1) %}
+                {% if p == pagina %}
+                <span class="btn btn-primary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem; cursor: default;">{{ p }}</span>
+                {% elif p == 1 or p == total_paginas or (p >= pagina - 2 and p <= pagina + 2) %}
+                <a href="{{ url_for('admin.admin_alunos', page=p, q=busca, turma_id=filtro_turma, serie_ano=filtro_serie, situacao_matricula=filtro_situacao) }}" class="btn btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;">{{ p }}</a>
+                {% elif p == pagina - 3 or p == pagina + 3 %}
+                <span style="color: var(--text-muted); padding: 0 0.25rem;">…</span>
+                {% endif %}
+            {% endfor %}
+
+            {% if pagina < total_paginas %}
+            <a href="{{ url_for('admin.admin_alunos', page=pagina+1, q=busca, turma_id=filtro_turma, serie_ano=filtro_serie, situacao_matricula=filtro_situacao) }}" class="btn btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;">
+                <i class="ph ph-caret-right"></i>
+            </a>
+            {% endif %}
+
+            <span style="font-size: 0.8rem; color: var(--text-muted); margin-left: 0.5rem;">
+                Página {{ pagina }} de {{ total_paginas }}
+            </span>
+        </div>
+        {% endif %}
+    </div>
 </div>
 
 <!-- Barra flutuante de ação para seleção múltipla -->
 <div id="barra-selecao" style="display:none; position:fixed; bottom:24px; left:50%; transform:translateX(-50%); z-index:9000;
      background:var(--primary); color:white; padding:0.9rem 1.75rem;
      border-radius:50px; box-shadow:0 8px 32px rgba(0,0,0,0.25);
-     display:none; align-items:center; gap:1rem; transition:all 0.3s ease; white-space:nowrap;">
+     align-items:center; gap:1rem; transition:all 0.3s ease; white-space:nowrap;">
     <i class="ph ph-check-square" style="font-size:1.25rem;"></i>
     <span id="txt-selecionados" style="font-weight:600; font-size:0.95rem;">0 aluno(s) selecionado(s)</span>
     <button onclick="imprimirSelecionados()" class="btn" style="background:white; color:var(--primary); font-weight:700; border:none; padding:0.5rem 1.25rem; border-radius:30px; font-size:0.9rem; cursor:pointer;">
@@ -188,12 +306,246 @@
 </div>
 
 <!-- Form oculto para submeter IDs selecionados -->
-<form id="form-imprimir-selecao" method="GET" action="{{ url_for('admin_alunos_imprimir') }}" target="_blank" style="display:none;">
+<form id="form-imprimir-selecao" method="GET" action="{{ url_for('admin.admin_alunos_imprimir') }}" target="_blank" style="display:none;">
     <div id="inputs-ids-selecao"></div>
 </form>
+{% endblock %}
+
+{% block modals %}
+<!-- Modal Trajetória Acadêmica (Histórico Escolar) -->
+<div id="modalTrajetoria" class="modal-overlay">
+    <div class="modal-box" style="max-width: 650px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem;">
+            <div>
+                <h2 style="margin: 0; font-size: 1.25rem; color: var(--primary);">
+                    <i class="ph ph-clock-counter-clockwise" style="margin-right: 6px;"></i> Trajetória Acadêmica
+                </h2>
+                <p id="trajetoria_subtitulo" style="margin: 0.2rem 0 0 0; font-size: 0.85rem; color: var(--text-muted);">
+                    Carregando histórico do estudante...
+                </p>
+            </div>
+            <button onclick="fecharTrajetoria()" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--text-muted); line-height:1;">&times;</button>
+        </div>
+
+        <div id="trajetoria_conteudo" style="max-height: 420px; overflow-y: auto; padding: 0.5rem 0;">
+            <!-- Linha do tempo inserida via JavaScript -->
+        </div>
+
+        <div style="text-align: right; margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 0.75rem;">
+            <button type="button" class="btn btn-secondary" onclick="fecharTrajetoria()">Fechar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Novo Aluno -->
+<div id="modalNovoAluno" class="modal-overlay">
+    <div class="modal-box" style="max-width: 650px;">
+        <h2 style="color: var(--primary); margin-bottom: 1rem; font-size: 1.25rem;">
+            <i class="ph ph-user-plus"></i> Novo Aluno (Padrão SUAP)
+        </h2>
+        <form method="POST" action="{{ url_for('admin.admin_alunos') }}">
+            <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                <div class="form-group" style="grid-column: span 2;">
+                    <label for="nome">Nome Completo *</label>
+                    <input type="text" id="nome" name="nome" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="matricula">Matrícula *</label>
+                    <input type="text" id="matricula" name="matricula" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="cpf">CPF do Estudante *</label>
+                    <input type="text" id="cpf" name="cpf" required placeholder="000.000.000-00">
+                </div>
+                
+                <div class="form-group">
+                    <label for="data_nascimento">Data de Nascimento *</label>
+                    <input type="date" id="data_nascimento" name="data_nascimento" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">E-mail Institucional / Pessoal</label>
+                    <input type="email" id="email" name="email" placeholder="aluno@instituicao.edu.br">
+                </div>
+
+                <div class="form-group">
+                    <label for="curso">Curso do Estudante</label>
+                    <input type="text" id="curso" name="curso" list="lista_cursos_novo" placeholder="Ex: Curso Técnico em Agropecuária" style="padding: 0.55rem; border-radius: 6px; border: 1px solid var(--border); width: 100%; font-size: 0.9rem; background: var(--surface); color: var(--text-main);">
+                    <datalist id="lista_cursos_novo">
+                        {% for c in cursos_disponiveis %}
+                            <option value="{{ c }}"></option>
+                        {% endfor %}
+                    </datalist>
+                </div>
+
+                <div class="form-group">
+                    <label for="serie_ano_atual">Série / Ano / Semestre</label>
+                    <select id="serie_ano_atual" name="serie_ano_atual">
+                        <option value="">-- Selecione ou Deixe em Branco --</option>
+                        {% for s in range(1, 11) %}
+                        <option value="{{ s }}">{{ s }}º Ano / Período / Semestre</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="ano_ingresso">Ano de Ingresso</label>
+                    <input type="number" id="ano_ingresso" name="ano_ingresso" placeholder="Ex: 2026" min="2000" max="2100">
+                </div>
+
+                <div class="form-group">
+                    <label for="situacao_matricula">Situação da Matrícula</label>
+                    <select id="situacao_matricula" name="situacao_matricula">
+                        <option value="Matriculado" selected>Matriculado (Regular)</option>
+                        <option value="Trancado">Trancado</option>
+                        <option value="Formado">Formado (Concluinte)</option>
+                        <option value="Transferido">Transferido</option>
+                        <option value="Evadido">Evadido</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="permitido_almoco">Acesso ao Almoço</label>
+                    <select id="permitido_almoco" name="permitido_almoco" required>
+                        <option value="1" selected>Sim, liberado</option>
+                        <option value="0">Não, bloqueado</option>
+                    </select>
+                </div>
+                
+                <div class="form-group" style="grid-column: span 2;">
+                    <label for="restricoes">Restrições / Dieta Específica (Opcional)</label>
+                    <input type="text" id="restricoes" name="restricoes" placeholder="Ex: Intolerância à lactose, Vegano, etc.">
+                </div>
+            </div>
+            <div style="display: flex; gap: 0.75rem; margin-top: 1.25rem;">
+                <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="fecharNovoAluno()">Cancelar</button>
+                <button type="submit" class="btn btn-primary" style="flex: 2;">Cadastrar Aluno</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Edição de Aluno -->
+<div id="modalEdicaoAluno" class="modal-overlay">
+    <div class="modal-box" style="max-width: 650px;">
+        <h2 style="color: var(--primary); margin-bottom: 1rem; font-size: 1.25rem;">
+            <i class="ph ph-pencil-simple"></i> Editar Aluno
+        </h2>
+        <form id="formEdicaoAluno" method="POST" action="">
+            <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                <div class="form-group" style="grid-column: span 2;">
+                    <label>Nome Completo *</label>
+                    <input type="text" id="edit_nome" name="nome" required>
+                </div>
+                <div class="form-group">
+                    <label>Matrícula *</label>
+                    <input type="text" id="edit_matricula" name="matricula" required>
+                </div>
+                <div class="form-group">
+                    <label>CPF *</label>
+                    <input type="text" id="edit_cpf" name="cpf" required>
+                </div>
+                <div class="form-group">
+                    <label>Data de Nascimento *</label>
+                    <input type="date" id="edit_data_nascimento" name="data_nascimento" required>
+                </div>
+                <div class="form-group">
+                    <label>E-mail</label>
+                    <input type="email" id="edit_email" name="email">
+                </div>
+                <div class="form-group">
+                    <label>Curso do Estudante</label>
+                    <input type="text" id="edit_curso" name="curso" list="lista_cursos_edit" placeholder="Ex: Curso Técnico em Agropecuária" style="padding: 0.55rem; border-radius: 6px; border: 1px solid var(--border); width: 100%; font-size: 0.9rem; background: var(--surface); color: var(--text-main);">
+                    <datalist id="lista_cursos_edit">
+                        {% for c in cursos_disponiveis %}
+                            <option value="{{ c }}"></option>
+                        {% endfor %}
+                    </datalist>
+                </div>
+                <div class="form-group">
+                    <label>Série / Ano / Semestre</label>
+                    <select id="edit_serie_ano_atual" name="serie_ano_atual">
+                        <option value="">-- Selecione ou Deixe em Branco --</option>
+                        {% for s in range(1, 11) %}
+                        <option value="{{ s }}">{{ s }}º Ano / Período / Semestre</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Ano de Ingresso</label>
+                    <input type="number" id="edit_ano_ingresso" name="ano_ingresso" min="2000" max="2100">
+                </div>
+                <div class="form-group">
+                    <label>Situação da Matrícula</label>
+                    <select id="edit_situacao_matricula" name="situacao_matricula">
+                        <option value="Matriculado">Matriculado</option>
+                        <option value="Trancado">Trancado</option>
+                        <option value="Formado">Formado</option>
+                        <option value="Transferido">Transferido</option>
+                        <option value="Evadido">Evadido</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Liberado para Almoço?</label>
+                    <select id="edit_permitido_almoco" name="permitido_almoco" required>
+                        <option value="1">Sim, liberado</option>
+                        <option value="0">Não, bloqueado no portal</option>
+                    </select>
+                </div>
+                <div class="form-group" style="grid-column: span 2;">
+                    <label>Restrições / Dieta Específica</label>
+                    <input type="text" id="edit_restricoes" name="restricoes">
+                </div>
+            </div>
+            <div style="display: flex; gap: 0.75rem; margin-top: 1.25rem;">
+                <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="fecharEdicaoAluno()">Cancelar</button>
+                <button type="submit" class="btn btn-primary" style="flex: 2;">Salvar Alterações</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal SUAP -->
+<div id="suapModal" class="modal-overlay">
+    <div class="modal-box" style="max-width: 500px;">
+        <h2 style="color: var(--primary); margin-bottom: 1rem; font-size: 1.25rem;">
+            <i class="ph ph-plugs-connected"></i> Sincronização SUAP API
+        </h2>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+            Simulação de conexão com os endpoints educacionais do SUAP trazendo série, ano letivo e dados cadastrais.
+        </p>
+        <form method="POST" action="{{ url_for('admin.admin_alunos_suap_sync') }}">
+            <div class="form-group">
+                <label>URL Endpoint (Alunos)</label>
+                <input type="url" name="api_url" value="https://suap.instituicao.edu.br/api/v2/edu/alunos/" required>
+            </div>
+            <div class="form-group">
+                <label>Token de Acesso Bearer</label>
+                <input type="text" name="token" placeholder="Insira o Token do SUAP..." required>
+            </div>
+            <div class="form-group">
+                <label>Turma de Destino no Sistema Local</label>
+                <select name="turma_id" required>
+                    <option value="">-- Selecione a Turma a preencher --</option>
+                    {% for t in turmas %}
+                    <option value="{{ t.id }}">{{ t.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+                <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="fecharSuap()">Cancelar</button>
+                <button type="submit" class="btn btn-primary" style="flex: 1;">
+                    <i class="ph ph-arrows-clockwise" style="margin-right: 6px;"></i> Sincronizar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 
 <script>
-// ─── Seleção Múltipla de Crachás (Persistente) ─────────────────────────────────
+// ─── Seleção Múltipla de Crachás ─────────────────────────────────────────────
 function getSelecionados() {
     try { return JSON.parse(sessionStorage.getItem('selecao_alunos')) || []; }
     catch(e) { return []; }
@@ -201,7 +553,6 @@ function getSelecionados() {
 function setSelecionados(lista) {
     sessionStorage.setItem('selecao_alunos', JSON.stringify(lista));
 }
-
 function inicializarSelecao() {
     const sel = getSelecionados();
     document.querySelectorAll('.check-aluno').forEach(cb => {
@@ -209,7 +560,6 @@ function inicializarSelecao() {
     });
     atualizarBarraVisual(sel);
 }
-
 function atualizarSelecao(checkbox) {
     let sel = getSelecionados();
     if (checkbox.checked) {
@@ -220,7 +570,6 @@ function atualizarSelecao(checkbox) {
     setSelecionados(sel);
     atualizarBarraVisual(sel);
 }
-
 function atualizarBarraVisual(sel) {
     const barra = document.getElementById('barra-selecao');
     const txt = document.getElementById('txt-selecionados');
@@ -229,7 +578,6 @@ function atualizarBarraVisual(sel) {
     txt.textContent = sel.length + ' aluno(s) selecionado(s)';
     barra.style.display = sel.length > 0 ? 'flex' : 'none';
 
-    // Lógica para o masterCheck (checkTodos) considerando apenas a página atual
     const checks = document.querySelectorAll('.check-aluno');
     const marcadosAqui = Array.from(checks).filter(cb => cb.checked).length;
     if (checks.length > 0) {
@@ -237,7 +585,6 @@ function atualizarBarraVisual(sel) {
         masterCheck.indeterminate = (marcadosAqui > 0 && marcadosAqui < checks.length);
     }
 }
-
 function toggleTodos(master) {
     let sel = getSelecionados();
     document.querySelectorAll('.check-aluno').forEach(cb => {
@@ -251,13 +598,11 @@ function toggleTodos(master) {
     setSelecionados(sel);
     atualizarBarraVisual(sel);
 }
-
 function limparSelecao() {
     setSelecionados([]);
     document.querySelectorAll('.check-aluno').forEach(cb => cb.checked = false);
     atualizarBarraVisual([]);
 }
-
 function imprimirSelecionados() {
     const sel = getSelecionados();
     if (sel.length === 0) return;
@@ -272,213 +617,110 @@ function imprimirSelecionados() {
     });
     document.getElementById('form-imprimir-selecao').submit();
 }
-
-// Inicializa o estado ao carregar a página
 document.addEventListener('DOMContentLoaded', inicializarSelecao);
 
-// ─── Funções existentes ──────────────────────────────────────────────────────
+// ─── Trajetória Acadêmica ─────────────────────────────────────────────────────
+async function abrirTrajetoria(alunoId) {
+    const modal = document.getElementById('modalTrajetoria');
+    const sub = document.getElementById('trajetoria_subtitulo');
+    const cont = document.getElementById('trajetoria_conteudo');
+
+    sub.textContent = "Carregando dados da trajetória...";
+    cont.innerHTML = '<div style="text-align:center; padding: 2rem; color: var(--text-muted);"><i class="ph ph-spinner ph-spin" style="font-size: 2rem;"></i></div>';
+    modal.classList.add('is-open');
+
+    try {
+        const resp = await fetch(`/admin/alunos/historico/${alunoId}`);
+        if (!resp.ok) throw new Error("Erro ao buscar histórico.");
+        const data = await resp.json();
+
+        sub.innerHTML = `<strong>${data.aluno.nome}</strong> (Matrícula: <code>${data.aluno.matricula}</code>) &bull; Situação Atual: <strong>${data.aluno.situacao_matricula}</strong>`;
+
+        if (data.historico.length === 0) {
+            cont.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding: 1.5rem;">Nenhum histórico anterior registrado para este estudante.</p>';
+            return;
+        }
+
+        let html = '<div style="position:relative; padding-left: 1.5rem; border-left: 2px solid var(--primary); margin-left: 0.75rem;">';
+        data.historico.forEach(h => {
+            const anoBadge = h.ano_letivo ? `<span class="badge" style="background: rgba(59, 130, 246, 0.1); color:#2563eb; font-weight: bold;">Ano ${h.ano_letivo}</span>` : '';
+            const serieBadge = h.serie_ano ? `<span class="badge" style="background: rgba(16, 185, 129, 0.1); color:#059669; font-weight: bold;">${h.serie_ano}º Ano</span>` : '';
+            
+            let statusColor = '#059669';
+            if (h.situacao === 'Retido') statusColor = '#d97706';
+            else if (h.situacao === 'Transferido' || h.situacao === 'Evadido') statusColor = '#dc2626';
+            else if (h.situacao === 'Formado') statusColor = '#2563eb';
+
+            html += `
+                <div style="position: relative; margin-bottom: 1.25rem;">
+                    <div style="position: absolute; left: -1.95rem; top: 0.2rem; width: 12px; height: 12px; border-radius: 50%; background: ${statusColor}; border: 2px solid var(--surface);"></div>
+                    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem 1rem;">
+                        <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                            <strong style="font-size: 0.95rem;">${h.turma_nome || 'Turma não informada'}</strong>
+                            <div>${anoBadge} ${serieBadge}</div>
+                        </div>
+                        <div style="font-size: 0.85rem; color: var(--text-muted); display:flex; justify-content:space-between; flex-wrap:wrap; gap: 0.5rem;">
+                            <span>Situação: <strong style="color: ${statusColor};">${h.situacao}</strong></span>
+                            <span>Período: ${h.data_inicio} ${h.data_fim ? 'até ' + h.data_fim : '(Ativo)'}</span>
+                        </div>
+                        ${h.observacao ? `<div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.4rem; font-style: italic;">Obs: ${h.observacao}</div>` : ''}
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+        cont.innerHTML = html;
+    } catch (err) {
+        cont.innerHTML = `<p style="color:var(--danger); padding:1rem;">Falha ao carregar trajetória: ${err.message}</p>`;
+    }
+}
+function fecharTrajetoria() {
+    document.getElementById('modalTrajetoria').classList.remove('is-open');
+}
+
+// ─── Modais de Aluno (Novo e Edição) ─────────────────────────────────────────
+function abrirNovoAluno() {
+    document.getElementById('modalNovoAluno').classList.add('is-open');
+    setTimeout(() => document.getElementById('nome').focus(), 50);
+}
+function fecharNovoAluno() {
+    document.getElementById('modalNovoAluno').classList.remove('is-open');
+}
+
 function abrirEdicaoAluno(btn) {
     document.getElementById('edit_nome').value = btn.getAttribute('data-nome');
     document.getElementById('edit_matricula').value = btn.getAttribute('data-matricula');
     document.getElementById('edit_cpf').value = btn.getAttribute('data-cpf');
     document.getElementById('edit_data_nascimento').value = btn.getAttribute('data-data_nascimento');
     document.getElementById('edit_email').value = btn.getAttribute('data-email');
-    document.getElementById('edit_turma_id').value = btn.getAttribute('data-turma_id');
+    document.getElementById('edit_curso').value = btn.getAttribute('data-curso') || '';
+    document.getElementById('edit_serie_ano_atual').value = btn.getAttribute('data-serie_ano_atual');
+    document.getElementById('edit_ano_ingresso').value = btn.getAttribute('data-ano_ingresso');
+    document.getElementById('edit_situacao_matricula').value = btn.getAttribute('data-situacao_matricula') || 'Matriculado';
     document.getElementById('edit_restricoes').value = btn.getAttribute('data-restricoes');
     document.getElementById('edit_permitido_almoco').value = btn.getAttribute('data-permitido_almoco');
     document.getElementById('formEdicaoAluno').action = `/admin/alunos/editar/${btn.getAttribute('data-id')}`;
 
-    document.body.style.overflow = 'hidden';
     document.getElementById('modalEdicaoAluno').classList.add('is-open');
 }
-
 function fecharEdicaoAluno() {
     document.getElementById('modalEdicaoAluno').classList.remove('is-open');
-    document.body.style.overflow = '';
 }
 
-document.getElementById('modalEdicaoAluno').addEventListener('click', function(e) {
-    if (e.target === this) fecharEdicaoAluno();
-});
-document.getElementById('suapModal').addEventListener('click', function(e) {
-    if (e.target === this) this.style.display = 'none';
-});
-</script>
-
-{% endblock %}
-
-{% block modals %}
-<!-- Modal SUAP -->
-<div id="suapModal" class="modal-overlay">
-    <div class="modal-box" style="max-width: 500px;">
-        <h2 style="color: var(--primary); margin-bottom: 1rem;"><i class="ph ph-plugs-connected"></i> Sincronização SUAP</h2>
-        <p style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 1.5rem;">Crie a ponte direta com os dados dos alunos baseando-se no Token de Acesso do SUAP.</p>
-        <form method="POST" action="{{ url_for('admin_alunos_suap_sync') }}">
-            <div class="form-group">
-                <label>URL Endpoint (Alunos da Turma)</label>
-                <input type="url" name="api_url" value="https://suap.instituicao.edu.br/api/v2/edu/alunos/" required>
-            </div>
-            <div class="form-group">
-                <label>Token de Acesso Bearer</label>
-                <input type="text" name="token" placeholder="Insira o Token Gerado no SUAP..." required>
-            </div>
-            <div class="form-group">
-                <label>Turma de Destino no Sistema Local</label>
-                <select name="turma_id" required>
-                    <option value="">-- Selecione a Turma a preencher --</option>
-                    {% for t in turmas %}
-                    <option value="{{ t.id }}">{{ t.nome }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-                <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="fecharSuap()">Cancelar</button>
-                <button type="submit" class="btn btn-primary" style="flex: 1;"><i class="ph ph-arrows-clockwise" style="margin-right: 8px;"></i> Sincronizar</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Modal Edição de Aluno -->
-<div id="modalEdicaoAluno" class="modal-overlay">
-    <div class="modal-box">
-        <h2 style="color: var(--primary); margin-bottom: 1rem;"><i class="ph ph-pencil-simple"></i> Editar Aluno</h2>
-        <form id="formEdicaoAluno" method="POST" action="">
-            <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 1rem;">
-                <div class="form-group" style="grid-column: span 2;">
-                    <label>Nome Completo</label>
-                    <input type="text" id="edit_nome" name="nome" required>
-                </div>
-                <div class="form-group">
-                    <label>Matrícula</label>
-                    <input type="text" id="edit_matricula" name="matricula" required>
-                </div>
-                <div class="form-group">
-                    <label>CPF</label>
-                    <input type="text" id="edit_cpf" name="cpf" required>
-                </div>
-                <div class="form-group">
-                    <label>Nascimento</label>
-                    <input type="date" id="edit_data_nascimento" name="data_nascimento" required>
-                </div>
-                <div class="form-group">
-                    <label>Turma</label>
-                    <select id="edit_turma_id" name="turma_id">
-                        <option value="">Ainda não definido</option>
-                        {% for t in turmas %}
-                        <option value="{{ t.id }}">{{ t.nome }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>E-mail (Opcional)</label>
-                    <input type="email" id="edit_email" name="email">
-                </div>
-                <div class="form-group">
-                    <label>Liberado Solicitar Almoço?</label>
-                    <select id="edit_permitido_almoco" name="permitido_almoco" required>
-                        <option value="1">Sim, liberado</option>
-                        <option value="0">Não, bloqueado no portal</option>
-                    </select>
-                </div>
-                <div class="form-group" style="grid-column: span 2;">
-                    <label>Restrições / Dieta Específica</label>
-                    <input type="text" id="edit_restricoes" name="restricoes">
-                </div>
-            </div>
-            <div style="display: flex; gap: 1rem; margin-top: 1rem;">
-                <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="fecharEdicaoAluno()">Cancelar</button>
-                <button type="submit" class="btn btn-primary" style="flex: 2;">Salvar Alterações</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Modal Novo Aluno -->
-<div id="modalNovoAluno" class="modal-overlay">
-    <div class="modal-box">
-        <h2 style="color: var(--primary); margin-bottom: 1rem;"><i class="ph ph-user-plus"></i> Novo Aluno</h2>
-        <form method="POST" action="{{ url_for('admin_alunos') }}">
-            <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 1rem;">
-                <div class="form-group" style="grid-column: span 2;">
-                    <label for="nome">Nome Completo</label>
-                    <input type="text" id="nome" name="nome" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="matricula">Matrícula</label>
-                    <input type="text" id="matricula" name="matricula" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="cpf">CPF do Estudante</label>
-                    <input type="text" id="cpf" name="cpf" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="data_nascimento">Data de Nascimento</label>
-                    <input type="date" id="data_nascimento" name="data_nascimento" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="email">E-mail (Opcional)</label>
-                    <input type="email" id="email" name="email" placeholder="aluno@instituicao.edu.br">
-                </div>
-                
-                <div class="form-group">
-                    <label for="permitido_almoco">Acesso a Solicitar Almoço</label>
-                    <select id="permitido_almoco" name="permitido_almoco" required>
-                        <option value="1" selected>Sim, liberado</option>
-                        <option value="0">Não, bloqueado</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label for="turma_id">Turma do Aluno</label>
-                    <select id="turma_id" name="turma_id" required>
-                        <option value="">Ainda não definido</option>
-                        {% for t in turmas %}
-                            <option value="{{ t.id }}">{{ t.nome }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <div class="form-group" style="grid-column: span 2;">
-                    <label for="restricoes">Restrições / Dieta Específica (Opcional)</label>
-                    <input type="text" id="restricoes" name="restricoes" placeholder="Ex: Intolerância à lactose, Vegano...">
-                </div>
-            </div>
-            <div style="display: flex; gap: 1rem; margin-top: 1rem;">
-                <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="fecharNovoAluno()">Cancelar</button>
-                <button type="submit" class="btn btn-primary" style="flex: 2;">Cadastrar Aluno</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<script>
 function abrirSuap() {
-    document.body.style.overflow = 'hidden';
     document.getElementById('suapModal').classList.add('is-open');
 }
 function fecharSuap() {
     document.getElementById('suapModal').classList.remove('is-open');
-    document.body.style.overflow = '';
 }
-document.getElementById('suapModal').addEventListener('click', function(e) {
-    if (e.target === this) fecharSuap();
-});
 
-function abrirNovoAluno() {
-    document.body.style.overflow = 'hidden';
-    document.getElementById('modalNovoAluno').classList.add('is-open');
-}
-function fecharNovoAluno() {
-    document.getElementById('modalNovoAluno').classList.remove('is-open');
-    document.body.style.overflow = '';
-}
-document.getElementById('modalNovoAluno').addEventListener('click', function(e) {
-    if (e.target === this) fecharNovoAluno();
+// Fechar ao clicar no overlay
+document.querySelectorAll('.modal-overlay').forEach(modal => {
+    modal.addEventListener('click', function(e) {
+        if (e.target === this) {
+            this.classList.remove('is-open');
+        }
+    });
 });
 </script>
 {% endblock %}

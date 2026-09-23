@@ -38,12 +38,21 @@ def main():
             print(f"{RED}Erro: As senhas não conferem.{RESET}")
             return
 
+        nome = input("Digite o NOME COMPLETO do Admin (opcional): ").strip()
+        cpf = input("Digite o CPF do Admin (opcional, 000.000.000-00): ").strip()
+        setor = input("Digite o SETOR do Admin (opcional, ex: Nutrição, TI, Direção): ").strip()
+        email = input("Digite o E-MAIL institucional para recuperação (recomendado): ").strip().lower()
+
         hash_senha = generate_password_hash(senha)
         
         try:
             import json
             perms = json.dumps(["all"])
-            conn.execute("INSERT INTO administradores (usuario, senha, perfil, permissoes) VALUES (?, ?, 'admin_mestre', ?)", (usuario, hash_senha, perms))
+            conn.execute("""
+                INSERT INTO administradores 
+                (usuario, senha, nome, cpf, setor, email, perfil, permissoes) 
+                VALUES (?, ?, ?, ?, ?, ?, 'admin_mestre', ?)
+            """, (usuario, hash_senha, nome, cpf, setor, email, perms))
             conn.commit()
             print(f"\n{GREEN}{BOLD}SUCESSO!{RESET} {GREEN}O administrador '{usuario}' foi criado com acesso total.{RESET}\n")
         except Exception as e:

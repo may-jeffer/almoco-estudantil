@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 from flask import render_template, request, redirect, url_for, session, flash, Response, send_file
-from datetime import datetime
+from datetime import datetime, timedelta
 import csv
 import io
 from io import BytesIO
 import json
 from database import closing, get_db_connection, get_config
 from utils.auth import is_logged_in_admin, tem_permissao
-from utils.helpers import registrar_auditoria
+from utils.helpers import registrar_auditoria, calcular_janela_reserva
 from . import admin_bp
 
 CARDAPIOS_POR_PAGINA = 20
@@ -836,7 +836,7 @@ def admin_relatorio_excel(cardapio_id):
 @admin_bp.route('/admin/auditoria')
 def admin_auditoria():
     if not is_logged_in_admin(): return redirect(url_for('admin.admin_login'))
-    if not tem_permissao('all') and session.get('admin_perfil') != 'admin_mestre':
+    if not (tem_permissao('all') or tem_permissao('admins')):
         return redirect(url_for('admin.admin_dashboard'))
     
     busca = request.args.get('q', '').strip()
@@ -1045,4 +1045,649 @@ def admin_relatorios_inativos_exportar():
         as_attachment=True,
         download_name=filename
     )
+
+
+CANCELAMENTOS_POR_PAGINA = 30
+
+@admin_bp.route('/admin/relatorios/cancelamentos')
+def admin_relatorios_cancelamentos():
+    if not is_logged_in_admin(): return redirect(url_for('admin.admin_login'))
+    if not tem_permissao('relatorios'): return redirect(url_for('admin.admin_dashboard'))
+    
+    data_inicio = request.args.get('data_inicio', '').strip()
+    data_fim = request.args.get('data_fim', '').strip()
+    origem = request.args.get('origem', 'TODOS').strip()
+    turma_id = request.args.get('turma_id', '', type=str).strip()
+    busca = request.args.get('q', '').strip()
+    pagina = request.args.get('page', 1, type=int)
+    offset = (pagina - 1) * CANCELAMENTOS_POR_PAGINA
+
+    with closing(get_db_connection()) as conn:
+        turmas = conn.execute("SELECT id, nome FROM turmas ORDER BY nome ASC").fetchall()
+        
+        where_clauses = ["r.status = 'CANCELADA'"]
+        params = []
+        
+        if data_inicio:
+            where_clauses.append("c.data >= ?")
+            params.append(data_inicio)
+        if data_fim:
+            where_clauses.append("c.data <= ?")
+            params.append(data_fim)
+            
+        if origem == 'ALUNO':
+            where_clauses.append("(r.cancelado_por = 'ALUNO' OR r.cancelado_por IS NULL OR r.cancelado_por = '')")
+        elif origem == 'ADMIN':
+            where_clauses.append("r.cancelado_por LIKE 'ADMIN%'")
+            
+        if turma_id and turma_id.isdigit():
+            where_clauses.append("a.turma_id = ?")
+            params.append(int(turma_id))
+            
+        if busca:
+            like = f"%{busca}%"
+            where_clauses.append("(a.nome LIKE ? OR a.matricula LIKE ? OR r.motivo_cancelamento LIKE ? OR r.codigo_unico LIKE ?)")
+            params.extend([like, like, like, like])
+            
+        where_sql = " AND ".join(where_clauses)
+        
+        kpi_total = conn.execute(f"""
+            SELECT COUNT(*) FROM reservas r 
+            JOIN alunos a ON r.aluno_id = a.id
+            JOIN cardapios c ON r.cardapio_id = c.id
+            WHERE {where_sql}
+        """, params).fetchone()[0]
+
+        kpi_aluno = conn.execute(f"""
+            SELECT COUNT(*) FROM reservas r 
+            JOIN alunos a ON r.aluno_id = a.id
+            JOIN cardapios c ON r.cardapio_id = c.id
+            WHERE {where_sql} AND (r.cancelado_por = 'ALUNO' OR r.cancelado_por IS NULL OR r.cancelado_por = '')
+        """, params).fetchone()[0]
+
+        kpi_admin = conn.execute(f"""
+            SELECT COUNT(*) FROM reservas r 
+            JOIN alunos a ON r.aluno_id = a.id
+            JOIN cardapios c ON r.cardapio_id = c.id
+            WHERE {where_sql} AND r.cancelado_por LIKE 'ADMIN%'
+        """, params).fetchone()[0]
+        
+        total_paginas = max(1, (kpi_total + CANCELAMENTOS_POR_PAGINA - 1) // CANCELAMENTOS_POR_PAGINA)
+        
+        query_rows = f"""
+            SELECT r.id, r.codigo_unico, r.motivo_cancelamento, r.cancelado_por, 
+                   r.data_cancelamento, r.data_registro, r.status,
+                   a.id as aluno_id, a.nome as aluno_nome, a.matricula as aluno_mat,
+                   t.nome as turma_nome,
+                   c.id as cardapio_id, c.data as cardapio_data, c.tipo_refeicao, c.descricao as cardapio_descricao
+            FROM reservas r
+            JOIN alunos a ON r.aluno_id = a.id
+            LEFT JOIN turmas t ON a.turma_id = t.id
+            JOIN cardapios c ON r.cardapio_id = c.id
+            WHERE {where_sql}
+            ORDER BY COALESCE(r.data_cancelamento, c.data) DESC, r.id DESC
+            LIMIT ? OFFSET ?
+        """
+        cancelamentos = conn.execute(query_rows, params + [CANCELAMENTOS_POR_PAGINA, offset]).fetchall()
+
+    return render_template(
+        'admin/relatorios_cancelamentos.html',
+        cancelamentos=cancelamentos,
+        turmas=turmas,
+        data_inicio=data_inicio,
+        data_fim=data_fim,
+        origem=origem,
+        turma_id=turma_id,
+        busca=busca,
+        pagina=pagina,
+        total_paginas=total_paginas,
+        kpi_total=kpi_total,
+        kpi_aluno=kpi_aluno,
+        kpi_admin=kpi_admin
+    )
+
+@admin_bp.route('/admin/relatorios/cancelamentos/excel')
+def admin_relatorios_cancelamentos_excel():
+    if not is_logged_in_admin(): return redirect(url_for('admin.admin_login'))
+    if not tem_permissao('relatorios'): return redirect(url_for('admin.admin_dashboard'))
+    
+    data_inicio = request.args.get('data_inicio', '').strip()
+    data_fim = request.args.get('data_fim', '').strip()
+    origem = request.args.get('origem', 'TODOS').strip()
+    turma_id = request.args.get('turma_id', '', type=str).strip()
+    busca = request.args.get('q', '').strip()
+
+    with closing(get_db_connection()) as conn:
+        where_clauses = ["r.status = 'CANCELADA'"]
+        params = []
+        
+        if data_inicio:
+            where_clauses.append("c.data >= ?")
+            params.append(data_inicio)
+        if data_fim:
+            where_clauses.append("c.data <= ?")
+            params.append(data_fim)
+            
+        if origem == 'ALUNO':
+            where_clauses.append("(r.cancelado_por = 'ALUNO' OR r.cancelado_por IS NULL OR r.cancelado_por = '')")
+        elif origem == 'ADMIN':
+            where_clauses.append("r.cancelado_por LIKE 'ADMIN%'")
+            
+        if turma_id and turma_id.isdigit():
+            where_clauses.append("a.turma_id = ?")
+            params.append(int(turma_id))
+            
+        if busca:
+            like = f"%{busca}%"
+            where_clauses.append("(a.nome LIKE ? OR a.matricula LIKE ? OR r.motivo_cancelamento LIKE ? OR r.codigo_unico LIKE ?)")
+            params.extend([like, like, like, like])
+            
+        where_sql = " AND ".join(where_clauses)
+        
+        query_rows = f"""
+            SELECT r.id, r.codigo_unico, r.motivo_cancelamento, r.cancelado_por, 
+                   r.data_cancelamento, r.data_registro,
+                   a.nome as aluno_nome, a.matricula as aluno_mat,
+                   t.nome as turma_nome,
+                   c.data as cardapio_data, c.tipo_refeicao, c.descricao as cardapio_descricao
+            FROM reservas r
+            JOIN alunos a ON r.aluno_id = a.id
+            LEFT JOIN turmas t ON a.turma_id = t.id
+            JOIN cardapios c ON r.cardapio_id = c.id
+            WHERE {where_sql}
+            ORDER BY COALESCE(r.data_cancelamento, c.data) DESC, r.id DESC
+        """
+        registros = conn.execute(query_rows, params).fetchall()
+
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    from openpyxl.utils import get_column_letter
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Cancelamentos"
+    ws.views.sheetView[0].showGridLines = True
+
+    config = get_config()
+    thin_side = Side(style='thin', color='D3D3D3')
+    thin_border = Border(left=thin_side, right=thin_side, top=thin_side, bottom=thin_side)
+
+    ws['A1'] = "RELATÓRIO DE RESERVAS CANCELADAS"
+    ws['A1'].font = Font(name='Segoe UI', bold=True, size=14, color='DC2626')
+    ws['A1'].alignment = Alignment(horizontal='center', vertical='center')
+    ws.merge_cells('A1:H1')
+    ws.row_dimensions[1].height = 35
+
+    sub = f"Instituição: {config['sigla_instituicao']} | Gerado em: {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+    if data_inicio or data_fim:
+        sub += f" | Período: {data_inicio or 'Início'} até {data_fim or 'Hoje'}"
+    if origem != 'TODOS':
+        sub += f" | Origem: {origem}"
+    ws['A2'] = sub
+    ws['A2'].font = Font(name='Segoe UI', italic=True, size=10, color='6B7280')
+    ws['A2'].alignment = Alignment(horizontal='center', vertical='center')
+    ws.merge_cells('A2:H2')
+    ws.row_dimensions[2].height = 20
+
+    headers = [
+        "Data Refeição", "Tipo", "Estudante", "Matrícula", 
+        "Turma", "Cancelado Por", "Data do Cancelamento", "Motivo do Cancelamento"
+    ]
+    ws.append(headers)
+    ws.row_dimensions[3].height = 26
+
+    header_fill = PatternFill(start_color="DC2626", end_color="DC2626", fill_type="solid")
+    header_font = Font(name='Segoe UI', bold=True, color='FFFFFF', size=11)
+    center_align = Alignment(horizontal='center', vertical='center')
+    left_align = Alignment(horizontal='left', vertical='center')
+
+    for col_idx in range(1, len(headers) + 1):
+        cell = ws.cell(row=3, column=col_idx)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = center_align
+        cell.border = thin_border
+
+    zebra_fill = PatternFill(start_color="FFF5F5", end_color="FFF5F5", fill_type="solid")
+    row_idx = 4
+    for r in registros:
+        ws.append([
+            r['cardapio_data'] or '—',
+            r['tipo_refeicao'] or 'Almoço',
+            r['aluno_nome'] or '—',
+            r['aluno_mat'] or '—',
+            r['turma_nome'] or 'Sem turma',
+            r['cancelado_por'] or 'ALUNO',
+            r['data_cancelamento'] or '—',
+            r['motivo_cancelamento'] or '—'
+        ])
+        ws.row_dimensions[row_idx].height = 22
+        for col_idx in range(1, len(headers) + 1):
+            cell = ws.cell(row=row_idx, column=col_idx)
+            cell.font = Font(name='Segoe UI', size=10)
+            cell.border = thin_border
+            cell.alignment = center_align if col_idx in (1, 2, 4, 6, 7) else left_align
+            if row_idx % 2 == 0:
+                cell.fill = zebra_fill
+        row_idx += 1
+
+    for col in ws.columns:
+        max_len = 0
+        for cell in col:
+            if cell.row in (1, 2):
+                continue
+            val_str = str(cell.value or "")
+            if len(val_str) > max_len:
+                max_len = len(val_str)
+        col_letter = get_column_letter(col[0].column)
+        ws.column_dimensions[col_letter].width = max(max_len + 4, 14)
+
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    return send_file(
+        output,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        as_attachment=True,
+        download_name=f"Relatorio_Cancelamentos_{timestamp}.xlsx"
+    )
+
+
+@admin_bp.route('/admin/relatorios/fornecedor')
+def admin_relatorios_fornecedor():
+    """Relatório semanal de pedidos e demandas para acionamento do fornecedor de alimentação."""
+    if not is_logged_in_admin(): return redirect(url_for('admin.admin_login'))
+    if not tem_permissao('relatorios'): return redirect(url_for('admin.admin_dashboard'))
+
+    semana_opcao = request.args.get('semana', 'atual')  # 'atual', 'proxima', 'custom'
+    data_inicio_custom = request.args.get('data_inicio', '').strip()
+
+    hoje = datetime.now().date()
+    if data_inicio_custom:
+        try:
+            data_base = datetime.strptime(data_inicio_custom, '%Y-%m-%d').date()
+            semana_opcao = 'custom'
+        except:
+            data_base = hoje
+    elif semana_opcao == 'proxima':
+        data_base = hoje + timedelta(days=7)
+    else:
+        data_base = hoje
+
+    # Segunda-feira da semana de referência
+    segunda_feira = data_base - timedelta(days=data_base.weekday())
+    sexta_feira = segunda_feira + timedelta(days=4)
+
+    DIAS_NOMES = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo']
+
+    dias_semana = []
+    total_refeicoes_semana = 0
+    total_normais_semana = 0
+    total_extras_semana = 0
+    total_eventos_semana = 0
+    total_canceladas_semana = 0
+    dias_fechados_count = 0
+    dias_abertos_count = 0
+    restricoes_consolidadas = {}
+
+    with closing(get_db_connection()) as conn:
+        for i in range(7):
+            dia_date = segunda_feira + timedelta(days=i)
+            dia_str = dia_date.strftime('%Y-%m-%d')
+            dia_nome = DIAS_NOMES[i]
+
+            cardapio = conn.execute(
+                "SELECT * FROM cardapios WHERE data = ?", (dia_str,)
+            ).fetchone()
+
+            if i >= 5 and not cardapio:
+                continue
+
+            janela = calcular_janela_reserva(dia_str, conn=conn)
+
+            total_normais = 0
+            total_extras = 0
+            total_eventos = 0
+            total_canceladas = 0
+            restricoes_dia = []
+
+            if cardapio:
+                normais_row = conn.execute("""
+                    SELECT COUNT(*) as qtd FROM reservas
+                    WHERE cardapio_id = ? AND status != 'CANCELADA' AND (tipo_consumo = 'NORMAL' OR tipo_consumo IS NULL)
+                """, (cardapio['id'],)).fetchone()
+                total_normais = normais_row['qtd'] if normais_row else 0
+
+                extras_row = conn.execute("""
+                    SELECT COUNT(*) as qtd FROM reservas
+                    WHERE cardapio_id = ? AND status != 'CANCELADA' AND tipo_consumo = 'EXTRA'
+                """, (cardapio['id'],)).fetchone()
+                total_extras = extras_row['qtd'] if extras_row else 0
+
+                eventos_row = conn.execute("""
+                    SELECT COUNT(*) as qtd FROM reservas
+                    WHERE cardapio_id = ? AND status != 'CANCELADA' AND tipo_consumo = 'EVENTO'
+                """, (cardapio['id'],)).fetchone()
+                total_eventos = eventos_row['qtd'] if eventos_row else 0
+
+                cancel_row = conn.execute("""
+                    SELECT COUNT(*) as qtd FROM reservas
+                    WHERE cardapio_id = ? AND status = 'CANCELADA'
+                """, (cardapio['id'],)).fetchone()
+                total_canceladas = cancel_row['qtd'] if cancel_row else 0
+
+                restricoes_rows = conn.execute("""
+                    SELECT a.restricoes, COUNT(*) as qtd
+                    FROM reservas r
+                    JOIN alunos a ON r.aluno_id = a.id
+                    WHERE r.cardapio_id = ? AND r.status != 'CANCELADA'
+                      AND a.restricoes IS NOT NULL AND TRIM(a.restricoes) != ''
+                    GROUP BY a.restricoes
+                    ORDER BY qtd DESC
+                """, (cardapio['id'],)).fetchall()
+
+                for r in restricoes_rows:
+                    restricoes_dia.append({
+                        'restricao': r['restricoes'],
+                        'qtd': r['qtd']
+                    })
+                    restricoes_consolidadas[r['restricoes']] = restricoes_consolidadas.get(r['restricoes'], 0) + r['qtd']
+
+            total_dia = total_normais + total_extras + total_eventos
+            total_refeicoes_semana += total_dia
+            total_normais_semana += total_normais
+            total_extras_semana += total_extras
+            total_eventos_semana += total_eventos
+            total_canceladas_semana += total_canceladas
+
+            if janela['status'] == 'ENCERRADA':
+                dias_fechados_count += 1
+            elif janela['status'] == 'ABERTA':
+                dias_abertos_count += 1
+
+            dias_semana.append({
+                'data': dia_str,
+                'data_fmt': dia_date.strftime('%d/%m/%Y'),
+                'dia_curto': dia_date.strftime('%d/%m'),
+                'dia_nome': dia_nome,
+                'dia_semana_num': i,
+                'tem_cardapio': cardapio is not None,
+                'cardapio': cardapio,
+                'janela': janela,
+                'total_normais': total_normais,
+                'total_extras': total_extras,
+                'total_eventos': total_eventos,
+                'total_confirmadas': total_dia,
+                'total_canceladas': total_canceladas,
+                'restricoes': restricoes_dia
+            })
+
+    config = get_config()
+    sigla = config.get('sigla_instituicao', 'IFRN')
+    segunda_fmt = segunda_feira.strftime('%d/%m/%Y')
+    fim_fmt = (dias_semana[-1]['data_fmt']) if dias_semana else sexta_feira.strftime('%d/%m/%Y')
+
+    texto_whatsapp = [
+        f"📋 *PEDIDO DE ALMOÇO AO FORNECEDOR — {sigla}*",
+        f"📅 *Semana:* {segunda_fmt} a {fim_fmt}",
+        f"🍽️ *Total Previsto da Semana:* {total_refeicoes_semana} refeições\n"
+    ]
+
+    for d in dias_semana:
+        if not d['tem_cardapio']:
+            texto_whatsapp.append(f"• *{d['dia_nome']} ({d['dia_curto']})*: Sem refeição programada.")
+            continue
+        
+        status_txt = "🔴 Prazo Encerrado" if d['janela']['status'] == 'ENCERRADA' else ("🟢 Reservas Abertas" if d['janela']['status'] == 'ABERTA' else "🟡 Não Iniciada")
+        corte_txt = f" (Corte: {d['janela']['fechamento_formatado']})" if d['janela']['fechamento_formatado'] != '—' else ""
+        linha = f"• *{d['dia_nome']} ({d['dia_curto']})*: *{d['total_confirmadas']} refeições* [{status_txt}{corte_txt}]"
+        if d['total_extras'] > 0:
+            linha += f" (inclui {d['total_extras']} extras)"
+        if d['restricoes']:
+            restr_list = ", ".join([f"{r['qtd']}x {r['restricao']}" for r in d['restricoes']])
+            linha += f"\n   ↳ Restrições: {restr_list}"
+        texto_whatsapp.append(linha)
+
+    if restricoes_consolidadas:
+        texto_whatsapp.append("\n🥗 *Total de Restrições na Semana:*")
+        for restr, qtd in sorted(restricoes_consolidadas.items(), key=lambda x: x[1], reverse=True):
+            texto_whatsapp.append(f"  - {restr}: {qtd} porções")
+
+    texto_whatsapp.append(f"\n_Gerado pelo sistema em {datetime.now().strftime('%d/%m/%Y às %H:%M')}_")
+    msg_whatsapp_pronta = "\n".join(texto_whatsapp)
+
+    return render_template(
+        'admin/relatorios_fornecedor.html',
+        semana_opcao=semana_opcao,
+        segunda_feira=segunda_feira.strftime('%Y-%m-%d'),
+        data_inicio_custom=data_inicio_custom,
+        segunda_fmt=segunda_fmt,
+        fim_fmt=fim_fmt,
+        dias_semana=dias_semana,
+        total_refeicoes_semana=total_refeicoes_semana,
+        total_normais_semana=total_normais_semana,
+        total_extras_semana=total_extras_semana,
+        total_eventos_semana=total_eventos_semana,
+        total_canceladas_semana=total_canceladas_semana,
+        dias_fechados_count=dias_fechados_count,
+        dias_abertos_count=dias_abertos_count,
+        restricoes_consolidadas=restricoes_consolidadas,
+        msg_whatsapp_pronta=msg_whatsapp_pronta
+    )
+
+
+@admin_bp.route('/admin/relatorios/fornecedor/excel')
+def admin_relatorios_fornecedor_excel():
+    """Exporta para Excel o pedido semanal detalhado para o fornecedor."""
+    if not is_logged_in_admin(): return redirect(url_for('admin.admin_login'))
+    if not tem_permissao('relatorios'): return redirect(url_for('admin.admin_dashboard'))
+
+    semana_opcao = request.args.get('semana', 'atual')
+    data_inicio_custom = request.args.get('data_inicio', '').strip()
+
+    hoje = datetime.now().date()
+    if data_inicio_custom:
+        try:
+            data_base = datetime.strptime(data_inicio_custom, '%Y-%m-%d').date()
+        except:
+            data_base = hoje
+    elif semana_opcao == 'proxima':
+        data_base = hoje + timedelta(days=7)
+    else:
+        data_base = hoje
+
+    segunda_feira = data_base - timedelta(days=data_base.weekday())
+    DIAS_NOMES = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo']
+
+    dias_semana = []
+    with closing(get_db_connection()) as conn:
+        for i in range(7):
+            dia_date = segunda_feira + timedelta(days=i)
+            dia_str = dia_date.strftime('%Y-%m-%d')
+            cardapio = conn.execute("SELECT * FROM cardapios WHERE data = ?", (dia_str,)).fetchone()
+            if i >= 5 and not cardapio:
+                continue
+
+            janela = calcular_janela_reserva(dia_str, conn=conn)
+            total_normais = 0
+            total_extras = 0
+            total_eventos = 0
+            total_canceladas = 0
+            restricoes_str = "—"
+
+            if cardapio:
+                normais_row = conn.execute("""
+                    SELECT COUNT(*) as qtd FROM reservas
+                    WHERE cardapio_id = ? AND status != 'CANCELADA' AND (tipo_consumo = 'NORMAL' OR tipo_consumo IS NULL)
+                """, (cardapio['id'],)).fetchone()
+                total_normais = normais_row['qtd'] if normais_row else 0
+
+                extras_row = conn.execute("""
+                    SELECT COUNT(*) as qtd FROM reservas
+                    WHERE cardapio_id = ? AND status != 'CANCELADA' AND tipo_consumo = 'EXTRA'
+                """, (cardapio['id'],)).fetchone()
+                total_extras = extras_row['qtd'] if extras_row else 0
+
+                eventos_row = conn.execute("""
+                    SELECT COUNT(*) as qtd FROM reservas
+                    WHERE cardapio_id = ? AND status != 'CANCELADA' AND tipo_consumo = 'EVENTO'
+                """, (cardapio['id'],)).fetchone()
+                total_eventos = eventos_row['qtd'] if eventos_row else 0
+
+                cancel_row = conn.execute("""
+                    SELECT COUNT(*) as qtd FROM reservas
+                    WHERE cardapio_id = ? AND status = 'CANCELADA'
+                """, (cardapio['id'],)).fetchone()
+                total_canceladas = cancel_row['qtd'] if cancel_row else 0
+
+                restricoes_rows = conn.execute("""
+                    SELECT a.restricoes, COUNT(*) as qtd
+                    FROM reservas r
+                    JOIN alunos a ON r.aluno_id = a.id
+                    WHERE r.cardapio_id = ? AND r.status != 'CANCELADA'
+                      AND a.restricoes IS NOT NULL AND TRIM(a.restricoes) != ''
+                    GROUP BY a.restricoes
+                    ORDER BY qtd DESC
+                """, (cardapio['id'],)).fetchall()
+                if restricoes_rows:
+                    restricoes_str = ", ".join([f"{r['qtd']}x {r['restricoes']}" for r in restricoes_rows])
+
+            dias_semana.append({
+                'data': dia_str,
+                'data_fmt': dia_date.strftime('%d/%m/%Y'),
+                'dia_nome': DIAS_NOMES[i],
+                'descricao': cardapio['descricao'] if cardapio else 'Sem cardápio cadastrado',
+                'tipo_refeicao': cardapio['tipo_refeicao'] if cardapio else '—',
+                'status_janela': 'Encerrada' if janela['status'] == 'ENCERRADA' else ('Aberta' if janela['status'] == 'ABERTA' else 'Não Iniciada'),
+                'fechamento_fmt': janela['fechamento_formatado'],
+                'normais': total_normais,
+                'extras': total_extras,
+                'eventos': total_eventos,
+                'total': total_normais + total_extras + total_eventos,
+                'canceladas': total_canceladas,
+                'restricoes': restricoes_str
+            })
+
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    from openpyxl.utils import get_column_letter
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Pedido Fornecedor"
+    ws.views.sheetView[0].showGridLines = True
+
+    config = get_config()
+    thin_side = Side(style='thin', color='D3D3D3')
+    thin_border = Border(left=thin_side, right=thin_side, top=thin_side, bottom=thin_side)
+
+    ws['A1'] = f"PEDIDO DE REFEIÇÕES AO FORNECEDOR — {config['sigla_instituicao']}"
+    ws['A1'].font = Font(name='Segoe UI', bold=True, size=14, color='1E40AF')
+    ws['A1'].alignment = Alignment(horizontal='center', vertical='center')
+    ws.merge_cells('A1:J1')
+    ws.row_dimensions[1].height = 35
+
+    segunda_fmt = segunda_feira.strftime('%d/%m/%Y')
+    fim_fmt = dias_semana[-1]['data_fmt'] if dias_semana else segunda_fmt
+    ws['A2'] = f"Semana: {segunda_fmt} a {fim_fmt} | Gerado em: {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+    ws['A2'].font = Font(name='Segoe UI', italic=True, size=10, color='6B7280')
+    ws['A2'].alignment = Alignment(horizontal='center', vertical='center')
+    ws.merge_cells('A2:J2')
+    ws.row_dimensions[2].height = 20
+
+    headers = [
+        "Data", "Dia da Semana", "Refeição / Descrição", "Status Prazo", "Corte Fornecedor",
+        "Regulares", "Extras", "Eventos", "TOTAL CONFIRMADO", "Restrições Alimentares"
+    ]
+    ws.append([])
+    ws.append(headers)
+    ws.row_dimensions[4].height = 26
+
+    header_fill = PatternFill(start_color="1E40AF", end_color="1E40AF", fill_type="solid")
+    header_font = Font(name='Segoe UI', bold=True, color='FFFFFF', size=11)
+    center_align = Alignment(horizontal='center', vertical='center')
+    left_align = Alignment(horizontal='left', vertical='center')
+
+    for col_idx in range(1, len(headers) + 1):
+        cell = ws.cell(row=4, column=col_idx)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = center_align
+        cell.border = thin_border
+
+    zebra_fill = PatternFill(start_color="F8FAFC", end_color="F8FAFC", fill_type="solid")
+    row_idx = 5
+    tot_norm = 0
+    tot_ext = 0
+    tot_eve = 0
+    tot_geral = 0
+
+    for d in dias_semana:
+        tot_norm += d['normais']
+        tot_ext += d['extras']
+        tot_eve += d['eventos']
+        tot_geral += d['total']
+
+        ws.append([
+            d['data_fmt'],
+            d['dia_nome'],
+            f"{d['tipo_refeicao']} - {d['descricao']}",
+            d['status_janela'],
+            d['fechamento_fmt'],
+            d['normais'],
+            d['extras'],
+            d['eventos'],
+            d['total'],
+            d['restricoes']
+        ])
+        ws.row_dimensions[row_idx].height = 22
+        for col_idx in range(1, len(headers) + 1):
+            cell = ws.cell(row=row_idx, column=col_idx)
+            cell.font = Font(name='Segoe UI', size=10, bold=(col_idx == 9))
+            cell.border = thin_border
+            if col_idx in (1, 2, 4, 5, 6, 7, 8, 9):
+                cell.alignment = center_align
+            else:
+                cell.alignment = left_align
+
+            if row_idx % 2 == 0:
+                cell.fill = zebra_fill
+        row_idx += 1
+
+    ws.append(["TOTAIS", "", "", "", "", tot_norm, tot_ext, tot_eve, tot_geral, ""])
+    ws.row_dimensions[row_idx].height = 24
+    total_fill = PatternFill(start_color="E2E8F0", end_color="E2E8F0", fill_type="solid")
+    for col_idx in range(1, len(headers) + 1):
+        cell = ws.cell(row=row_idx, column=col_idx)
+        cell.font = Font(name='Segoe UI', bold=True, size=11, color='1E40AF')
+        cell.fill = total_fill
+        cell.border = thin_border
+        cell.alignment = center_align
+
+    for col in ws.columns:
+        max_len = 0
+        for cell in col:
+            if cell.row in (1, 2):
+                continue
+            val_str = str(cell.value or "")
+            if len(val_str) > max_len:
+                max_len = len(val_str)
+        col_letter = get_column_letter(col[0].column)
+        ws.column_dimensions[col_letter].width = max(min(max_len + 4, 45), 12)
+
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    registrar_auditoria("Exportar Pedido Fornecedor Excel", f"Exportou semana {segunda_fmt} a {fim_fmt}")
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    return send_file(
+        output,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        as_attachment=True,
+        download_name=f"Pedido_Fornecedor_{segunda_feira.strftime('%Y%m%d')}_{timestamp}.xlsx"
+    )
+
 

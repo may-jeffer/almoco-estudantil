@@ -61,12 +61,23 @@
                                 <strong style="display: block; margin-top: 0.5rem; margin-bottom: 0.25rem;">{{ a.titulo }}</strong>
                                 <span style="font-size: 0.95rem; color: var(--text-muted);">{{ a.mensagem }}</span>
                             </td>
-                            <td style="vertical-align: top; width: 100px;">
-                                <form method="POST" action="{{ url_for('admin_avisos_excluir', id=a.id) }}">
-                                    <button type="submit" class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; border-radius: 4px;" onclick="return confirm('Excluir este aviso da tela dos alunos?');">
-                                        <i class="ph ph-trash"></i> Retirar
+                            <td style="vertical-align: top; white-space: nowrap;">
+                                <div class="table-actions-group">
+                                    <button type="button" class="btn btn-secondary btn-table-action"
+                                            onclick="abrirModalEditarAviso(this)"
+                                            data-id="{{ a.id }}"
+                                            data-titulo="{{ a.titulo|e }}"
+                                            data-tipo="{{ a.tipo }}"
+                                            title="Editar Aviso">
+                                        <i class="ph ph-pencil-simple"></i> Editar
+                                        <span class="aviso-msg-hidden" style="display:none;">{{ a.mensagem }}</span>
                                     </button>
-                                </form>
+                                    <form method="POST" action="{{ url_for('admin_avisos_excluir', id=a.id) }}" style="display: inline-flex; margin: 0;">
+                                        <button type="submit" class="btn btn-danger btn-table-action" style="padding: 0 0.55rem !important;" onclick="return confirm('Excluir este aviso da tela dos alunos?');" title="Excluir Aviso">
+                                            <i class="ph ph-trash"></i> Retirar
+                                        </button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                         {% else %}
@@ -83,4 +94,79 @@
         </div>
     </div>
 </div>
+
+<!-- Modal Editar Aviso -->
+<div id="modalEditarAviso" class="modal-overlay">
+    <div class="modal-box" style="max-width: 520px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h2 style="margin: 0; color: var(--primary); font-size: 1.25rem;">
+                <i class="ph ph-pencil-simple" style="margin-right: 6px;"></i> Editar Aviso
+            </h2>
+            <button type="button" onclick="fecharModalEditarAviso()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); line-height: 1;" aria-label="Fechar">&times;</button>
+        </div>
+
+        <form id="formEditarAviso" method="POST" action="">
+            <div class="form-group">
+                <label for="edit_titulo">Pequeno Título (Ex: Atenção)</label>
+                <input type="text" id="edit_titulo" name="titulo" required autocomplete="off">
+            </div>
+
+            <div class="form-group">
+                <label for="edit_mensagem">Mensagem / Texto Completo</label>
+                <textarea id="edit_mensagem" name="mensagem" style="width: 100%; min-height: 120px; padding: 0.75rem; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 1rem; box-sizing: border-box;" required></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="edit_tipo">Destaque Visual</label>
+                <select id="edit_tipo" name="tipo">
+                    <option value="info">💬 Azul (Informativo Genérico)</option>
+                    <option value="warning">⚠️ Amarelo (Atenção/Mudanças)</option>
+                    <option value="danger">🚨 Vermelho (Urgente/Cancelamento)</option>
+                </select>
+            </div>
+
+            <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+                <button type="button" onclick="fecharModalEditarAviso()" class="btn btn-secondary" style="flex: 1;">Cancelar</button>
+                <button type="submit" class="btn btn-primary" style="flex: 1;">
+                    <i class="ph ph-floppy-disk" style="margin-right: 6px;"></i> Salvar Alterações
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function abrirModalEditarAviso(btn) {
+        const id = btn.getAttribute('data-id');
+        const titulo = btn.getAttribute('data-titulo');
+        const tipo = btn.getAttribute('data-tipo');
+        const msgHidden = btn.querySelector('.aviso-msg-hidden');
+        const msg = msgHidden ? msgHidden.textContent : '';
+
+        document.getElementById('formEditarAviso').action = '/admin/avisos/editar/' + id;
+        document.getElementById('edit_titulo').value = titulo;
+        document.getElementById('edit_mensagem').value = msg;
+        document.getElementById('edit_tipo').value = tipo || 'info';
+
+        const modal = document.getElementById('modalEditarAviso');
+        modal.classList.add('is-open');
+        document.body.style.overflow = 'hidden';
+        setTimeout(() => document.getElementById('edit_titulo').focus(), 50);
+    }
+
+    function fecharModalEditarAviso() {
+        const modal = document.getElementById('modalEditarAviso');
+        modal.classList.remove('is-open');
+        document.body.style.overflow = '';
+    }
+
+    document.getElementById('modalEditarAviso').addEventListener('click', function(e) {
+        if (e.target === this) fecharModalEditarAviso();
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') fecharModalEditarAviso();
+    });
+</script>
 {% endblock %}
+

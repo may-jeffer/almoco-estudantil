@@ -4,20 +4,18 @@ import qrcode
 import base64
 from io import BytesIO
 import threading
-import sqlite3
 
 from database import closing, get_db_connection, get_config, get_proximos_cardapios, generate_unique_code
 from utils.auth import is_logged_in_aluno
-from utils.helpers import date_hoje_str, datetime_now_str, pode_reservar
-from utils.qrcode_gen import generate_badge_code, generate_std_badge_code
+from utils.helpers import (
+    date_hoje_str, datetime_now_str, pode_reservar, registrar_auditoria, 
+    calcular_janela_reserva, sincronizar_reservas_recorrentes,
+    parse_dias_bloqueados, DIAS_SEMANA_NOMES
+)
+from utils.qrcode_gen import generate_std_badge_code
 from utils.mailer import enviar_qr_por_email
 
 aluno_bp = Blueprint('aluno', __name__)
-
-def handle_login_success(aluno):
-    # Movemos para utils/auth ou importamos de main?
-    # Melhor isolar ou apenas redirecionar para aluno_dashboard.
-    pass
 
 @aluno_bp.route('/aluno/selecionar_contexto', methods=['GET', 'POST'])
 def aluno_selecionar_contexto():
@@ -69,11 +67,27 @@ def aluno_dashboard():
     horario_limite = config['horario_limite']
     max_reservas = config['max_reservas_ativas'] if 'max_reservas_ativas' in config.keys() else 1
     
+    # Sincroniza reservas automáticas se a recorrência estiver ativada pelo admin
+    if config and config.permitir_reserva_recorrente:
+        sincronizar_reservas_recorrentes(aluno_id)
+        
     refeicoes_hoje = []
     reservas_ativas_count = 0
+    dias_bloqueados_turma = set()
     
     with closing(get_db_connection()) as conn:
-        aluno_req = conn.execute("SELECT * FROM alunos WHERE id = ?", (aluno_id,)).fetchone()
+        aluno_req = conn.execute("""
+            SELECT a.*, t.nome as turma_nome, t.curso as turma_curso, 
+                   t.ano_letivo as turma_ano, COALESCE(a.serie_ano_atual, t.serie_ano) as serie_ano_efetiva,
+                   COALESCE(a.curso, t.curso) as curso_efetivo,
+                   t.dias_bloqueados as turma_dias_bloqueados
+            FROM alunos a 
+            LEFT JOIN turmas t ON a.turma_id = t.id 
+            WHERE a.id = ?
+        """, (aluno_id,)).fetchone()
+        
+        if aluno_req and aluno_req['turma_dias_bloqueados']:
+            dias_bloqueados_turma = parse_dias_bloqueados(aluno_req['turma_dias_bloqueados'])
         
         todas_ativas = conn.execute(
             "SELECT r.id, c.data FROM reservas r JOIN cardapios c ON r.cardapio_id = c.id WHERE r.aluno_id = ? AND r.status = 'ATIVA'",
@@ -81,7 +95,7 @@ def aluno_dashboard():
         ).fetchall()
         
         for r in todas_ativas:
-            if pode_reservar(r['data'], horario_limite):
+            if pode_reservar(r['data']):
                 reservas_ativas_count += 1
         
         cardapios_hoje = conn.execute("SELECT * FROM cardapios WHERE data = ? ORDER BY id ASC", (hoje_str,)).fetchall()
@@ -116,54 +130,81 @@ def aluno_dashboard():
                     (aluno_id, c['id'])
                 ).fetchone()
                 
-                dentro_prazo = pode_reservar(c['data'], horario_limite)
+                c_data_obj = datetime.strptime(c['data'], '%Y-%m-%d')
+                c_w = c_data_obj.weekday()
+                turma_bloqueada = (c_w in dias_bloqueados_turma)
+                dia_semana_nome = DIAS_SEMANA_NOMES[c_w]
+
+                janela = calcular_janela_reserva(c['data'], conn=conn)
+                dentro_prazo = (janela['status'] == 'ABERTA')
                 
-                if dentro_prazo:
-                    if reserva or (c['permitir_reserva'] == 1 and unreserved_needed > 0):
-                        qr_b64 = None
-                        if reserva:
-                            qr = qrcode.QRCode()
-                            qr.add_data(reserva['codigo_unico'])
-                            qr.make(fit=True)
-                            img = qr.make_image(fill_color="#4F46E5", back_color="white")
-                            buffered = BytesIO()
-                            img.save(buffered, format="PNG")
-                            qr_b64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
-                        
-                        cardapios_abertos.append({
-                            'cardapio': c,
-                            'reserva': reserva,
-                            'qr_code': qr_b64,
-                            'perdeu_prazo': False
-                        })
-                        
-                        if not reserva:
-                            unreserved_needed -= 1
-                else:
-                    # O prazo encerrou.
-                    if reserva:
-                        qr_b64 = None
-                        qr = qrcode.QRCode()
-                        qr.add_data(reserva['codigo_unico'])
-                        qr.make(fit=True)
-                        img = qr.make_image(fill_color="#4F46E5", back_color="white")
-                        buffered = BytesIO()
-                        img.save(buffered, format="PNG")
-                        qr_b64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
-                        
-                        cardapios_abertos.append({
-                            'cardapio': c,
-                            'reserva': reserva,
-                            'qr_code': qr_b64,
-                            'perdeu_prazo': False
-                        })
-                    elif c['permitir_reserva'] == 1:
-                        # Não reservou e perdeu o prazo (mostra na tela como pendência/aviso)
+                if reserva:
+                    qr_b64 = None
+                    qr = qrcode.QRCode()
+                    qr.add_data(reserva['codigo_unico'])
+                    qr.make(fit=True)
+                    img = qr.make_image(fill_color="#4F46E5", back_color="white")
+                    buffered = BytesIO()
+                    img.save(buffered, format="PNG")
+                    qr_b64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
+                    
+                    cardapios_abertos.append({
+                        'cardapio': c,
+                        'reserva': reserva,
+                        'qr_code': qr_b64,
+                        'perdeu_prazo': False,
+                        'ainda_nao_abriu': False,
+                        'turma_bloqueada': turma_bloqueada,
+                        'dia_semana_nome': dia_semana_nome,
+                        'janela': janela
+                    })
+                elif turma_bloqueada:
+                    cardapios_abertos.append({
+                        'cardapio': c,
+                        'reserva': None,
+                        'qr_code': None,
+                        'perdeu_prazo': False,
+                        'ainda_nao_abriu': False,
+                        'turma_bloqueada': True,
+                        'dia_semana_nome': dia_semana_nome,
+                        'janela': janela
+                    })
+                elif dentro_prazo:
+                    if c['permitir_reserva'] == 1 and unreserved_needed > 0:
                         cardapios_abertos.append({
                             'cardapio': c,
                             'reserva': None,
                             'qr_code': None,
-                            'perdeu_prazo': True
+                            'perdeu_prazo': False,
+                            'ainda_nao_abriu': False,
+                            'turma_bloqueada': False,
+                            'dia_semana_nome': dia_semana_nome,
+                            'janela': janela
+                        })
+                        unreserved_needed -= 1
+                elif janela['status'] == 'NAO_INICIADA':
+                    if c['permitir_reserva'] == 1:
+                        cardapios_abertos.append({
+                            'cardapio': c,
+                            'reserva': None,
+                            'qr_code': None,
+                            'perdeu_prazo': False,
+                            'ainda_nao_abriu': True,
+                            'turma_bloqueada': False,
+                            'dia_semana_nome': dia_semana_nome,
+                            'janela': janela
+                        })
+                else: # ENCERRADA ou INATIVO
+                    if c['permitir_reserva'] == 1:
+                        cardapios_abertos.append({
+                            'cardapio': c,
+                            'reserva': None,
+                            'qr_code': None,
+                            'perdeu_prazo': True,
+                            'ainda_nao_abriu': False,
+                            'turma_bloqueada': False,
+                            'dia_semana_nome': dia_semana_nome,
+                            'janela': janela
                         })
 
     cardapio_aberto = cardapios_abertos[0]['cardapio'] if cardapios_abertos else None
@@ -245,6 +286,13 @@ def aluno_dashboard():
         total_contextos += eventos_extras
         tem_multiplos = total_contextos > 1
         
+        # Dias de recorrência ativos do aluno (0=Seg, 1=Ter...)
+        recorrencias_aluno = conn.execute(
+            "SELECT dia_semana FROM aluno_recorrencia_dias WHERE aluno_id = ? AND ativo = 1",
+            (aluno_id,)
+        ).fetchall()
+        dias_recorrentes_aluno = [r['dia_semana'] for r in recorrencias_aluno]
+        
         # Buscar últimas refeições consumidas sem avaliação nos últimos 7 dias (Ponto 11)
         refeicoes_para_avaliar = conn.execute("""
             SELECT r.id as reserva_id, c.data, c.tipo_refeicao, c.descricao
@@ -273,7 +321,10 @@ def aluno_dashboard():
         contexto_evento=turma_ctx,
         qr_code_cracha=qr_code_cracha,
         qr_code_cracha_std=qr_code_cracha_std,
-        refeicoes_para_avaliar=refeicoes_para_avaliar
+        refeicoes_para_avaliar=refeicoes_para_avaliar,
+        dias_recorrentes_aluno=dias_recorrentes_aluno,
+        dias_bloqueados_turma=dias_bloqueados_turma,
+        permitir_reserva_recorrente=bool(config and config.permitir_reserva_recorrente)
     )
 
 @aluno_bp.route('/aluno/reservar/<int:cardapio_id>', methods=['POST'])
@@ -298,12 +349,29 @@ def reservar(cardapio_id):
             flash('Cardápio não encontrado.', 'error')
             return redirect(url_for('aluno.aluno_dashboard'))
 
+        # Validação: Bloqueio por dia da semana da turma
+        if aluno['turma_id']:
+            turma_row = conn.execute("SELECT id, nome, dias_bloqueados FROM turmas WHERE id = ?", (aluno['turma_id'],)).fetchone()
+            if turma_row and turma_row['dias_bloqueados']:
+                c_data_obj = datetime.strptime(cardapio['data'], '%Y-%m-%d')
+                c_w = c_data_obj.weekday()
+                dias_bloq = parse_dias_bloqueados(turma_row['dias_bloqueados'])
+                if c_w in dias_bloq:
+                    nome_dia = DIAS_SEMANA_NOMES[c_w]
+                    flash(f"A sua turma ({turma_row['nome']}) possui reserva de almoço bloqueada às {nome_dia}.", 'error')
+                    return redirect(url_for('aluno.aluno_dashboard'))
+
         if cardapio['permitir_reserva'] == 0:
             flash('Este cardápio não está disponível para reserva antecipada (Acesso apenas via crachá de evento ou sobras).', 'warning')
             return redirect(url_for('aluno.aluno_dashboard'))
             
-        if not pode_reservar(cardapio['data'], horario_limite):
-            flash('O prazo para reservar esta refeição já encerrou.', 'error')
+        janela = calcular_janela_reserva(cardapio['data'], conn=conn)
+        if janela['status'] == 'NAO_INICIADA':
+            flash(f"As reservas para esta refeição ainda não iniciaram. {janela['mensagem']}", 'warning')
+            return redirect(url_for('aluno.aluno_dashboard'))
+            
+        if janela['status'] != 'ABERTA':
+            flash('O prazo para reservar esta refeição já encerrou (corte do fornecedor atingido).', 'error')
             return redirect(url_for('aluno.aluno_dashboard'))
             
         existente = conn.execute('SELECT id, status FROM reservas WHERE aluno_id = ? AND cardapio_id = ?', (aluno_id, cardapio_id)).fetchone()
@@ -314,7 +382,7 @@ def reservar(cardapio_id):
                     "SELECT r.id, c.data FROM reservas r JOIN cardapios c ON r.cardapio_id = c.id WHERE r.aluno_id = ? AND r.status = 'ATIVA'",
                     (aluno_id,)
                 ).fetchall()
-                ativas_count = sum(1 for r in todas_ativas if pode_reservar(r['data'], horario_limite))
+                ativas_count = sum(1 for r in todas_ativas if pode_reservar(r['data']))
                 
                 if ativas_count >= max_reservas:
                     flash(f'Você atingiu o limite de {max_reservas} reserva(s) ativa(s) futuras. Cancele uma reserva existente antes de fazer outra.', 'error')
@@ -334,7 +402,7 @@ def reservar(cardapio_id):
                 "SELECT r.id, c.data FROM reservas r JOIN cardapios c ON r.cardapio_id = c.id WHERE r.aluno_id = ? AND r.status = 'ATIVA'",
                 (aluno_id,)
             ).fetchall()
-            ativas_count = sum(1 for r in todas_ativas if pode_reservar(r['data'], horario_limite))
+            ativas_count = sum(1 for r in todas_ativas if pode_reservar(r['data']))
             
             if ativas_count >= max_reservas:
                 flash(f'Você atingiu o limite de {max_reservas} reserva(s) ativa(s) futuras. Cancele uma reserva existente antes de fazer outra.', 'error')
@@ -364,6 +432,22 @@ def cancelar_reserva(cardapio_id):
     config = get_config()
     horario_limite = config['horario_limite']
     
+    motivo = request.form.get('motivo_cancelamento', '').strip()
+    motivo_outro = request.form.get('motivo_cancelamento_outro', '').strip()
+
+    if motivo == 'Outro' and motivo_outro:
+        motivo_final = f"Outro: {motivo_outro}"
+    elif motivo:
+        motivo_final = motivo
+        if motivo_outro:
+            motivo_final += f" - {motivo_outro}"
+    elif motivo_outro:
+        motivo_final = motivo_outro
+    else:
+        motivo_final = "Cancelado pelo estudante sem motivo detalhado"
+    
+    data_cancelamento = datetime_now_str()
+    
     with closing(get_db_connection()) as conn:
         reserva = conn.execute(
             "SELECT r.*, c.data FROM reservas r JOIN cardapios c ON r.cardapio_id = c.id WHERE r.aluno_id = ? AND r.cardapio_id = ?", 
@@ -371,13 +455,89 @@ def cancelar_reserva(cardapio_id):
         ).fetchone()
         
         if reserva and reserva['status'] == 'ATIVA':
-            if not pode_reservar(reserva['data'], horario_limite):
-                 flash('O prazo para cancelar a reserva já encerrou.', 'error')
+            res_data_dt = datetime.strptime(reserva['data'], '%Y-%m-%d')
+            if res_data_dt.date() < datetime.now().date():
+                flash('Não é possível cancelar uma refeição de data já passada.', 'error')
             else:
-                conn.execute("UPDATE reservas SET status='CANCELADA' WHERE id = ?", (reserva['id'],))
-                conn.commit()
-                flash('Sua reserva foi cancelada com sucesso.', 'success')
+                janela = calcular_janela_reserva(reserva['data'], conn=conn)
+                if janela['status'] == 'ENCERRADA':
+                    flash('O prazo para cancelar a reserva já encerrou (corte do fornecedor atingido).', 'error')
+                else:
+                    conn.execute("""
+                        UPDATE reservas 
+                        SET status = 'CANCELADA', 
+                            motivo_cancelamento = ?, 
+                            cancelado_por = 'ALUNO', 
+                            data_cancelamento = ? 
+                        WHERE id = ?
+                    """, (motivo_final, data_cancelamento, reserva['id']))
+                    conn.commit()
+
+                    aluno_row = conn.execute("SELECT nome FROM alunos WHERE id = ?", (aluno_id,)).fetchone()
+                    aluno_nome = aluno_row['nome'] if aluno_row else f"ID {aluno_id}"
+                    registrar_auditoria("Cancelamento de Reserva (Aluno)", f"Aluno '{aluno_nome}' cancelou reserva ID {reserva['id']} para {reserva['data']}. Motivo: {motivo_final}")
+
+                    flash('Sua reserva foi cancelada com sucesso.', 'success')
                 
+    return redirect(url_for('aluno.aluno_dashboard'))
+
+@aluno_bp.route('/aluno/recorrencia/salvar', methods=['POST'])
+def aluno_recorrencia_salvar():
+    if not is_logged_in_aluno(): return redirect(url_for('main.login'))
+    aluno_id = session['aluno_id']
+    config = get_config()
+    
+    if not config or not config.permitir_reserva_recorrente:
+        flash('A opção de reserva automática/recorrente está desativada pela administração.', 'error')
+        return redirect(url_for('aluno.aluno_dashboard'))
+        
+    dias_selecionados = [int(x) for x in request.form.getlist('dias_recorrencia') if x.isdigit()]
+    now_str = datetime_now_str()
+    hoje_str = date_hoje_str()
+    
+    with closing(get_db_connection()) as conn:
+        aluno_row = conn.execute("SELECT turma_id FROM alunos WHERE id = ?", (aluno_id,)).fetchone()
+        turma_dias_bloq = set()
+        if aluno_row and aluno_row['turma_id']:
+            t_row = conn.execute("SELECT dias_bloqueados FROM turmas WHERE id = ?", (aluno_row['turma_id'],)).fetchone()
+            if t_row and t_row['dias_bloqueados']:
+                turma_dias_bloq = parse_dias_bloqueados(t_row['dias_bloqueados'])
+
+        # Desconsidera qualquer dia bloqueado para a turma do estudante
+        dias_selecionados = [d for d in dias_selecionados if d not in turma_dias_bloq]
+
+        for d in range(7):
+            ativo = 1 if d in dias_selecionados else 0
+            conn.execute("""
+                INSERT INTO aluno_recorrencia_dias (aluno_id, dia_semana, ativo, criado_em, atualizado_em)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(aluno_id, dia_semana) DO UPDATE SET ativo = ?, atualizado_em = ?
+            """, (aluno_id, d, ativo, now_str, now_str, ativo, now_str))
+            
+            # Se desmarcou o dia, cancela reservas futuras automáticas desse dia da semana que ainda estejam abertas
+            if ativo == 0:
+                futuras = conn.execute("""
+                    SELECT r.id, c.data FROM reservas r
+                    JOIN cardapios c ON r.cardapio_id = c.id
+                    WHERE r.aluno_id = ? AND r.status = 'ATIVA' AND c.data >= ?
+                """, (aluno_id, hoje_str)).fetchall()
+                for rf in futuras:
+                    dt_f = datetime.strptime(rf['data'], '%Y-%m-%d')
+                    if dt_f.weekday() == d:
+                        j_info = calcular_janela_reserva(rf['data'], conn=conn)
+                        if j_info['status'] == 'ABERTA':
+                            conn.execute("""
+                                UPDATE reservas 
+                                SET status = 'CANCELADA', 
+                                    motivo_cancelamento = 'Desmarcado do plano semanal recorrente', 
+                                    cancelado_por = 'ALUNO',
+                                    data_cancelamento = ?
+                                WHERE id = ?
+                            """, (now_str, rf['id']))
+        conn.commit()
+        
+    sincronizar_reservas_recorrentes(aluno_id)
+    flash('Seu plano semanal de almoço foi atualizado com sucesso!', 'success')
     return redirect(url_for('aluno.aluno_dashboard'))
 
 @aluno_bp.route('/aluno/avaliar/<int:reserva_id>', methods=['POST'])

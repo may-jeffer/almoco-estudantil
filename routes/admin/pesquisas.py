@@ -50,7 +50,7 @@ def admin_pesquisa_novo():
     if request.method == 'POST':
         titulo = request.form.get('titulo', '').strip()
         descricao = request.form.get('descricao', '').strip()
-        is_anonimo = 1 if request.form.get('is_anonimo') else 0
+        is_anonimo = 1 if str(request.form.get('is_anonimo', '1')).strip() in ('1', 'true', 'True') else 0
         ativo = 1 if request.form.get('ativo') else 0
         data_inicio = request.form.get('data_inicio') or None
         data_fim = request.form.get('data_fim') or None
@@ -101,7 +101,7 @@ def admin_pesquisa_novo():
             flash('Formulário de pesquisa criado com sucesso!', 'success')
             return redirect(url_for('admin.admin_pesquisas'))
 
-    return render_template('admin/pesquisa_form.html', formulario=None, perguntas=[])
+    return render_template('admin/pesquisa_form.html', formulario=None, perguntas=[], total_respostas=0)
 
 @admin_bp.route('/admin/pesquisas/editar/<int:id>', methods=['GET', 'POST'])
 def admin_pesquisa_editar(id):
@@ -115,10 +115,22 @@ def admin_pesquisa_editar(id):
             flash('Formulário não encontrado.', 'error')
             return redirect(url_for('admin.admin_pesquisas'))
 
+        total_respostas = conn.execute(
+            "SELECT COUNT(*) FROM formulario_respostas_envios WHERE formulario_id = ?", (id,)
+        ).fetchone()[0]
+
         if request.method == 'POST':
             titulo = request.form.get('titulo', '').strip()
             descricao = request.form.get('descricao', '').strip()
-            is_anonimo = 1 if request.form.get('is_anonimo') else 0
+
+            # SE JÁ HOUVER RESPOSTAS REGISTRADAS:
+            # Não permite alterar o tipo de identificação (anônimo vs identificado)
+            # para preservar a consistência e integridade das respostas existentes.
+            if total_respostas > 0:
+                is_anonimo = formulario['is_anonimo']
+            else:
+                is_anonimo = 1 if str(request.form.get('is_anonimo', '1')).strip() in ('1', 'true', 'True') else 0
+
             ativo = 1 if request.form.get('ativo') else 0
             data_inicio = request.form.get('data_inicio') or None
             data_fim = request.form.get('data_fim') or None
@@ -143,8 +155,9 @@ def admin_pesquisa_editar(id):
                 WHERE id = ?
             """, (titulo, descricao, is_anonimo, ativo, data_inicio, data_fim, id))
 
-            # Atualizar perguntas: remove as antigas e insere a nova estrutura
-            conn.execute("DELETE FROM formulario_perguntas WHERE formulario_id = ?", (id,))
+            # Atualizar perguntas com preservação de IDs existentes:
+            # Isso impede que o DELETE em cascata apague as respostas de formulario_respostas_itens!
+            mantidos_ids = []
             for idx, p in enumerate(perguntas):
                 titulo_p = p.get('titulo', '').strip()
                 if not titulo_p: continue
@@ -153,12 +166,32 @@ def admin_pesquisa_editar(id):
                 opcoes_json = json.dumps(opcoes, ensure_ascii=False) if tipo_p in ('multipla_escolha', 'checkbox') else None
                 obrigatoria = 1 if p.get('obrigatoria') else 0
                 ordem = idx
+                p_id = p.get('id')
 
-                conn.execute("""
-                    INSERT INTO formulario_perguntas
-                    (formulario_id, titulo_pergunta, tipo_pergunta, opcoes_json, obrigatoria, ordem)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                """, (id, titulo_p, tipo_p, opcoes_json, obrigatoria, ordem))
+                if p_id:
+                    # Atualiza a pergunta mantendo seu ID original
+                    conn.execute("""
+                        UPDATE formulario_perguntas
+                        SET titulo_pergunta = ?, tipo_pergunta = ?, opcoes_json = ?, obrigatoria = ?, ordem = ?
+                        WHERE id = ? AND formulario_id = ?
+                    """, (titulo_p, tipo_p, opcoes_json, obrigatoria, ordem, p_id, id))
+                    mantidos_ids.append(int(p_id))
+                else:
+                    cur = conn.execute("""
+                        INSERT INTO formulario_perguntas
+                        (formulario_id, titulo_pergunta, tipo_pergunta, opcoes_json, obrigatoria, ordem)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    """, (id, titulo_p, tipo_p, opcoes_json, obrigatoria, ordem))
+                    mantidos_ids.append(cur.lastrowid)
+
+            # Excluir perguntas removidas que não possuem respostas
+            perguntas_atuais = conn.execute("SELECT id FROM formulario_perguntas WHERE formulario_id = ?", (id,)).fetchall()
+            for pa in perguntas_atuais:
+                pid = pa['id']
+                if pid not in mantidos_ids:
+                    tem_respostas_item = conn.execute("SELECT COUNT(*) FROM formulario_respostas_itens WHERE pergunta_id = ?", (pid,)).fetchone()[0]
+                    if tem_respostas_item == 0:
+                        conn.execute("DELETE FROM formulario_perguntas WHERE id = ?", (pid,))
 
             conn.commit()
             registrar_auditoria("Editar Pesquisa", f"Editou o formulário ID {id} ('{titulo}')")
@@ -178,7 +211,7 @@ def admin_pesquisa_editar(id):
                 'obrigatoria': bool(p['obrigatoria'])
             })
 
-    return render_template('admin/pesquisa_form.html', formulario=formulario, perguntas=perguntas)
+    return render_template('admin/pesquisa_form.html', formulario=formulario, perguntas=perguntas, total_respostas=total_respostas)
 
 @admin_bp.route('/admin/pesquisas/toggle/<int:id>', methods=['POST'])
 def admin_pesquisa_toggle(id):

@@ -58,11 +58,7 @@
 - Exportação oficial de relatórios em planilhas Excel (`.xlsx`).
 - **Logs de Auditoria:** Rastreabilidade de todas as ações administrativas com data, hora, usuário e endereço IP.
 
-### 8. 📖 Manual Operacional Integrado (`/admin/manual`)
-- Manual completo com 9 capítulos ilustrados acessível diretamente dentro da aplicação.
-- Busca rápida por palavras-chave e botão para **Imprimir / Salvar em PDF** formatado para folha A4.
-
-### 9. ⚙️ Configurações Globais & Identidade Visual
+### 8. ⚙️ Configurações Globais & Identidade Visual
 - **Logomarca Institucional Dinâmica:** A logo da instituição é aplicada automaticamente no cabeçalho, nos crachás e como **Favicon** em todas as abas do navegador.
 - **Horário Limite Diário de Reserva:** Corte automático para encerramento de agendamentos.
 - **Servidor SMTP:** Integração para envio de e-mails de recuperação de senha e comunicados.
@@ -182,7 +178,6 @@ almoco-estudantil/
 │       ├── evento_detalhe.html # Participantes e crachás do evento
 │       ├── evento_imprimir.html# Impressão de crachás de evento
 │       ├── login.html          # Login restrito de administradores
-│       ├── manual.html         # Manual do sistema integrado e guia do usuário
 │       ├── pesquisas.html      # Lista e gestão de formulários de pesquisa
 │       ├── pesquisa_form.html  # Construtor visual de formulários (Google Forms)
 │       ├── pesquisa_respostas.html # Dashboard analítico de respostas

@@ -7,13 +7,27 @@ def is_logged_in_admin():
     return session.get('is_admin') == True
 
 def tem_permissao(p):
-    if not is_logged_in_admin(): return False
+    if not is_logged_in_admin():
+        return False
+    # O superadministrador do sistema sempre tem acesso total
+    if session.get('admin_usuario') == 'admin':
+        return True
     perms = session.get('admin_permissoes', [])
-    perfil = session.get('admin_perfil', '')
-    return perfil == 'admin_mestre' or 'all' in perms or p in perms
+    if isinstance(perms, str):
+        try:
+            import json
+            perms = json.loads(perms)
+        except Exception:
+            perms = []
+    if not isinstance(perms, (list, set, tuple)):
+        return False
+    return 'all' in perms or p in perms
 
 def is_admin_mestre():
+    if session.get('admin_usuario') == 'admin':
+        return True
     return tem_permissao('all')
+
 
 
 from collections import defaultdict

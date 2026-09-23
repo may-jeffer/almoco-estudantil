@@ -25,9 +25,14 @@
                 </small>
             </div>
             
-            <div class="form-group" style="display: flex; align-items: center; gap: 8px; margin-top: 1rem; margin-bottom: 1.5rem;">
-                <input type="checkbox" id="lembrar_me" name="lembrar_me" style="width: auto; margin: 0;">
-                <label for="lembrar_me" style="margin: 0; font-size: 0.9rem; cursor: pointer; user-select: none; color: var(--text-main);">Manter-me conectado por 30 dias</label>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="lembrar_me" name="lembrar_me" style="width: auto; margin: 0;">
+                    <label for="lembrar_me" style="margin: 0; font-size: 0.85rem; cursor: pointer; user-select: none; color: var(--text-main);">Conectado por 30 dias</label>
+                </div>
+                <a href="{{ url_for('admin_esqueci_senha') }}" style="font-size: 0.82rem; color: #ef4444; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                    <i class="ph ph-key"></i> Esqueceu a senha?
+                </a>
             </div>
             
             <button type="submit" class="btn btn-danger" style="width: 100%;"><i class="ph ph-sign-in" style="margin-right: 8px;"></i> Entrar</button>

@@ -1,20 +1,17 @@
 # -*- coding: utf-8 -*-
-from flask import render_template, request, redirect, url_for, session, flash, Response, current_app
+from flask import render_template, request, redirect, url_for, session, flash, current_app, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 import json
 import time
 import os
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from email.utils import formataddr
-from email.header import Header
+import re
+import secrets
+from datetime import datetime, timedelta
 
 from database import closing, get_db_connection, get_config
 from utils.auth import is_logged_in_admin, tem_permissao
-from utils.helpers import datetime_now_str, date_hoje_str, pode_reservar, sanitize_field, registrar_auditoria
-from utils.qrcode_gen import generate_badge_code, generate_std_badge_code
-from utils.mailer import _build_smtp_server
+from utils.helpers import datetime_now_str, date_hoje_str, sanitize_field, registrar_auditoria
+from utils.mailer import enviar_email_recuperacao, diagnosticar_smtp
 from . import admin_bp
 
 @admin_bp.route('/admin/login', methods=['GET', 'POST'])
@@ -57,7 +54,12 @@ def admin_login():
                     session['is_admin'] = True
                     session['admin_id'] = admin['id']
                     session['admin_usuario'] = admin['usuario']
-                    session['admin_perfil'] = admin['perfil'] if 'perfil' in admin.keys() else 'admin_mestre'
+                    session['admin_nome'] = admin['nome'] if 'nome' in admin.keys() and admin['nome'] else admin['usuario']
+                    session['admin_email'] = admin['email'] if 'email' in admin.keys() and admin['email'] else ''
+                    session['admin_setor'] = admin['setor'] if 'setor' in admin.keys() and admin['setor'] else ''
+                    session['admin_perfil'] = admin['perfil'] if 'perfil' in admin.keys() else 'operador'
+                    session['admin_modo_escuro'] = admin['modo_escuro'] if 'modo_escuro' in admin.keys() and admin['modo_escuro'] else 0
+                    session['admin_tema'] = admin['tema_preferido'] if 'tema_preferido' in admin.keys() and admin['tema_preferido'] else ''
                     
                     # Carregar Permissões
                     try:
@@ -82,8 +84,13 @@ def admin_logout():
     session.pop('is_admin', None)
     session.pop('admin_id', None)
     session.pop('admin_usuario', None)
+    session.pop('admin_nome', None)
+    session.pop('admin_email', None)
+    session.pop('admin_setor', None)
     session.pop('admin_perfil', None)
     session.pop('admin_permissoes', None)
+    session.pop('admin_modo_escuro', None)
+    session.pop('admin_tema', None)
     return redirect(url_for('admin.admin_login'))
 
 @admin_bp.route('/admin')
@@ -102,19 +109,46 @@ def admin_dashboard():
         """).fetchone()[0]
         total_visitantes = conn.execute("SELECT COUNT(*) FROM alunos WHERE matricula LIKE 'EVT-%'").fetchone()[0]
         config = conn.execute("SELECT * FROM configuracoes WHERE id = 1").fetchone()
+
+        # Métricas operacionais do dia
+        hoje = date_hoje_str()
+        cardapio_hoje = conn.execute("SELECT * FROM cardapios WHERE data = ?", (hoje,)).fetchone()
+        
+        refeicoes_servidas_hoje = 0
+        reservas_hoje = 0
+        ultimas_retiradas = []
+        
+        if cardapio_hoje:
+            refeicoes_servidas_hoje = conn.execute(
+                "SELECT COUNT(*) FROM reservas WHERE cardapio_id = ? AND status = 'CONSUMIDA'", 
+                (cardapio_hoje['id'],)
+            ).fetchone()[0]
+            
+            reservas_hoje = conn.execute(
+                "SELECT COUNT(*) FROM reservas WHERE cardapio_id = ? AND status IN ('ATIVA', 'CONSUMIDA')", 
+                (cardapio_hoje['id'],)
+            ).fetchone()[0]
+            
+            ultimas_retiradas = conn.execute("""
+                SELECT r.codigo_unico, r.data_registro, a.nome as aluno_nome, a.matricula, t.nome as turma_nome
+                FROM reservas r
+                JOIN alunos a ON r.aluno_id = a.id
+                LEFT JOIN turmas t ON a.turma_id = t.id
+                WHERE r.cardapio_id = ? AND r.status = 'CONSUMIDA'
+                ORDER BY r.id DESC
+                LIMIT 5
+            """, (cardapio_hoje['id'],)).fetchall()
         
     return render_template('admin/dashboard.html', 
                            total_alunos=total_alunos, 
                            total_turmas=total_turmas, 
                            total_eventos=total_eventos,
                            total_visitantes=total_visitantes,
-                           config=config)
-
-@admin_bp.route('/admin/manual')
-def admin_manual():
-    """Manual interativo e documentação completa de uso do sistema."""
-    if not is_logged_in_admin(): return redirect(url_for('admin.admin_login'))
-    return render_template('admin/manual.html')
+                           config=config,
+                           refeicoes_servidas_hoje=refeicoes_servidas_hoje,
+                           reservas_hoje=reservas_hoje,
+                           cardapio_hoje=cardapio_hoje,
+                           ultimas_retiradas=ultimas_retiradas)
 
 # --- CRUD de Administradores ---
 
@@ -124,36 +158,73 @@ def admin_administradores():
     if not tem_permissao('admins'): return redirect(url_for('admin.admin_dashboard'))
     
     if request.method == 'POST':
-        usuario = request.form.get('usuario')
-        senha = request.form.get('senha')
+        nome = request.form.get('nome', '').strip()
+        cpf_raw = request.form.get('cpf', '').strip()
+        cpf_clean = re.sub(r'\D', '', cpf_raw)
+        cpf = f"{cpf_clean[:3]}.{cpf_clean[3:6]}.{cpf_clean[6:9]}-{cpf_clean[9:]}" if len(cpf_clean) == 11 else cpf_raw
+        setor = request.form.get('setor', '').strip()
+        email = request.form.get('email', '').strip().lower()
+        usuario = request.form.get('usuario', '').strip().lower()
+        senha = request.form.get('senha', '')
+        
+        if not usuario or not senha:
+            flash('Usuário e Senha são campos obrigatórios.', 'error')
+            return redirect(url_for('admin.admin_administradores'))
+
+        if cpf_clean and len(cpf_clean) != 11:
+            flash('CPF inválido. O CPF deve conter exatamente 11 dígitos numéricos.', 'error')
+            return redirect(url_for('admin.admin_administradores'))
         
         plist = request.form.getlist('permissoes[]')
         
-        # Se marcou 'all' ou marcou todas as permissões disponíveis => admin_mestre
-        todas_perms = {'turmas', 'alunos', 'cardapios', 'relatorios', 'avisos', 'fila', 'admins', 'config', 'smtp'}
-        if 'all' in plist or todas_perms.issubset(set(plist)):
+        todas_perms = {'turmas', 'alunos', 'cardapios', 'relatorios', 'avisos', 'fila', 'admins', 'config', 'smtp', 'qualidade', 'eventos', 'base_conhecimento', 'pesquisas'}
+        if 'all' in plist:
             perfil = 'admin_mestre'
             plist = ['all']
-        elif plist:
-            perfil = 'operador_fila'
         else:
-            # Nenhuma permissão marcada => mestre com all
-            perfil = 'admin_mestre'
-            plist = ['all']
+            plist = [p for p in plist if p in todas_perms]
+            if todas_perms.issubset(set(plist)):
+                perfil = 'admin_mestre'
+                plist = ['all']
+            elif plist:
+                perfil = 'operador'
+            else:
+                perfil = 'operador'
+                plist = []
         
         permissoes_json = json.dumps(plist)
-        
-        # Gerar hash seguro para o administrador
         hash_senha = generate_password_hash(senha)
         
         try:
             with closing(get_db_connection()) as conn:
-                conn.execute("INSERT INTO administradores (usuario, senha, perfil, permissoes) VALUES (?, ?, ?, ?)", (usuario, hash_senha, perfil, permissoes_json))
+                # Checar se usuário já existe
+                if conn.execute("SELECT id FROM administradores WHERE LOWER(usuario) = LOWER(?)", (usuario,)).fetchone():
+                    flash(f'O usuário "{usuario}" já está em uso.', 'error')
+                    return redirect(url_for('admin.admin_administradores'))
+                
+                # Checar se CPF já existe
+                if cpf and conn.execute("SELECT id FROM administradores WHERE cpf = ?", (cpf,)).fetchone():
+                    flash(f'Já existe um administrador cadastrado com o CPF {cpf}.', 'error')
+                    return redirect(url_for('admin.admin_administradores'))
+
+                # Checar se e-mail já existe
+                if email and conn.execute("SELECT id FROM administradores WHERE LOWER(email) = LOWER(?)", (email,)).fetchone():
+                    flash(f'Já existe um administrador cadastrado com o e-mail {email}.', 'error')
+                    return redirect(url_for('admin.admin_administradores'))
+
+                conn.execute("""
+                    INSERT INTO administradores (usuario, senha, nome, cpf, setor, email, perfil, permissoes)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, (usuario, hash_senha, nome, cpf, setor, email, perfil, permissoes_json))
                 conn.commit()
-                registrar_auditoria("Criar Administrador", f"Criou o administrador: {usuario} ({perfil})")
-                flash('Credencial adicionada com sucesso!', 'success')
+
+                detalhes_log = f"Criou admin: {nome or usuario} (@{usuario})"
+                if setor: detalhes_log += f" | Setor: {setor}"
+                if cpf: detalhes_log += f" | CPF: {cpf}"
+                registrar_auditoria("Criar Administrador", detalhes_log)
+                flash('Credencial de administrador adicionada com sucesso!', 'success')
         except Exception as e:
-            flash(f'Erro. Usuário já existente ou erro no banco: {e}', 'error')
+            flash(f'Erro ao cadastrar administrador: {e}', 'error')
         return redirect(url_for('admin.admin_administradores'))
         
     with closing(get_db_connection()) as conn:
@@ -202,35 +273,184 @@ def admin_administradores_editar(id):
     if not is_logged_in_admin(): return redirect(url_for('admin.admin_login'))
     if not tem_permissao('admins'): return redirect(url_for('admin.admin_dashboard'))
     
+    nome = request.form.get('nome', '').strip()
+    cpf_raw = request.form.get('cpf', '').strip()
+    cpf_clean = re.sub(r'\D', '', cpf_raw)
+    cpf = f"{cpf_clean[:3]}.{cpf_clean[3:6]}.{cpf_clean[6:9]}-{cpf_clean[9:]}" if len(cpf_clean) == 11 else cpf_raw
+    setor = request.form.get('setor', '').strip()
+    email = request.form.get('email', '').strip().lower()
+
+    if cpf_clean and len(cpf_clean) != 11:
+        flash('CPF inválido. O CPF deve conter exatamente 11 dígitos numéricos.', 'error')
+        return redirect(url_for('admin.admin_administradores'))
+
     plist = request.form.getlist('permissoes[]')
     
-    # Derivar perfil automaticamente das permissões marcadas
-    todas_perms = {'turmas', 'alunos', 'cardapios', 'relatorios', 'avisos', 'fila', 'admins', 'config', 'smtp'}
-    if 'all' in plist or todas_perms.issubset(set(plist)):
+    todas_perms = {'turmas', 'alunos', 'cardapios', 'relatorios', 'avisos', 'fila', 'admins', 'config', 'smtp', 'qualidade', 'eventos', 'base_conhecimento', 'pesquisas'}
+    if 'all' in plist:
         perfil = 'admin_mestre'
         plist = ['all']
-    elif plist:
-        perfil = 'operador_fila'
     else:
-        perfil = 'admin_mestre'
-        plist = ['all']
+        plist = [p for p in plist if p in todas_perms]
+        if todas_perms.issubset(set(plist)):
+            perfil = 'admin_mestre'
+            plist = ['all']
+        elif plist:
+            perfil = 'operador'
+        else:
+            perfil = 'operador'
+            plist = []
     
     permissoes_json = json.dumps(plist)
     
     with closing(get_db_connection()) as conn:
-        admin = conn.execute("SELECT usuario FROM administradores WHERE id = ?", (id,)).fetchone()
-        usuario_txt = admin['usuario'] if admin else f"ID {id}"
-        conn.execute("UPDATE administradores SET perfil = ?, permissoes = ? WHERE id = ?", (perfil, permissoes_json, id))
+        admin = conn.execute("SELECT * FROM administradores WHERE id = ?", (id,)).fetchone()
+        if not admin:
+            flash('Administrador não encontrado.', 'error')
+            return redirect(url_for('admin.admin_administradores'))
+
+        # Checar unicidade de CPF
+        if cpf:
+            conf_cpf = conn.execute("SELECT id FROM administradores WHERE cpf = ? AND id != ?", (cpf, id)).fetchone()
+            if conf_cpf:
+                flash(f'Já existe outro administrador cadastrado com o CPF {cpf}.', 'error')
+                return redirect(url_for('admin.admin_administradores'))
+
+        # Checar unicidade de e-mail
+        if email:
+            conf_email = conn.execute("SELECT id FROM administradores WHERE LOWER(email) = LOWER(?) AND id != ?", (email, id)).fetchone()
+            if conf_email:
+                flash(f'Já existe outro administrador cadastrado com o e-mail {email}.', 'error')
+                return redirect(url_for('admin.admin_administradores'))
+
+        usuario_txt = admin['usuario']
+        conn.execute("""
+            UPDATE administradores 
+            SET nome = ?, cpf = ?, setor = ?, email = ?, perfil = ?, permissoes = ? 
+            WHERE id = ?
+        """, (nome, cpf, setor, email, perfil, permissoes_json, id))
         conn.commit()
-        registrar_auditoria("Editar Administrador", f"Editou o perfil/permissões do admin: {usuario_txt} ({perfil})")
+
+        registrar_auditoria("Editar Administrador", f"Atualizou admin {usuario_txt} ({nome or 'sem nome'}): Setor={setor}, CPF={cpf}, E-mail={email}, Perfil={perfil}")
         
         # Se o admin editado for o próprio logado, atualizar sessão IMEDIATAMENTE
         if session.get('admin_id') == id:
+            session['admin_nome'] = nome or usuario_txt
+            session['admin_email'] = email
+            session['admin_setor'] = setor
             session['admin_perfil'] = perfil
             session['admin_permissoes'] = json.loads(permissoes_json)
             
-    flash('Perfil e permissões do administrador atualizados!', 'success')
+    flash('Dados e permissões do administrador atualizados com sucesso!', 'success')
     return redirect(url_for('admin.admin_administradores'))
+
+# --- Recuperação de Senha de Administradores ---
+
+@admin_bp.route('/admin/esqueci_senha', methods=['GET', 'POST'])
+def admin_esqueci_senha():
+    """Solicitação de redefinição de senha para administradores por CPF, E-mail ou Usuário."""
+    if request.method == 'POST':
+        identificador = request.form.get('identificador', '').strip()
+        if not identificador:
+            flash('Informe seu CPF, E-mail ou Usuário de administrador.', 'error')
+            return render_template('admin/esqueci_senha.html')
+
+        ident_clean = re.sub(r'\D', '', identificador)
+        ident_cpf = f"{ident_clean[:3]}.{ident_clean[3:6]}.{ident_clean[6:9]}-{ident_clean[9:]}" if len(ident_clean) == 11 else identificador
+
+        with closing(get_db_connection()) as conn:
+            admin = conn.execute("""
+                SELECT * FROM administradores 
+                WHERE LOWER(usuario) = LOWER(?) 
+                   OR LOWER(email) = LOWER(?) 
+                   OR cpf = ? 
+                   OR cpf = ?
+                LIMIT 1
+            """, (identificador, identificador, identificador, ident_cpf)).fetchone()
+
+            if not admin:
+                flash('Nenhum administrador localizado com a credencial informada.', 'error')
+                return render_template('admin/esqueci_senha.html')
+
+            if not admin['email']:
+                flash(f"O administrador '{admin['usuario']}' não possui e-mail cadastrado. Solicite a redefinição a um Administrador Mestre.", 'error')
+                return render_template('admin/esqueci_senha.html')
+
+            config = conn.execute('SELECT * FROM configuracoes WHERE id = 1').fetchone()
+            if not config or not config['smtp_ativo'] or not config['smtp_host']:
+                flash('O envio de e-mails automáticos (SMTP) não está ativo no sistema. Contate a direção para redefinir a senha.', 'error')
+                return render_template('admin/esqueci_senha.html')
+
+            token = secrets.token_hex(16)
+            expiracao = datetime.now() + timedelta(hours=1)
+
+            conn.execute("""
+                UPDATE administradores 
+                SET reset_token = ?, reset_expiracao = ? 
+                WHERE id = ?
+            """, (token, expiracao.strftime('%Y-%m-%d %H:%M:%S'), admin['id']))
+            conn.commit()
+
+            url_recuperacao = url_for('admin.admin_recuperar_senha', token=token, _external=True)
+            sucesso = enviar_email_recuperacao(
+                {'nome': admin['nome'] or admin['usuario'], 'email': admin['email']},
+                url_recuperacao,
+                config,
+                is_admin=True
+            )
+
+            if sucesso:
+                registrar_auditoria("Solicitar Recuperação Admin", f"Token de recuperação gerado para {admin['usuario']} ({admin['email']})")
+                flash(f"Sucesso! Enviamos as instruções de recuperação para o e-mail ({admin['email']}). O link é válido por 1 hora.", 'success')
+                return redirect(url_for('admin.admin_login'))
+            else:
+                flash('Falha no envio do e-mail de recuperação. Verifique as configurações de SMTP.', 'error')
+
+    return render_template('admin/esqueci_senha.html')
+
+@admin_bp.route('/admin/recuperar_senha/<token>', methods=['GET', 'POST'])
+def admin_recuperar_senha(token):
+    """Redefinição de senha de administrador através de token seguro enviado por e-mail."""
+    with closing(get_db_connection()) as conn:
+        admin = conn.execute("SELECT * FROM administradores WHERE reset_token = ?", (token,)).fetchone()
+        if not admin:
+            flash('Código de recuperação inválido ou já utilizado.', 'error')
+            return redirect(url_for('admin.admin_login'))
+
+        try:
+            expiracao = datetime.strptime(admin['reset_expiracao'], '%Y-%m-%d %H:%M:%S')
+        except Exception:
+            expiracao = datetime.min
+
+        if datetime.now() > expiracao:
+            flash('O link de recuperação expirou (prazo de 1 hora excedido). Solicite uma nova recuperação.', 'error')
+            return redirect(url_for('admin.admin_esqueci_senha'))
+
+        if request.method == 'POST':
+            nova_senha = request.form.get('nova_senha', '')
+            confirma_senha = request.form.get('confirma_senha', '')
+
+            if len(nova_senha) < 4:
+                flash('Senha muito curta. Digite ao menos 4 caracteres.', 'error')
+                return render_template('admin/recuperar_senha.html', token=token, admin=admin)
+
+            if nova_senha != confirma_senha:
+                flash('A confirmação da senha não coincide com a nova senha digitada.', 'error')
+                return render_template('admin/recuperar_senha.html', token=token, admin=admin)
+
+            hash_novo = generate_password_hash(nova_senha)
+            conn.execute("""
+                UPDATE administradores 
+                SET senha = ?, reset_token = NULL, reset_expiracao = NULL 
+                WHERE id = ?
+            """, (hash_novo, admin['id']))
+            conn.commit()
+
+            registrar_auditoria("Recuperar Senha Admin", f"Senha do administrador '{admin['usuario']}' redefinida com sucesso via token de e-mail.")
+            flash('Sua senha de administrador foi redefinida com sucesso! Faça login com a nova credencial.', 'success')
+            return redirect(url_for('admin.admin_login'))
+
+    return render_template('admin/recuperar_senha.html', token=token, admin=admin)
 
 # --- CRUD de Avisos ---
 
@@ -266,11 +486,47 @@ def admin_avisos_excluir(id):
         flash('Aviso removido do mural!', 'success')
     return redirect(url_for('admin.admin_avisos'))
 
-@admin_bp.route('/admin/configuracoes', methods=['POST'])
+@admin_bp.route('/admin/avisos/editar/<int:id>', methods=['POST'])
+def admin_avisos_editar(id):
+    if not is_logged_in_admin(): return redirect(url_for('admin.admin_login'))
+    if not tem_permissao('avisos'): return redirect(url_for('admin.admin_dashboard'))
+    
+    titulo = request.form.get('titulo', '').strip()
+    mensagem = request.form.get('mensagem', '').strip()
+    tipo = request.form.get('tipo', 'info')
+    
+    if not titulo or not mensagem:
+        flash('Título e mensagem são obrigatórios para atualizar o aviso.', 'error')
+        return redirect(url_for('admin.admin_avisos'))
+        
+    with closing(get_db_connection()) as conn:
+        conn.execute("UPDATE avisos SET titulo = ?, mensagem = ?, tipo = ? WHERE id = ?", (titulo, mensagem, tipo, id))
+        conn.commit()
+        registrar_auditoria("Editar Aviso", f"Editou o aviso ID {id}: {titulo}")
+        flash('Aviso atualizado com sucesso no mural!', 'success')
+    return redirect(url_for('admin.admin_avisos'))
+
+@admin_bp.route('/admin/configuracoes', methods=['GET', 'POST'])
+def admin_configuracoes():
+    if not is_logged_in_admin(): return redirect(url_for('admin.admin_login'))
+    if not (tem_permissao('config') or tem_permissao('smtp')):
+        return redirect(url_for('admin.admin_dashboard'))
+    
+    if request.method == 'POST':
+        return save_configuracoes()
+        
+    smtp_diagnostic = session.pop('smtp_diagnostic', None)
+    with closing(get_db_connection()) as conn:
+        config = conn.execute("SELECT * FROM configuracoes WHERE id = 1").fetchone()
+        janelas = conn.execute("SELECT * FROM config_janelas_reserva ORDER BY dia_refeicao ASC").fetchall()
+    return render_template('admin/configuracoes.html', config=config, janelas=janelas, smtp_diagnostic=smtp_diagnostic)
+
 def save_configuracoes():
     if not is_logged_in_admin(): return redirect(url_for('admin.admin_login'))
-    if not tem_permissao('config'): return redirect(url_for('admin.admin_dashboard'))
-    horario_limite = request.form.get('horario_limite')
+    if not tem_permissao('config'):
+        flash('Acesso negado: você não possui permissão para alterar as configurações globais.', 'error')
+        return redirect(url_for('admin.admin_configuracoes'))
+    horario_limite = request.form.get('horario_limite') or '18:00'
     nome_sistema = request.form.get('nome_sistema', 'Cantina Estudantil')
     sigla_instituicao = request.form.get('sigla_instituicao', 'SIGLA')
     modo_login_aluno = request.form.get('modo_login_aluno', 'DATA_NASC')
@@ -282,30 +538,65 @@ def save_configuracoes():
         tempo_autologout = 60
     elif tempo_autologout > 0 and tempo_autologout < 10:
         tempo_autologout = 10
+    tema_admin = request.form.get('tema_admin', 'padrao')
+    permitir_reserva_recorrente = 1 if request.form.get('permitir_reserva_recorrente') == '1' else 0
     
     with closing(get_db_connection()) as conn:
         conn.execute(
             "UPDATE configuracoes SET horario_limite = ?, nome_sistema = ?, sigla_instituicao = ?, "
-            "modo_login_aluno = ?, max_reservas_ativas = ?, email_qr_reserva = ?, tempo_autologout = ? WHERE id = 1",
-            (horario_limite, nome_sistema, sigla_instituicao, modo_login_aluno, max_reservas_ativas, email_qr_reserva, tempo_autologout)
+            "modo_login_aluno = ?, max_reservas_ativas = ?, email_qr_reserva = ?, tempo_autologout = ?, tema_admin = ?, "
+            "permitir_reserva_recorrente = ? WHERE id = 1",
+            (horario_limite, nome_sistema, sigla_instituicao, modo_login_aluno, max_reservas_ativas, email_qr_reserva, tempo_autologout, tema_admin, permitir_reserva_recorrente)
         )
+
+        # Atualiza a configuração manual de cada dia da semana (0 a 6)
+        for dia_idx in range(7):
+            prefix = f"janela_{dia_idx}_"
+            if f"{prefix}fe_hora" in request.form or f"{prefix}ativo" in request.form or f"{prefix}fe_combo" in request.form:
+                ativo = 1 if request.form.get(f"{prefix}ativo") == '1' else 0
+                
+                ab_combo = request.form.get(f"{prefix}ab_combo")
+                if ab_combo and '_' in ab_combo:
+                    ab_offset, ab_dia = map(int, ab_combo.split('_'))
+                else:
+                    ab_dia = request.form.get(f"{prefix}ab_dia", 0, type=int)
+                    ab_offset = request.form.get(f"{prefix}ab_offset", 1, type=int)
+                    
+                fe_combo = request.form.get(f"{prefix}fe_combo")
+                if fe_combo and '_' in fe_combo:
+                    fe_offset, fe_dia = map(int, fe_combo.split('_'))
+                else:
+                    fe_dia = request.form.get(f"{prefix}fe_dia", 4 if dia_idx == 0 else max(0, dia_idx - 1), type=int)
+                    fe_offset = request.form.get(f"{prefix}fe_offset", 1 if dia_idx == 0 else 0, type=int)
+                    
+                ab_hora = request.form.get(f"{prefix}ab_hora", "08:00").strip() or "08:00"
+                fe_hora = request.form.get(f"{prefix}fe_hora", "14:00" if dia_idx == 0 else "10:00").strip() or "10:00"
+                
+                conn.execute("""
+                    UPDATE config_janelas_reserva
+                    SET ativo = ?, abertura_dia_semana = ?, abertura_semana_offset = ?, abertura_horario = ?,
+                        fechamento_dia_semana = ?, fechamento_semana_offset = ?, fechamento_horario = ?
+                    WHERE dia_refeicao = ?
+                """, (ativo, ab_dia, ab_offset, ab_hora, fe_dia, fe_offset, fe_hora, dia_idx))
+
         conn.commit()
-        registrar_auditoria("Alterar Configurações", f"Alterou configurações do sistema (Nome: {nome_sistema}, Limite: {horario_limite})")
-        flash('Configurações gerais salvas com sucesso.', 'success')
-    return redirect(url_for('admin.admin_dashboard'))
+        registrar_auditoria("Alterar Configurações", f"Alterou configurações do sistema e regras das janelas semanais de reserva")
+        flash('Configurações gerais e regras das janelas de reserva salvas com sucesso.', 'success')
+    return redirect(url_for('admin.admin_configuracoes'))
 
 @admin_bp.route('/admin/configuracoes/logo', methods=['POST'])
 def save_logo():
     if not is_logged_in_admin(): return redirect(url_for('admin.admin_login'))
-    if not tem_permissao('config'): return redirect(url_for('admin.admin_dashboard'))
+    if not tem_permissao('config'): 
+        flash('Acesso negado: você não possui permissão para alterar a logomarca institucional.', 'error')
+        return redirect(url_for('admin.admin_configuracoes'))
     
     file = request.files.get('logo_file')
     if file and file.filename != '':
-        # Validação de extensão de arquivo para evitar execução remota de arquivos ou XSS armazenado
         ext = os.path.splitext(file.filename)[1].lower()
         if ext not in ['.png', '.jpg', '.jpeg', '.webp', '.gif']:
             flash('Tipo de arquivo não permitido. Por segurança, envie apenas imagens (.png, .jpg, .jpeg, .webp, .gif).', 'error')
-            return redirect(url_for('admin.admin_dashboard'))
+            return redirect(url_for('admin.admin_configuracoes'))
             
         filename = "logo_instituicao" + ext
         filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
@@ -320,13 +611,15 @@ def save_logo():
     else:
          flash('Nenhum arquivo enviado.', 'error')
          
-    return redirect(url_for('admin.admin_dashboard'))
+    return redirect(url_for('admin.admin_configuracoes'))
 
 # SMTP Configurações
 @admin_bp.route('/admin/configuracoes/smtp', methods=['POST'])
 def save_configuracoes_smtp():
     if not is_logged_in_admin(): return redirect(url_for('admin.admin_login'))
-    if not tem_permissao('smtp'): return redirect(url_for('admin.admin_dashboard'))
+    if not tem_permissao('smtp'): 
+        flash('Acesso negado: você não possui permissão para alterar as configurações de e-mail SMTP.', 'error')
+        return redirect(url_for('admin.admin_configuracoes'))
     
     smtp_ativo = 1 if request.form.get('smtp_ativo') == '1' else 0
     smtp_host = request.form.get('smtp_host')
@@ -345,75 +638,111 @@ def save_configuracoes_smtp():
         registrar_auditoria("Alterar SMTP", f"Atualizou configurações do SMTP (Host: {smtp_host}, Ativo: {smtp_ativo})")
         flash('Configuração do Servidor SMTP salva com sucesso.', 'success')
         
-    return redirect(url_for('admin.admin_dashboard'))
+    return redirect(url_for('admin.admin_configuracoes'))
 
 @admin_bp.route('/admin/configuracoes/smtp/testar', methods=['POST'])
 def testar_smtp():
-    """Envia um e-mail de teste usando as configurações SMTP atuais do banco."""
-    if not is_logged_in_admin(): return redirect(url_for('admin.admin_login'))
-    if not tem_permissao('smtp'): return redirect(url_for('admin.admin_dashboard'))
+    """Envia um e-mail de teste com diagnóstico detalhado passo a passo."""
+    is_ajax = request.is_json or request.headers.get('Accept', '').startswith('application/json') or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    
+    if not is_logged_in_admin():
+        if is_ajax:
+            return jsonify({"success": False, "mensagem": "Sessão expirada. Faça login novamente."}), 401
+        return redirect(url_for('admin.admin_login'))
+        
+    if not tem_permissao('smtp'): 
+        msg = 'Acesso negado: você não possui permissão para testar a conexão de e-mail.'
+        if is_ajax:
+            return jsonify({"success": False, "mensagem": msg}), 403
+        flash(msg, 'error')
+        return redirect(url_for('admin.admin_configuracoes'))
 
     email_teste = request.form.get('email_teste', '').strip()
+    if not email_teste and request.is_json:
+        data = request.get_json(silent=True) or {}
+        email_teste = data.get('email_teste', '').strip()
+
     if not email_teste:
-        flash('Informe um endereço de e-mail para o teste.', 'error')
-        return redirect(url_for('admin.admin_dashboard'))
+        msg = 'Informe um endereço de e-mail para o teste.'
+        if is_ajax:
+            return jsonify({"success": False, "mensagem": msg}), 400
+        flash(msg, 'error')
+        return redirect(url_for('admin.admin_configuracoes'))
 
-    config = get_config()
-    if not config or not config['smtp_host'] or not config['smtp_user']:
-        flash('Configure o servidor SMTP antes de testar.', 'error')
-        return redirect(url_for('admin.admin_dashboard'))
+    db_config = dict(get_config() or {})
+    
+    # Permite testar com os dados enviados diretamente do formulário ou com o salvo no banco
+    cfg = {
+        'smtp_host': request.form.get('smtp_host', '').strip() or db_config.get('smtp_host'),
+        'smtp_porta': request.form.get('smtp_porta', '').strip() or db_config.get('smtp_porta'),
+        'smtp_user': request.form.get('smtp_user', '').strip() or db_config.get('smtp_user'),
+        'smtp_senha': request.form.get('smtp_senha') or db_config.get('smtp_senha'),
+        'nome_sistema': db_config.get('nome_sistema'),
+        'sigla_instituicao': db_config.get('sigla_instituicao')
+    }
 
-    if not config['smtp_senha']:
-        flash('Senha SMTP não configurada. Salve a configuração SMTP com a senha antes de testar.', 'error')
-        return redirect(url_for('admin.admin_dashboard'))
+    diagnostico = diagnosticar_smtp(cfg, email_teste)
 
-    nome_sistema = config['nome_sistema'] or 'Cantina Estudantil'
-    sigla = config['sigla_instituicao'] or ''
-
-    conteudo_html = f"""
-    <div id="liveAlertPlaceholder" style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 350px; z-index: 9999; text-align: center;"></div>
-    <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto;
-                border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden;">
-        <div style="background: #CD191E; padding: 24px; text-align: center;">
-            <h2 style="color: white; margin: 0; font-size: 1.4rem;">🍽️ {nome_sistema}</h2>
-            <p style="color: #fca5a5; margin: 4px 0 0 0; font-size: 0.9rem;">{sigla}</p>
-        </div>
-        <div style="padding: 28px;">
-            <p style="font-size: 1rem;">Olá, <strong>Testador</strong>! 👋</p>
-            <p>Este é um <strong>e-mail de teste</strong> enviado pelo painel administrativo.</p>
-            <p>Se você recebeu esta mensagem, a configuração SMTP está funcionando corretamente! ✅</p>
-            <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 20px 0;">
-            <ul style="color: #6b7280; font-size: 0.85rem;">
-                <li>Host: <strong>{config['smtp_host']}:{config['smtp_porta']}</strong></li>
-                <li>Remetente: <strong>{config['smtp_user']}</strong></li>
-            </ul>
-        </div>
-    </div>
-    """
-
-    try:
-        msg = MIMEMultipart('alternative')
-        msg['Subject'] = f'✅ Teste de SMTP — {nome_sistema}'
-        msg['From'] = formataddr((str(Header(nome_sistema, 'utf-8')), config['smtp_user']))
-        msg['To'] = email_teste
-        msg.attach(MIMEText(conteudo_html, 'html'))
-
-        # Passamos debug=True para que todo o fluxo SMTP seja impresso no terminal/console do servidor Flask
-        server = _build_smtp_server(config, debug=True)
-        server.send_message(msg)
-        server.quit()
-        
+    if diagnostico['success']:
         registrar_auditoria("Testar SMTP", f"Enviou e-mail de teste de SMTP para {email_teste}")
-        flash(f'E-mail de teste enviado com sucesso para {email_teste}! Verifique sua caixa de entrada.', 'success')
-    except TimeoutError:
-        flash('Falha no envio (Timeout): O servidor SMTP demorou muito para responder. Verifique se o Host e a Porta estão corretos e se não há bloqueios de rede no servidor.', 'error')
-    except ConnectionRefusedError:
-        flash('Falha no envio (Conexão Recusada): A conexão com o servidor SMTP foi recusada. Verifique se o Host e a Porta estão corretos e se o serviço SMTP está rodando.', 'error')
-    except smtplib.SMTPAuthenticationError as e:
-        flash(f'Falha no envio (Erro de Autenticação): Usuário ou senha SMTP incorretos. Detalhes: {e}', 'error')
-    except smtplib.SMTPConnectError as e:
-        flash(f'Falha no envio (Erro de Conexão): Não foi possível conectar ao Host SMTP. Detalhes: {e}', 'error')
-    except Exception as e:
-        flash(f'Falha no envio: {e} (Veja o log detalhado no console do servidor Flask)', 'error')
+        flash(f'E-mail de teste enviado com sucesso para {email_teste}!', 'success')
+    else:
+        registrar_auditoria("Testar SMTP", f"Falha no teste para {email_teste}: {diagnostico['mensagem']}")
+        flash(f"Falha no teste SMTP: {diagnostico['mensagem']}", 'error')
 
-    return redirect(url_for('admin.admin_dashboard'))
+    if is_ajax:
+        return jsonify(diagnostico)
+
+    session['smtp_diagnostic'] = diagnostico
+    return redirect(url_for('admin.admin_configuracoes'))
+
+@admin_bp.route('/admin/tema', methods=['POST'])
+def admin_salvar_tema():
+    if not is_logged_in_admin():
+        return {"success": False, "error": "Não autenticado"}, 401
+    
+    data = request.get_json(silent=True) or request.form
+    tema = data.get('tema')
+    modo_escuro = data.get('modo_escuro')
+    
+    temas_validos = {'padrao', 'azul', 'indigo', 'esmeralda', 'grafite', 'vinho', 'ambar'}
+    admin_id = session.get('admin_id')
+    updates = []
+    params = []
+    
+    if tema:
+        if tema not in temas_validos:
+            tema = 'padrao'
+        updates.append("tema_preferido = ?")
+        params.append(tema)
+        session['admin_tema'] = tema
+        
+        # Se tiver permissão de config ou for superadmin, atualiza o tema padrão global
+        if tem_permissao('config') or session.get('admin_usuario') == 'admin':
+            with closing(get_db_connection()) as conn:
+                conn.execute("UPDATE configuracoes SET tema_admin = ? WHERE id = 1", (tema,))
+                conn.commit()
+                registrar_auditoria("Alterar Paleta", f"Paleta de cores padrão alterada para: {tema}")
+                
+    if modo_escuro is not None:
+        try:
+            modo_escuro_val = 1 if int(modo_escuro) in (1, '1', True) else 0
+        except (ValueError, TypeError):
+            modo_escuro_val = 0
+        updates.append("modo_escuro = ?")
+        params.append(modo_escuro_val)
+        session['admin_modo_escuro'] = modo_escuro_val
+        registrar_auditoria("Alterar Tema", f"Modo escuro {'ativado' if modo_escuro_val else 'desativado'}")
+
+    if updates and admin_id:
+        params.append(admin_id)
+        with closing(get_db_connection()) as conn:
+            conn.execute(f"UPDATE administradores SET {', '.join(updates)} WHERE id = ?", tuple(params))
+            conn.commit()
+            
+    return {
+        "success": True, 
+        "tema": session.get('admin_tema', 'padrao'),
+        "modo_escuro": session.get('admin_modo_escuro', 0)
+    }
+

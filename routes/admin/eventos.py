@@ -3,14 +3,12 @@ from flask import render_template, request, redirect, url_for, session, flash, R
 import csv
 import io
 import re
-import sqlite3
 import qrcode
 import base64
 from io import BytesIO
-from database import closing, get_db_connection, generate_unique_code
+from database import closing, get_db_connection
 from utils.auth import is_logged_in_admin, tem_permissao
-from utils.helpers import datetime_now_str, date_hoje_str, pode_reservar, sanitize_field, registrar_auditoria
-from utils.qrcode_gen import generate_badge_code
+from utils.helpers import datetime_now_str, date_hoje_str, sanitize_field, registrar_auditoria
 from . import admin_bp
 
 @admin_bp.route('/admin/eventos', methods=['GET', 'POST'])

@@ -32,7 +32,43 @@ def fromjson_filter(value):
         return []
 
 
+from markupsafe import Markup, escape
+
+def nl2br_filter(value):
+    if not value:
+        return ''
+    return Markup('<br>\n'.join(escape(value).split('\n')))
+
+DIAS_SEMANA = [
+    'Segunda-feira',
+    'Terça-feira',
+    'Quarta-feira',
+    'Quinta-feira',
+    'Sexta-feira',
+    'Sábado',
+    'Domingo'
+]
+
+def data_com_semana(value):
+    if not value:
+        return ''
+    try:
+        if isinstance(value, str):
+            clean_val = value.strip()[:10]
+            dt = datetime.strptime(clean_val, '%Y-%m-%d')
+        elif hasattr(value, 'strftime') and hasattr(value, 'weekday'):
+            dt = value
+        else:
+            return value
+        dia_sem = DIAS_SEMANA[dt.weekday()]
+        return f"{dt.strftime('%d/%m/%Y')} ({dia_sem})"
+    except:
+        return value
+
 def register_filters(app):
     app.template_filter('datetimeformat')(datetimeformat)
+    app.template_filter('format_date')(datetimeformat)
     app.template_filter('format_cpf')(format_cpf)
     app.template_filter('fromjson')(fromjson_filter)
+    app.template_filter('nl2br')(nl2br_filter)
+    app.template_filter('data_com_semana')(data_com_semana)

@@ -2,309 +2,363 @@
 
 {% block content %}
 <div class="fade-in">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-        <h1><i class="ph ph-squares-four" style="margin-right: 8px;"></i> Painel de Controle</h1>
-    </div>
-
-    <!-- Cards Superiores -->
-    <div class="grid" style="margin-bottom: 2rem;">
-        <div class="card header-stats"
-            style="grid-column: span 3; display: flex; justify-content: space-around; flex-wrap: wrap; gap: 1.5rem; padding: 2rem;">
-            {% if tem_permissao('turmas') %}
-            <div class="stat-item" style="display: flex; align-items: center; gap: 10px;">
-                <i class="ph ph-buildings" style="font-size: 2rem; color: var(--primary);"></i>
-                <div>
-                    <span style="display: block; font-size: 1.5rem; font-weight: bold;">{{ total_turmas }}</span>
-                    <span style="color: var(--text-muted); font-size: 0.9rem;">Turmas</span>
-                </div>
-            </div>
-            {% endif %}
-
-            {% if tem_permissao('alunos') %}
-            <div class="stat-item" style="display: flex; align-items: center; gap: 10px;">
-                <i class="ph ph-student" style="font-size: 2rem; color: #4F46E5;"></i>
-                <div>
-                    <span style="display: block; font-size: 1.5rem; font-weight: bold;">{{ total_alunos }}</span>
-                    <span style="color: var(--text-muted); font-size: 0.9rem;">Alunos Regulares</span>
-                </div>
-            </div>
-            {% endif %}
-
-            {% if session.get('admin_perfil') == 'admin_mestre' or 'eventos' in session.get('admin_permissoes', []) %}
-            <div class="stat-item" style="display: flex; align-items: center; gap: 10px;">
-                <i class="ph ph-calendar-star" style="font-size: 2rem; color: #10b981;"></i>
-                <div>
-                    <span style="display: block; font-size: 1.5rem; font-weight: bold;">{{ total_eventos }}</span>
-                    <span style="color: var(--text-muted); font-size: 0.9rem;">Eventos Ativos</span>
-                </div>
-            </div>
-            <div class="stat-item" style="display: flex; align-items: center; gap: 10px;">
-                <i class="ph ph-users-three" style="font-size: 2rem; color: #f59e0b;"></i>
-                <div>
-                    <span style="display: block; font-size: 1.5rem; font-weight: bold;">{{ total_visitantes }}</span>
-                    <span style="color: var(--text-muted); font-size: 0.9rem;">Visitantes (Eventos)</span>
-                </div>
-            </div>
-            {% endif %}
-
-            <div class="stat-item" style="display: flex; align-items: center; gap: 10px;">
-                <i class="ph ph-clock" style="font-size: 2rem; color: var(--secondary);"></i>
-                <div>
-                    <span style="display: block; font-size: 1.5rem; font-weight: bold;">{{ config.horario_limite
-                        }}</span>
-                    <span style="color: var(--text-muted); font-size: 0.9rem;">Limite Reserva</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Linha principal: Menu + Configurações -->
-    <div class="grid">
-        <!-- Ações Rápidas -->
-        <div class="card" style="grid-column: span 1; align-self: start;">
-            <h2>Gestão do Sistema</h2>
-            <div class="admin-menu">
-                {% if tem_permissao('turmas') %}
-                <a href="{{ url_for('admin_turmas') }}" class="menu-item">
-                    <i class="ph ph-buildings"></i>
-                    <span>Gerenciar Turmas</span>
-                </a>
-                {% endif %}
-
-                {% if tem_permissao('alunos') %}
-                <a href="{{ url_for('admin_alunos') }}" class="menu-item">
-                    <i class="ph ph-student"></i>
-                    <span>Gerenciar Alunos</span>
-                </a>
-                {% endif %}
-
-                {% if session.get('admin_perfil') == 'admin_mestre' or 'eventos' in session.get('admin_permissoes', [])
-                %}
-                <a href="{{ url_for('admin_eventos') }}" class="menu-item">
-                    <i class="ph ph-calendar-star" style="color: #10b981;"></i>
-                    <span>Gerenciar Eventos</span>
-                </a>
-                {% endif %}
-
-                {% if tem_permissao('cardapios') %}
-                <a href="{{ url_for('admin_cardapios') }}" class="menu-item">
-                    <i class="ph ph-calendar-plus"></i>
-                    <span>Gerenciar Cardápios</span>
-                </a>
-                {% endif %}
-
-                {% if tem_permissao('fila') %}
-                <a href="{{ url_for('admin_reservas') }}" class="menu-item">
-                    <i class="ph ph-ticket"></i>
-                    <span>Gerenciar Reservas</span>
-                </a>
-                {% endif %}
-
-                {% if tem_permissao('relatorios') %}
-                <a href="{{ url_for('admin_relatorios') }}" class="menu-item">
-                    <i class="ph ph-file-text"></i>
-                    <span>Relatórios</span>
-                </a>
-                {% endif %}
-
-                {% if tem_permissao('avisos') %}
-                <a href="{{ url_for('admin_avisos') }}" class="menu-item">
-                    <i class="ph ph-megaphone"></i>
-                    <span>Gerenciar Avisos</span>
-                </a>
-                {% endif %}
-
-                {% if tem_permissao('pesquisas') %}
-                <a href="{{ url_for('admin_pesquisas') }}" class="menu-item">
-                    <i class="ph ph-list-checks" style="color: #6366f1;"></i>
-                    <span>Pesquisas e Formulários</span>
-                </a>
-                {% endif %}
-
-                {% if tem_permissao('base_conhecimento') %}
-                <a href="{{ url_for('admin.admin_base_conhecimento') }}" class="menu-item">
-                    <i class="ph ph-books" style="color: #7c3aed;"></i>
-                    <span>Base de Conhecimento</span>
-                </a>
-                {% endif %}
-
-                {% if tem_permissao('admins') %}
-                <a href="{{ url_for('admin_administradores') }}" class="menu-item">
-                    <i class="ph ph-shield-check"></i>
-                    <span>Gestão de Acessos</span>
-                </a>
-                {% endif %}
-
-                {% if session.get('admin_perfil') == 'admin_mestre' or tem_permissao('all') %}
-                <a href="{{ url_for('admin_auditoria') }}" class="menu-item">
-                    <i class="ph ph-shield-warning"></i>
-                    <span>Logs do Sistema</span>
-                </a>
-                {% endif %}
-
-                <a href="{{ url_for('admin_manual') }}" class="menu-item">
-                    <i class="ph ph-book-open" style="color: #0ea5e9;"></i>
-                    <span>Manual do Sistema</span>
-                </a>
-
-                {% if tem_permissao('fila') %}
-                <a href="{{ url_for('admin_entrega') }}" class="menu-item highlight">
-                    <i class="ph ph-qr-code"></i>
-                    <span>Modo Fila (Escanear Tickets)</span>
-                </a>
-                {% endif %}
-            </div>
+    <!-- Cabeçalho do Dashboard Operacional -->
+    <div class="admin-dashboard-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.75rem; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <h1 style="display: flex; align-items: center; gap: 10px; margin-bottom: 0.25rem; font-size: 1.75rem;">
+                <i class="ph ph-squares-four" style="color: var(--primary);"></i> Painel do Dia
+            </h1>
+            <p style="color: var(--text-muted); font-size: 0.95rem;">
+                Visão operacional em tempo real da cantina e atalhos rápidos do sistema.
+            </p>
         </div>
 
-        <!-- Configurações do Sistema -->
-        {% if tem_permissao('config') or tem_permissao('smtp') %}
-        <div class="card" style="align-self: start;">
-            <h2>Configurações Globais</h2>
-
-            <form method="POST" action="{{ url_for('save_configuracoes') }}" style="margin-top: 1.5rem;">
-                {% if tem_permissao('config') %}
-                <div class="form-group">
-                    <label for="nome_sistema">Nome Principal do Sistema</label>
-                    <input type="text" id="nome_sistema" name="nome_sistema"
-                        value="{{ config.nome_sistema if config else 'Cantina Estudantil' }}">
-                </div>
-
-                <div class="form-group">
-                    <label for="sigla_instituicao">Sigla/Nome da Instituição</label>
-                    <input type="text" id="sigla_instituicao" name="sigla_instituicao"
-                        value="{{ config.sigla_instituicao if config else 'SIGLA' }}">
-                </div>
-
-                <div class="form-group">
-                    <label for="horario_limite">Hora Limite para Reserva</label>
-                    <input type="time" id="horario_limite" name="horario_limite" value="{{ config.horario_limite }}"
-                        required>
-                </div>
-
-                <div class="form-group">
-                    <label for="modo_login_aluno">Método de Login do Aluno</label>
-                    <select id="modo_login_aluno" name="modo_login_aluno">
-                        <option value="DATA_NASC" {% if config.modo_login_aluno=='DATA_NASC' %}selected{% endif %}>Data
-                            de Nascimento (Simples)</option>
-                        <option value="SENHA" {% if config.modo_login_aluno=='SENHA' %}selected{% endif %}>CPF + Senha
-                            (Seguro)</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="max_reservas_ativas">Máx. de Reservas Ativas por Aluno</label>
-                    <input type="number" id="max_reservas_ativas" name="max_reservas_ativas"
-                        value="{{ config.max_reservas_ativas if config.max_reservas_ativas else 1 }}" min="1" max="30">
-                    <small style="color: var(--text-muted);">Quantas refeições um aluno pode reservar ao mesmo tempo
-                        (padrão: 1).</small>
-                </div>
-
-                <div class="form-group">
-                    <label for="email_qr_reserva">Enviar QR Code por E-mail ao Reservar?</label>
-                    <select id="email_qr_reserva" name="email_qr_reserva">
-                        <option value="1" {% if config.email_qr_reserva %}selected{% endif %}>Sim (requer SMTP ativo e
-                            e-mail do aluno)</option>
-                        <option value="0" {% if not config.email_qr_reserva %}selected{% endif %}>Não</option>
-                    </select>
-                    <small style="color: var(--text-muted);">O QR Code será enviado automaticamente após cada reserva
-                        confirmada.</small>
-                </div>
-
-                <div class="form-group">
-                    <label for="tempo_autologout">Tempo de Autologout (Segundos, use 0 para desativar)</label>
-                    <input type="number" id="tempo_autologout" name="tempo_autologout"
-                        value="{{ config.tempo_autologout if config.tempo_autologout is not none else 60 }}" min="0">
-                    <small style="color: var(--text-muted);">Tempo inativo antes de deslogar automaticamente o aluno nos
-                        tablets (0 desativa o timer).</small>
-                </div>
-
-                <button type="submit" class="btn btn-secondary" style="width: 100%;">
-                    <i class="ph ph-floppy-disk" style="margin-right: 8px;"></i> Salvar Configurações
-                </button>
-                {% endif %}
-            </form>
-
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            {% if tem_permissao('fila') %}
+            <a href="{{ url_for('admin_entrega') }}" class="btn" style="background: #EF4444; color: white !important; font-weight: 600; padding: 0.75rem 1.4rem; box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3);">
+                <i class="ph ph-qr-code" style="margin-right: 8px; font-size: 1.2rem;"></i> Modo Fila (Scanner)
+            </a>
+            {% endif %}
             {% if tem_permissao('config') %}
-            <hr style="margin: 2rem 0; border: 0; border-top: 1px solid var(--border);">
-
-            <form method="POST" action="{{ url_for('save_logo') }}" enctype="multipart/form-data">
-                <div class="form-group">
-                    <label>Logomarca Institucional</label>
-                    <div style="display: flex; gap: 10px; align-items: center;">
-                        {% if config.logo_path %}
-                        <img src="{{ config.logo_path }}"
-                            style="height: 50px; border: 1px solid var(--border); border-radius: 4px;">
-                        {% endif %}
-                        <input type="file" name="logo_file" accept="image/*" required>
-                    </div>
-                </div>
-                <button type="submit" class="btn" style="background: var(--text-main); color: white; width: 100%;">
-                    <i class="ph ph-upload-simple" style="margin-right: 8px;"></i> Atualizar Logo
-                </button>
-            </form>
+            <a href="{{ url_for('admin.admin_configuracoes') }}" class="btn" style="background: var(--surface); border: 1px solid var(--border); color: var(--text-main); padding: 0.75rem 1.1rem;" title="Abrir configurações">
+                <i class="ph ph-gear" style="margin-right: 6px;"></i> Configurações
+            </a>
+            {% elif tem_permissao('smtp') %}
+            <a href="{{ url_for('admin.admin_configuracoes') }}" class="btn" style="background: var(--surface); border: 1px solid var(--border); color: var(--text-main); padding: 0.75rem 1.1rem;" title="Servidor de E-mail (SMTP)">
+                <i class="ph ph-envelope-simple" style="margin-right: 6px;"></i> Servidor de E-mail
+            </a>
             {% endif %}
+
+        </div>
+    </div>
+
+    <!-- CARDS DE MÉTRICAS OPERACIONAIS DO DIA -->
+    <div class="admin-metrics-grid">
+        <!-- Métrica 1: Refeições Servidas Hoje -->
+        <div class="card" style="margin-bottom: 0; padding: 1.4rem; display: flex; align-items: center; gap: 15px;">
+            <div style="width: 50px; height: 50px; border-radius: 12px; background: rgba(47, 158, 65, 0.12); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.8rem; flex-shrink: 0;">
+                <i class="ph ph-bowl-food"></i>
+            </div>
+            <div>
+                <span style="display: block; font-size: 1.7rem; font-weight: 700; color: var(--text-main); line-height: 1.1;">{{ refeicoes_servidas_hoje }}</span>
+                <span style="color: var(--text-muted); font-size: 0.82rem; font-weight: 500;">Servidas Hoje</span>
+            </div>
+        </div>
+
+        <!-- Métrica 2: Reservas Confirmadas Hoje -->
+        <div class="card" style="margin-bottom: 0; padding: 1.4rem; display: flex; align-items: center; gap: 15px;">
+            <div style="width: 50px; height: 50px; border-radius: 12px; background: rgba(37, 99, 235, 0.12); color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; flex-shrink: 0;">
+                <i class="ph ph-ticket"></i>
+            </div>
+            <div>
+                <span style="display: block; font-size: 1.7rem; font-weight: 700; color: var(--text-main); line-height: 1.1;">{{ reservas_hoje }}</span>
+                <span style="color: var(--text-muted); font-size: 0.82rem; font-weight: 500;">Reservas do Dia</span>
+            </div>
+        </div>
+
+        <!-- Métrica 3: Alunos Regulares -->
+        {% if tem_permissao('alunos') %}
+        <div class="card" style="margin-bottom: 0; padding: 1.4rem; display: flex; align-items: center; gap: 15px;">
+            <div style="width: 50px; height: 50px; border-radius: 12px; background: rgba(99, 102, 241, 0.12); color: #6366f1; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; flex-shrink: 0;">
+                <i class="ph ph-student"></i>
+            </div>
+            <div>
+                <span style="display: block; font-size: 1.7rem; font-weight: 700; color: var(--text-main); line-height: 1.1;">{{ total_alunos }}</span>
+                <span style="color: var(--text-muted); font-size: 0.82rem; font-weight: 500;">Alunos Regulares</span>
+            </div>
         </div>
         {% endif %}
-    </div>
 
-    <!-- SMTP — linha separada, largura total -->
-    {% if tem_permissao('smtp') %}
-    <div class="grid" style="margin-top: 1.5rem;">
-        <div class="card" style="grid-column: span 3;">
-            <h2>Servidor de E-mail (SMTP)</h2>
-            <form method="POST" action="{{ url_for('save_configuracoes_smtp') }}">
-                <div class="grid" style="grid-template-columns: 1fr 1fr 1fr 1fr; gap: 1rem;">
-                    <div class="form-group">
-                        <label>Ativo?</label>
-                        <select name="smtp_ativo">
-                            <option value="1" {% if config.smtp_ativo %}selected{% endif %}>Sim</option>
-                            <option value="0" {% if not config.smtp_ativo %}selected{% endif %}>Não</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Host SMTP</label>
-                        <input type="text" name="smtp_host" value="{{ config.smtp_host or '' }}">
-                    </div>
-                    <div class="form-group">
-                        <label>Porta</label>
-                        <input type="text" name="smtp_porta" value="{{ config.smtp_porta or '' }}">
-                    </div>
-                    <div class="form-group">
-                        <label>Usuário</label>
-                        <input type="text" name="smtp_user" value="{{ config.smtp_user or '' }}">
-                    </div>
-                    <div class="form-group" style="grid-column: span 4;">
-                        <label>Senha / Token SMTP</label>
-                        <input type="password" name="smtp_senha"
-                            placeholder="Mantenha vazio para preservar a senha atual">
-                    </div>
-                </div>
-                <button type="submit" class="btn btn-primary" style="width: 100%;">
-                    <i class="ph ph-plugs-connected" style="margin-right: 8px;"></i> Salvar Configuração SMTP
-                </button>
-            </form>
+        <!-- Métrica 4: Turmas Cadastradas -->
+        {% if tem_permissao('turmas') %}
+        <div class="card" style="margin-bottom: 0; padding: 1.4rem; display: flex; align-items: center; gap: 15px;">
+            <div style="width: 50px; height: 50px; border-radius: 12px; background: rgba(249, 115, 22, 0.12); color: #f97316; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; flex-shrink: 0;">
+                <i class="ph ph-buildings"></i>
+            </div>
+            <div>
+                <span style="display: block; font-size: 1.7rem; font-weight: 700; color: var(--text-main); line-height: 1.1;">{{ total_turmas }}</span>
+                <span style="color: var(--text-muted); font-size: 0.82rem; font-weight: 500;">Turmas Ativas</span>
+            </div>
+        </div>
+        {% endif %}
 
-            <hr style="margin: 2rem 0; border: 0; border-top: 1px solid var(--border);">
-
-            <h3 style="margin-bottom: 1rem; font-size: 1rem; display: flex; align-items: center; gap: 8px;">
-                <i class="ph ph-paper-plane-tilt" style="color: #0ea5e9;"></i> Testar Conexão SMTP
-            </h3>
-            <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1rem;">
-                Envie um e-mail de teste antes de ativar em produção. Salve as configurações SMTP acima primeiro.
-            </p>
-            <form method="POST" action="{{ url_for('testar_smtp') }}"
-                style="display: flex; gap: 10px; align-items: flex-end;">
-                <div class="form-group" style="flex: 1; margin-bottom: 0;">
-                    <label for="email_teste">E-mail de destino do teste</label>
-                    <input type="email" id="email_teste" name="email_teste" placeholder="seu@email.com" required>
-                </div>
-                <button type="submit" class="btn"
-                    style="background: #0ea5e9; color: white; white-space: nowrap; padding: 0.7rem 1.2rem;">
-                    <i class="ph ph-paper-plane-tilt" style="margin-right: 6px;"></i> Enviar Teste
-                </button>
-            </form>
+        <!-- Métrica 5: Regras de Reserva por Dia -->
+        <div class="card" style="margin-bottom: 0; padding: 1.4rem; display: flex; align-items: center; gap: 15px;">
+            <div style="width: 50px; height: 50px; border-radius: 12px; background: rgba(14, 165, 233, 0.1); color: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; flex-shrink: 0;">
+                <i class="ph ph-calendar-check"></i>
+            </div>
+            <div>
+                <span style="display: block; font-size: 1.25rem; font-weight: 700; color: var(--text-main); line-height: 1.1;">Por Dia</span>
+                <span style="color: var(--text-muted); font-size: 0.82rem; font-weight: 500;">Janelas & Prazos</span>
+            </div>
         </div>
     </div>
-    {% endif %}
+
+    <!-- SEÇÃO OPERACIONAL VIVA: CARDÁPIO DE HOJE + ÚLTIMAS RETIRADAS -->
+    <div class="admin-operational-grid">
+        
+        <!-- Bloco 1: Cardápio do Dia -->
+        <div class="card" style="margin-bottom: 0; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h2 style="font-size: 1.15rem; margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <i class="ph ph-fork-knife" style="color: var(--primary);"></i> Cardápio de Hoje
+                </h2>
+                {% if tem_permissao('cardapios') %}
+                <a href="{{ url_for('admin_cardapios') }}" style="font-size: 0.85rem; font-weight: 600;">
+                    Ver Cardápios <i class="ph ph-arrow-right"></i>
+                </a>
+                {% endif %}
+            </div>
+
+            {% if cardapio_hoje %}
+            <div class="cardapio-hoje-box" style="border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                    <span class="badge badge-active" style="display: inline-block; margin-bottom: 0.5rem;">Prato Confirmado</span>
+                    <h3 style="font-size: 1.2rem; color: var(--text-main); margin-bottom: 0.5rem;">{{ cardapio_hoje['descricao'] }}</h3>
+                    
+                    {% if cardapio_hoje['acompanhamento'] or cardapio_hoje['proteinas'] or cardapio_hoje['salada'] or cardapio_hoje['sobremesa'] %}
+                    <div style="font-size: 0.88rem; color: var(--text-muted); display: grid; gap: 0.35rem; margin-top: 0.75rem;">
+                        {% if cardapio_hoje['proteinas'] %}<div><strong>Proteínas:</strong> {{ cardapio_hoje['proteinas'] }}</div>{% endif %}
+                        {% if cardapio_hoje['acompanhamento'] %}<div><strong>Acompanhamento:</strong> {{ cardapio_hoje['acompanhamento'] }}</div>{% endif %}
+                        {% if cardapio_hoje['salada'] %}<div><strong>Salada:</strong> {{ cardapio_hoje['salada'] }}</div>{% endif %}
+                        {% if cardapio_hoje['sobremesa'] %}<div><strong>Sobremesa:</strong> {{ cardapio_hoje['sobremesa'] }}</div>{% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div style="margin-top: 1.2rem; padding-top: 0.75rem; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: var(--text-muted);">
+                    <span>Data: <strong>{{ cardapio_hoje['data']|datetimeformat }}</strong></span>
+                    {% if tem_permissao('qualidade') %}
+                    <a href="{{ url_for('admin_qualidade') }}" style="color: #10b981; font-weight: 600; display: flex; align-items: center; gap: 4px;">
+                        <i class="ph ph-thermometer"></i> Registrar Temp.
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            {% else %}
+            <div class="cardapio-vazio-box" style="border-radius: 10px; padding: 2rem; text-align: center; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                <i class="ph ph-warning-circle" style="font-size: 2.2rem; color: #ef4444; margin-bottom: 0.5rem;"></i>
+                <h4 style="margin: 0 0 0.4rem 0; color: #991b1b;">Nenhum cardápio cadastrado para hoje</h4>
+                <p style="color: #b91c1c; font-size: 0.88rem; margin: 0 0 1rem 0;">Cadastre o prato do dia para liberar as reservas dos alunos.</p>
+                {% if tem_permissao('cardapios') %}
+                <a href="{{ url_for('admin_cardapios') }}" class="btn btn-sm btn-primary">
+                    <i class="ph ph-plus" style="margin-right: 4px;"></i> Cadastrar Cardápio de Hoje
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Bloco 2: Últimas Retiradas na Fila -->
+        <div class="card" style="margin-bottom: 0; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h2 style="font-size: 1.15rem; margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <i class="ph ph-clock-counter-clockwise" style="color: #2563eb;"></i> Últimas Retiradas Hoje
+                </h2>
+                {% if tem_permissao('fila') %}
+                <a href="{{ url_for('admin_reservas') }}" style="font-size: 0.85rem; font-weight: 600;">
+                    Ver Reservas <i class="ph ph-arrow-right"></i>
+                </a>
+                {% endif %}
+            </div>
+
+            <div style="flex: 1; overflow-x: auto;">
+                {% if ultimas_retiradas %}
+                <table style="width: 100%; border-collapse: collapse; margin-top: 0; font-size: 0.88rem;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid var(--border);">
+                            <th style="padding: 0.6rem 0.75rem; text-align: left; font-size: 0.75rem;">Estudante</th>
+                            <th style="padding: 0.6rem 0.75rem; text-align: left; font-size: 0.75rem;">Turma</th>
+                            <th style="padding: 0.6rem 0.75rem; text-align: right; font-size: 0.75rem;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ret in ultimas_retiradas %}
+                        <tr style="border-bottom: 1px solid #f1f5f9;">
+                            <td style="padding: 0.65rem 0.75rem;">
+                                <div style="font-weight: 600; color: var(--text-main);">{{ ret['aluno_nome'] }}</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">Mat: {{ ret['matricula'] }}</div>
+                            </td>
+                            <td style="padding: 0.65rem 0.75rem; color: var(--text-muted);">
+                                {{ ret['turma_nome'] or 'Geral' }}
+                            </td>
+                            <td style="padding: 0.65rem 0.75rem; text-align: right;">
+                                <span class="badge badge-consumed" style="font-size: 0.75rem;">Consumido</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: 10px; padding: 2.5rem 1.5rem; text-align: center; color: var(--text-muted); font-size: 0.9rem;">
+                    <i class="ph ph-handbag" style="font-size: 2rem; color: #94a3b8; display: block; margin-bottom: 0.5rem;"></i>
+                    Nenhuma refeição retirada na fila hoje ainda.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+
+    <!-- SEÇÃO DE ATALHOS RÁPIDOS POR CATEGORIAS (HUB ORGANIZADO) -->
+    <div style="margin-bottom: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 10px;">
+            <h2 style="font-size: 1.25rem; margin: 0; display: flex; align-items: center; gap: 8px;">
+                <i class="ph ph-grid-four" style="color: var(--primary);"></i> Módulos e Gestão do Sistema
+            </h2>
+            <div style="position: relative; max-width: 280px; width: 100%;">
+                <i class="ph ph-magnifying-glass" style="position: absolute; left: 10px; top: 11px; color: var(--text-muted); font-size: 1rem;"></i>
+                <input type="text" id="moduleFilter" onkeyup="filterAdminModules()" placeholder="Filtrar atalhos..." 
+                       style="padding: 0.5rem 0.75rem 0.5rem 2.2rem; font-size: 0.88rem; border-radius: 8px; border: 1px solid var(--border); width: 100%;">
+            </div>
+        </div>
+
+        <div class="admin-modules-grid">
+
+            <!-- Bloco 1: Operação & Fila -->
+            <div class="card module-block" style="margin-bottom: 0; padding: 1.5rem;">
+                <h3 style="font-size: 1.05rem; display: flex; align-items: center; gap: 8px; margin-bottom: 1rem; padding-bottom: 0.6rem; border-bottom: 1px solid var(--border);">
+                    <i class="ph ph-rocket-launch" style="color: #ef4444;"></i> Operação & Atendimento
+                </h3>
+                <div style="display: flex; flex-direction: column; gap: 0.6rem;">
+                    {% if tem_permissao('fila') %}
+                    <a href="{{ url_for('admin_entrega') }}" class="menu-item highlight" style="margin: 0; padding: 0.85rem 1rem;">
+                        <i class="ph ph-qr-code"></i>
+                        <span>Modo Fila (Escanear)</span>
+                    </a>
+                    <a href="{{ url_for('admin_reservas') }}" class="menu-item" style="margin: 0; padding: 0.85rem 1rem;">
+                        <i class="ph ph-ticket" style="color: #2563eb;"></i>
+                        <span>Gerenciar Reservas</span>
+                    </a>
+                    {% endif %}
+                    {% if tem_permissao('avisos') %}
+                    <a href="{{ url_for('admin_avisos') }}" class="menu-item" style="margin: 0; padding: 0.85rem 1rem;">
+                        <i class="ph ph-megaphone" style="color: #3b82f6;"></i>
+                        <span>Mural de Avisos</span>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Bloco 2: Nutrição & Qualidade -->
+            <div class="card module-block" style="margin-bottom: 0; padding: 1.5rem;">
+                <h3 style="font-size: 1.05rem; display: flex; align-items: center; gap: 8px; margin-bottom: 1rem; padding-bottom: 0.6rem; border-bottom: 1px solid var(--border);">
+                    <i class="ph ph-fork-knife" style="color: #10b981;"></i> Nutrição & Qualidade
+                </h3>
+                <div style="display: flex; flex-direction: column; gap: 0.6rem;">
+                    {% if tem_permissao('cardapios') %}
+                    <a href="{{ url_for('admin_cardapios') }}" class="menu-item" style="margin: 0; padding: 0.85rem 1rem;">
+                        <i class="ph ph-calendar-plus" style="color: #8b5cf6;"></i>
+                        <span>Gerenciar Cardápios</span>
+                    </a>
+                    {% endif %}
+                    {% if tem_permissao('qualidade') %}
+                    <a href="{{ url_for('admin_qualidade') }}" class="menu-item" style="margin: 0; padding: 0.85rem 1rem;">
+                        <i class="ph ph-thermometer" style="color: #10b981;"></i>
+                        <span>Recebimento / Térmico</span>
+                    </a>
+                    {% endif %}
+                    {% if tem_permissao('pesquisas') %}
+                    <a href="{{ url_for('admin_pesquisas') }}" class="menu-item" style="margin: 0; padding: 0.85rem 1rem;">
+                        <i class="ph ph-list-checks" style="color: #6366f1;"></i>
+                        <span>Pesquisas e Formulários</span>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Bloco 3: Gestão Escolar -->
+            <div class="card module-block" style="margin-bottom: 0; padding: 1.5rem;">
+                <h3 style="font-size: 1.05rem; display: flex; align-items: center; gap: 8px; margin-bottom: 1rem; padding-bottom: 0.6rem; border-bottom: 1px solid var(--border);">
+                    <i class="ph ph-student" style="color: #3b82f6;"></i> Gestão Escolar
+                </h3>
+                <div style="display: flex; flex-direction: column; gap: 0.6rem;">
+                    {% if tem_permissao('alunos') %}
+                    <a href="{{ url_for('admin_alunos') }}" class="menu-item" style="margin: 0; padding: 0.85rem 1rem;">
+                        <i class="ph ph-student" style="color: #3b82f6;"></i>
+                        <span>Gerenciar Alunos</span>
+                    </a>
+                    {% endif %}
+                    {% if tem_permissao('turmas') %}
+                    <a href="{{ url_for('admin_turmas') }}" class="menu-item" style="margin: 0; padding: 0.85rem 1rem;">
+                        <i class="ph ph-buildings" style="color: #f97316;"></i>
+                        <span>Gerenciar Turmas</span>
+                    </a>
+                    {% endif %}
+                    {% if tem_permissao('eventos') %}
+                    <a href="{{ url_for('admin_eventos') }}" class="menu-item" style="margin: 0; padding: 0.85rem 1rem;">
+                        <i class="ph ph-calendar-star" style="color: #14b8a6;"></i>
+                        <span>Gerenciar Eventos</span>
+                    </a>
+                    {% endif %}
+                    {% if tem_permissao('relatorios') %}
+                    <a href="{{ url_for('admin_relatorios') }}" class="menu-item" style="margin: 0; padding: 0.85rem 1rem;">
+                        <i class="ph ph-file-text" style="color: #0284c7;"></i>
+                        <span>Relatórios e Planilhas</span>
+                    </a>
+                    <a href="{{ url_for('admin.admin_relatorios_fornecedor') }}" class="menu-item" style="margin: 0; padding: 0.85rem 1rem;">
+                        <i class="ph ph-truck" style="color: #2563eb;"></i>
+                        <span>Pedidos ao Fornecedor</span>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Bloco 4: Sistema & Segurança -->
+            <div class="card module-block" style="margin-bottom: 0; padding: 1.5rem;">
+                <h3 style="font-size: 1.05rem; display: flex; align-items: center; gap: 8px; margin-bottom: 1rem; padding-bottom: 0.6rem; border-bottom: 1px solid var(--border);">
+                    <i class="ph ph-shield-check" style="color: #a855f7;"></i> Sistema & Apoio
+                </h3>
+                <div style="display: flex; flex-direction: column; gap: 0.6rem;">
+                    {% if tem_permissao('config') %}
+                    <a href="{{ url_for('admin.admin_configuracoes') }}" class="menu-item" style="margin: 0; padding: 0.85rem 1rem;">
+                        <i class="ph ph-gear" style="color: #a855f7;"></i>
+                        <span>Configurações Globais</span>
+                    </a>
+                    {% elif tem_permissao('smtp') %}
+                    <a href="{{ url_for('admin.admin_configuracoes') }}" class="menu-item" style="margin: 0; padding: 0.85rem 1rem;">
+                        <i class="ph ph-envelope-simple" style="color: #a855f7;"></i>
+                        <span>Servidor de E-mail (SMTP)</span>
+                    </a>
+                    {% endif %}
+
+                    {% if tem_permissao('admins') %}
+                    <a href="{{ url_for('admin_administradores') }}" class="menu-item" style="margin: 0; padding: 0.85rem 1rem;">
+                        <i class="ph ph-shield-check" style="color: #eab308;"></i>
+                        <span>Gestão de Acessos</span>
+                    </a>
+                    {% endif %}
+                    {% if tem_permissao('all') or tem_permissao('admins') %}
+                    <a href="{{ url_for('admin_auditoria') }}" class="menu-item" style="margin: 0; padding: 0.85rem 1rem;">
+                        <i class="ph ph-shield-warning" style="color: #ef4444;"></i>
+                        <span>Logs de Auditoria</span>
+                    </a>
+                    {% endif %}
+                    {% if tem_permissao('base_conhecimento') %}
+                    <a href="{{ url_for('admin.admin_base_conhecimento') }}" class="menu-item" style="margin: 0; padding: 0.85rem 1rem;">
+                        <i class="ph ph-books" style="color: #8b5cf6;"></i>
+                        <span>Base de Conhecimento</span>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
+        </div>
+    </div>
 </div>
+
+<script>
+    function filterAdminModules() {
+        const query = document.getElementById('moduleFilter').value.toLowerCase();
+        const items = document.querySelectorAll('.module-block .menu-item');
+        items.forEach(item => {
+            const text = item.innerText.toLowerCase();
+            if (text.includes(query)) {
+                item.style.display = 'flex';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+</script>
 {% endblock %}

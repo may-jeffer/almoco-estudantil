@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+
+{% block title %}Relatório de Cancelamentos — {{ global_config.nome_sistema if global_config else 'Cantina Estudantil' }}{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <!-- Cabeçalho -->
+    <div style="margin-bottom: 1.75rem;">
+        <div style="margin-bottom: 0.5rem;">
+            <a href="{{ url_for('admin_relatorios') }}" style="color: var(--text-muted); display: inline-flex; align-items: center; text-decoration: none; font-size: 0.9rem;">
+                <i class="ph ph-arrow-left" style="margin-right: 4px;"></i> Voltar aos Relatórios
+            </a>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <div>
+                <h1 style="margin: 0; font-size: 1.6rem; display: flex; align-items: center; gap: 10px; color: var(--text-main);">
+                    <i class="ph ph-x-circle" style="color: #ef4444;"></i> Relatório de Cancelamentos de Reservas
+                </h1>
+                <p style="color: var(--text-muted); margin: 0.25rem 0 0 0; font-size: 0.95rem;">
+                    Histórico detalhado de reservas canceladas, autores dos cancelamentos e motivos registrados.
+                </p>
+            </div>
+            <div style="display: flex; gap: 0.75rem; align-items: center;">
+                <a href="{{ url_for('admin.admin_relatorios_cancelamentos_excel', data_inicio=data_inicio, data_fim=data_fim, origem=origem, turma_id=turma_id, q=busca) }}" 
+                   class="btn btn-success" style="background: #15803d; border-color: #15803d; color: white; display: inline-flex; align-items: center; gap: 6px;"
+                   title="Exportar dados filtrados para planilha Excel">
+                    <i class="ph ph-file-xls" style="font-size: 1.2rem;"></i> Exportar Excel
+                </a>
+                <button type="button" class="btn btn-secondary" onclick="window.print()" style="display: inline-flex; align-items: center; gap: 6px;">
+                    <i class="ph ph-printer"></i> Imprimir
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cards KPI -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+        <div class="card" style="padding: 1.25rem; border-left: 4px solid #ef4444; display: flex; align-items: center; gap: 1rem;">
+            <div style="width: 48px; height: 48px; border-radius: 10px; background: #fee2e2; display: flex; align-items: center; justify-content: center; color: #b91c1c; font-size: 1.6rem; flex-shrink: 0;">
+                <i class="ph ph-x-circle"></i>
+            </div>
+            <div>
+                <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; letter-spacing: 0.03em;">Total Canceladas</span>
+                <strong style="font-size: 1.6rem; color: var(--text-main); display: block; line-height: 1.1;">{{ kpi_total }}</strong>
+            </div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem; border-left: 4px solid #3b82f6; display: flex; align-items: center; gap: 1rem;">
+            <div style="width: 48px; height: 48px; border-radius: 10px; background: #dbeafe; display: flex; align-items: center; justify-content: center; color: #1d4ed8; font-size: 1.6rem; flex-shrink: 0;">
+                <i class="ph ph-student"></i>
+            </div>
+            <div>
+                <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; letter-spacing: 0.03em;">Pelos Estudantes</span>
+                <strong style="font-size: 1.6rem; color: var(--text-main); display: block; line-height: 1.1;">{{ kpi_aluno }}</strong>
+            </div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem; border-left: 4px solid #f59e0b; display: flex; align-items: center; gap: 1rem;">
+            <div style="width: 48px; height: 48px; border-radius: 10px; background: #fef3c7; display: flex; align-items: center; justify-content: center; color: #b45309; font-size: 1.6rem; flex-shrink: 0;">
+                <i class="ph ph-shield-user"></i>
+            </div>
+            <div>
+                <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; letter-spacing: 0.03em;">Pela Administração</span>
+                <strong style="font-size: 1.6rem; color: var(--text-main); display: block; line-height: 1.1;">{{ kpi_admin }}</strong>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros de Busca -->
+    <div class="card" style="margin-bottom: 1.5rem; padding: 1.25rem;">
+        <form method="GET" action="{{ url_for('admin.admin_relatorios_cancelamentos') }}" id="formFiltroCancelamentos">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; align-items: flex-end;">
+                <!-- Período: De -->
+                <div class="form-group" style="margin: 0;">
+                    <label for="data_inicio" style="font-size: 0.85rem; font-weight: 600; margin-bottom: 0.35rem; display: block;">Data Refeição De</label>
+                    <input type="date" id="data_inicio" name="data_inicio" value="{{ data_inicio }}"
+                           style="width: 100%; padding: 0.55rem 0.75rem; border-radius: 6px; border: 1px solid var(--border); font-size: 0.9rem; background: var(--surface); color: var(--text-main);">
+                </div>
+
+                <!-- Período: Até -->
+                <div class="form-group" style="margin: 0;">
+                    <label for="data_fim" style="font-size: 0.85rem; font-weight: 600; margin-bottom: 0.35rem; display: block;">Data Refeição Até</label>
+                    <input type="date" id="data_fim" name="data_fim" value="{{ data_fim }}"
+                           style="width: 100%; padding: 0.55rem 0.75rem; border-radius: 6px; border: 1px solid var(--border); font-size: 0.9rem; background: var(--surface); color: var(--text-main);">
+                </div>
+
+                <!-- Origem do Cancelamento -->
+                <div class="form-group" style="margin: 0;">
+                    <label for="origem" style="font-size: 0.85rem; font-weight: 600; margin-bottom: 0.35rem; display: block;">Origem</label>
+                    <select id="origem" name="origem" style="width: 100%; padding: 0.55rem 0.75rem; border-radius: 6px; border: 1px solid var(--border); font-size: 0.9rem; background: var(--surface); color: var(--text-main);">
+                        <option value="TODOS" {% if origem == 'TODOS' %}selected{% endif %}>Todas as Origens</option>
+                        <option value="ALUNO" {% if origem == 'ALUNO' %}selected{% endif %}>Apenas Aluno</option>
+                        <option value="ADMIN" {% if origem == 'ADMIN' %}selected{% endif %}>Apenas Administrador</option>
+                    </select>
+                </div>
+
+                <!-- Turma -->
+                <div class="form-group" style="margin: 0;">
+                    <label for="turma_id" style="font-size: 0.85rem; font-weight: 600; margin-bottom: 0.35rem; display: block;">Turma</label>
+                    <select id="turma_id" name="turma_id" style="width: 100%; padding: 0.55rem 0.75rem; border-radius: 6px; border: 1px solid var(--border); font-size: 0.9rem; background: var(--surface); color: var(--text-main);">
+                        <option value="">Todas as turmas</option>
+                        {% for t in turmas %}
+                        <option value="{{ t.id }}" {% if turma_id == t.id|string %}selected{% endif %}>{{ t.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Busca Livre -->
+                <div class="form-group" style="margin: 0; grid-column: span 2;">
+                    <label for="q" style="font-size: 0.85rem; font-weight: 600; margin-bottom: 0.35rem; display: block;">Pesquisa (Aluno, Matrícula ou Motivo)</label>
+                    <input type="text" id="q" name="q" value="{{ busca }}" placeholder="Digite o nome, matrícula, ticket ou termo do motivo..."
+                           style="width: 100%; padding: 0.55rem 0.75rem; border-radius: 6px; border: 1px solid var(--border); font-size: 0.9rem; background: var(--surface); color: var(--text-main);">
+                </div>
+
+                <!-- Botões -->
+                <div style="display: flex; gap: 0.5rem; align-items: flex-end;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1; padding: 0.55rem 1rem;">
+                        <i class="ph ph-funnel"></i> Filtrar
+                    </button>
+                    <a href="{{ url_for('admin.admin_relatorios_cancelamentos') }}" class="btn btn-secondary" style="padding: 0.55rem 0.75rem;" title="Limpar Filtros">
+                        <i class="ph ph-x"></i>
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Tabela de Resultados -->
+    <div class="card" style="padding: 0; overflow: hidden;">
+        <div class="table-responsive">
+            <table class="table" style="margin: 0; width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: #f8fafc; border-bottom: 2px solid var(--border);">
+                        <th style="padding: 0.85rem 1.25rem; font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Data Refeição</th>
+                        <th style="padding: 0.85rem 1rem; font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Estudante</th>
+                        <th style="padding: 0.85rem 1rem; font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; text-align: center;">Origem</th>
+                        <th style="padding: 0.85rem 1rem; font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Data Cancelamento</th>
+                        <th style="padding: 0.85rem 1.25rem; font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Motivo do Cancelamento</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in cancelamentos %}
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 1rem 1.25rem; vertical-align: top;">
+                            <strong style="font-size: 0.95rem; color: var(--text-main); display: block;">{{ c.cardapio_data | datetimeformat }}</strong>
+                            <span class="badge" style="background: #f1f5f9; color: var(--text-muted); font-size: 0.75rem; margin-top: 4px;">
+                                {{ c.tipo_refeicao }}
+                            </span>
+                        </td>
+                        <td style="padding: 1rem; vertical-align: top;">
+                            <strong style="font-size: 0.95rem; color: var(--text-main); display: block;">{{ c.aluno_nome }}</strong>
+                            <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 2px;">
+                                <span>Mat: <strong>{{ c.aluno_mat }}</strong></span>
+                                {% if c.turma_nome %}
+                                • <span>{{ c.turma_nome }}</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td style="padding: 1rem; vertical-align: top; text-align: center;">
+                            {% if c.cancelado_por and c.cancelado_por.startswith('ADMIN') %}
+                            <span class="badge" style="background: #fef3c7; color: #b45309; font-weight: 600; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 4px;" title="{{ c.cancelado_por }}">
+                                <i class="ph ph-shield-user"></i> {{ c.cancelado_por }}
+                            </span>
+                            {% else %}
+                            <span class="badge" style="background: #dbeafe; color: #1d4ed8; font-weight: 600; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 4px;">
+                                <i class="ph ph-student"></i> Aluno
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td style="padding: 1rem; vertical-align: top; color: var(--text-muted); font-size: 0.88rem; white-space: nowrap;">
+                            {% if c.data_cancelamento %}
+                            <i class="ph ph-clock" style="vertical-align: middle; margin-right: 2px;"></i> {{ c.data_cancelamento | datetimeformat }}
+                            {% else %}
+                            —
+                            {% endif %}
+                        </td>
+                        <td style="padding: 1rem 1.25rem; vertical-align: top;">
+                            <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 0.6rem 0.85rem; color: #991b1b; font-size: 0.88rem; line-height: 1.45;">
+                                <i class="ph ph-chat-teardrop-text" style="margin-right: 4px; vertical-align: middle;"></i>
+                                <strong>{{ c.motivo_cancelamento or 'Sem motivo informado' }}</strong>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 3.5rem; color: var(--text-muted);">
+                            <i class="ph ph-file-x" style="font-size: 3rem; color: #cbd5e1; display: block; margin-bottom: 0.75rem;"></i>
+                            Nenhuma reserva cancelada encontrada com os filtros selecionados.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Paginação -->
+        {% if total_paginas > 1 %}
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.25rem; background: #f8fafc; border-top: 1px solid var(--border); flex-wrap: wrap; gap: 1rem;">
+            <div style="font-size: 0.85rem; color: var(--text-muted);">
+                Exibindo página <strong>{{ pagina }}</strong> de <strong>{{ total_paginas }}</strong> (Total de <strong>{{ kpi_total }}</strong> registros)
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 0.35rem;">
+                {% if pagina > 1 %}
+                <a href="{{ url_for('admin.admin_relatorios_cancelamentos', data_inicio=data_inicio, data_fim=data_fim, origem=origem, turma_id=turma_id, q=busca, page=pagina-1) }}" class="btn btn-secondary" style="padding: 0.35rem 0.7rem; font-size: 0.85rem;">
+                    <i class="ph ph-caret-left"></i>
+                </a>
+                {% endif %}
+
+                {% for p in range(1, total_paginas + 1) %}
+                    {% if p == pagina %}
+                    <span class="btn btn-primary" style="padding: 0.35rem 0.75rem; font-size: 0.85rem; cursor: default; font-weight: bold;">{{ p }}</span>
+                    {% elif p == 1 or p == total_paginas or (p >= pagina - 2 and p <= pagina + 2) %}
+                    <a href="{{ url_for('admin.admin_relatorios_cancelamentos', data_inicio=data_inicio, data_fim=data_fim, origem=origem, turma_id=turma_id, q=busca, page=p) }}" class="btn btn-secondary" style="padding: 0.35rem 0.75rem; font-size: 0.85rem;">{{ p }}</a>
+                    {% elif p == pagina - 3 or p == pagina + 3 %}
+                    <span style="color: var(--text-muted); padding: 0 0.2rem;">…</span>
+                    {% endif %}
+                {% endfor %}
+
+                {% if pagina < total_paginas %}
+                <a href="{{ url_for('admin.admin_relatorios_cancelamentos', data_inicio=data_inicio, data_fim=data_fim, origem=origem, turma_id=turma_id, q=busca, page=pagina+1) }}" class="btn btn-secondary" style="padding: 0.35rem 0.7rem; font-size: 0.85rem;">
+                    <i class="ph ph-caret-right"></i>
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -39,16 +39,33 @@
 
             <!-- 1. Tipo de Identificação (Cards clicáveis) -->
             <div style="margin-bottom: 1.5rem;">
-                <label
-                    style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.6rem; text-transform: uppercase;">
-                    <i class="ph ph-shield-check" style="color: #6366f1;"></i> Tipo de Identificação do Estudante
-                </label>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem; flex-wrap: wrap; gap: 0.5rem;">
+                    <label
+                        style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); margin: 0; text-transform: uppercase;">
+                        <i class="ph ph-shield-check" style="color: #6366f1;"></i> Tipo de Identificação do Estudante
+                    </label>
+                    {% if total_respostas and total_respostas > 0 %}
+                    <span class="badge" style="background: #FEF3C7; color: #92400E; font-size: 0.8rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 8px; border: 1px solid #FDE68A;">
+                        <i class="ph ph-lock-key"></i> Bloqueado: Já possui {{ total_respostas }} resposta{{ 's' if total_respostas > 1 else '' }}
+                    </span>
+                    {% endif %}
+                </div>
+
+                {% if total_respostas and total_respostas > 0 %}
+                <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 0.85rem; font-size: 0.85rem; color: #92400E; display: flex; align-items: center; gap: 8px;">
+                    <i class="ph ph-warning" style="font-size: 1.25rem; flex-shrink: 0;"></i>
+                    <span>O tipo de identificação não pode ser alterado após o início da coleta de respostas para preservar a integridade dos dados registrados.</span>
+                </div>
+                <!-- Campo oculto para envio seguro do valor já gravado -->
+                <input type="hidden" name="is_anonimo" value="{{ formulario.is_anonimo }}">
+                {% endif %}
+
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
-                    <label class="tipo-ident-card"
-                        style="display: flex; align-items: flex-start; gap: 12px; padding: 1rem 1.25rem; border-radius: 10px; border: 2px solid var(--border); background: #f8fafc; cursor: pointer; margin: 0; transition: all 0.2s ease;">
-                        <input type="radio" name="is_anonimo" value="1" {% if not formulario or formulario.is_anonimo==1
-                            %}checked{% endif %}
-                            style="width: 18px; height: 18px; margin-top: 3px; flex-shrink: 0; cursor: pointer;">
+                    <label class="tipo-ident-card {% if total_respostas and total_respostas > 0 %}is-disabled{% endif %}"
+                        style="display: flex; align-items: flex-start; gap: 12px; padding: 1rem 1.25rem; border-radius: 10px; border: 2px solid {% if (not formulario or formulario.is_anonimo == 1) %}#6366f1{% else %}var(--border){% endif %}; background: {% if total_respostas and total_respostas > 0 and formulario.is_anonimo != 1 %}#f1f5f9{% else %}#f8fafc{% endif %}; cursor: {% if total_respostas and total_respostas > 0 %}not-allowed{% else %}pointer{% endif %}; margin: 0; transition: all 0.2s ease; {% if total_respostas and total_respostas > 0 and formulario.is_anonimo != 1 %}opacity: 0.55;{% endif %}">
+                        <input type="radio" name="is_anonimo" value="1" {% if not formulario or formulario.is_anonimo==1 %}checked{% endif %}
+                            {% if total_respostas and total_respostas > 0 %}disabled{% endif %}
+                            style="width: 18px; height: 18px; margin-top: 3px; flex-shrink: 0; cursor: {% if total_respostas and total_respostas > 0 %}not-allowed{% else %}pointer{% endif %};">
                         <div>
                             <strong
                                 style="display: block; font-size: 1rem; color: var(--text-main); margin-bottom: 2px;">
@@ -62,11 +79,11 @@
                         </div>
                     </label>
 
-                    <label class="tipo-ident-card"
-                        style="display: flex; align-items: flex-start; gap: 12px; padding: 1rem 1.25rem; border-radius: 10px; border: 2px solid var(--border); background: #f8fafc; cursor: pointer; margin: 0; transition: all 0.2s ease;">
-                        <input type="radio" name="is_anonimo" value="0" {% if formulario and formulario.is_anonimo==0
-                            %}checked{% endif %}
-                            style="width: 18px; height: 18px; margin-top: 3px; flex-shrink: 0; cursor: pointer;">
+                    <label class="tipo-ident-card {% if total_respostas and total_respostas > 0 %}is-disabled{% endif %}"
+                        style="display: flex; align-items: flex-start; gap: 12px; padding: 1rem 1.25rem; border-radius: 10px; border: 2px solid {% if formulario and formulario.is_anonimo == 0 %}#6366f1{% else %}var(--border){% endif %}; background: {% if total_respostas and total_respostas > 0 and formulario.is_anonimo != 0 %}#f1f5f9{% else %}#f8fafc{% endif %}; cursor: {% if total_respostas and total_respostas > 0 %}not-allowed{% else %}pointer{% endif %}; margin: 0; transition: all 0.2s ease; {% if total_respostas and total_respostas > 0 and formulario.is_anonimo != 0 %}opacity: 0.55;{% endif %}">
+                        <input type="radio" name="is_anonimo" value="0" {% if formulario and formulario.is_anonimo==0 %}checked{% endif %}
+                            {% if total_respostas and total_respostas > 0 %}disabled{% endif %}
+                            style="width: 18px; height: 18px; margin-top: 3px; flex-shrink: 0; cursor: {% if total_respostas and total_respostas > 0 %}not-allowed{% else %}pointer{% endif %};">
                         <div>
                             <strong
                                 style="display: block; font-size: 1rem; color: var(--text-main); margin-bottom: 2px;">
@@ -198,6 +215,9 @@
         card.className = 'card pergunta-card fade-in';
         card.id = `pergunta_card_${pId}`;
         card.style = 'border-radius: 10px; padding: 1.5rem; border: 1.5px solid var(--border); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); position: relative; margin: 0; background: white;';
+        if (dados && dados.id) {
+            card.dataset.perguntaId = dados.id;
+        }
 
         const tituloVal = dados ? dados.titulo : '';
         const tipoVal = dados ? dados.tipo : 'multipla_escolha';
@@ -386,6 +406,7 @@
             }
 
             perguntasArray.push({
+                id: card.dataset.perguntaId ? parseInt(card.dataset.perguntaId, 10) : null,
                 titulo: titulo,
                 tipo: tipo,
                 opcoes: opcoes,
@@ -404,14 +425,18 @@
 </script>
 
 <style>
-    .tipo-ident-card:hover {
+    .tipo-ident-card:not(.is-disabled):hover {
         border-color: #a5b4fc !important;
         background: #eef2ff !important;
     }
 
-    .tipo-ident-card:has(input:checked) {
+    .tipo-ident-card:not(.is-disabled):has(input:checked) {
         border-color: #6366f1 !important;
         background: #eef2ff !important;
+    }
+
+    .tipo-ident-card.is-disabled {
+        pointer-events: none;
     }
 
     .status-box:hover {

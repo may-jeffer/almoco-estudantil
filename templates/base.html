@@ -19,20 +19,257 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <!-- Phosphor Icons para iconografia moderna -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Carregador Instantâneo de Paleta e Modo Escuro para evitar FOUC -->
+    <script>
+        (function() {
+            try {
+                const isAdminShell = {{ 1 if (request.path.startswith('/admin') and session.get('is_admin') and request.path != '/admin/login') else 0 }};
+                const globalTheme = "{{ (global_config.tema_admin if global_config and global_config.tema_admin else 'padrao') }}";
+                const savedTheme = isAdminShell ? (localStorage.getItem('admin_theme') || "{{ session.get('admin_tema') }}" || globalTheme) : globalTheme;
+                document.documentElement.setAttribute('data-admin-theme', savedTheme);
+
+                const isAluno = {{ 1 if session.get('aluno_id') else 0 }};
+                const serverDark = {{ 1 if (session.get('admin_modo_escuro') or session.get('aluno_modo_escuro')) else 0 }};
+                
+                let localDark = null;
+                if (isAdminShell) {
+                    localDark = localStorage.getItem('admin_dark_mode');
+                } else if (isAluno) {
+                    localDark = localStorage.getItem('aluno_dark_mode');
+                } else {
+                    localDark = localStorage.getItem('aluno_dark_mode') || localStorage.getItem('app_dark_mode') || localStorage.getItem('admin_dark_mode');
+                }
+                const isDark = localDark !== null ? (localDark === '1' || localDark === 'true') : (serverDark === 1);
+                if (isDark) {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                } else {
+                    document.documentElement.removeAttribute('data-theme');
+                }
+            } catch(e) {}
+        })();
+    </script>
 </head>
 
 <body>
-    {% if session.get('aluno_id') and not request.path.startswith('/admin') and global_config and
-    global_config.tempo_autologout != 0 %}
+    {% set is_admin_shell = request.path.startswith('/admin') and session.get('is_admin') and request.path != '/admin/login' %}
+
+    {% if is_admin_shell %}
+    <!-- ======================================================= -->
+    <!-- SHELL ADMINISTRATIVO: OPÇÃO 3 (SIDEBAR GLOBAL + TOPBAR) -->
+    <!-- ======================================================= -->
+    <div class="admin-layout">
+        <!-- Sidebar Global Fixa -->
+        <aside class="admin-sidebar" id="adminSidebar">
+            <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--sidebar-border);">
+                <a href="{{ url_for('admin_dashboard') }}" class="admin-sidebar-header" style="border-bottom: none; flex: 1;">
+                    {% if global_config and global_config.logo_path %}
+                    <img src="{{ global_config.logo_path }}" alt="Logo">
+                    {% else %}
+                    <i class="ph ph-fork-knife"></i>
+                    {% endif %}
+                    <div style="overflow: hidden;">
+                        <div class="admin-sidebar-brand-name">{{ global_config.nome_sistema if global_config else 'Cantina Estudantil' }}</div>
+                        <div class="admin-sidebar-brand-sigla">{{ global_config.sigla_instituicao if global_config else 'PAINEL ADMIN' }}</div>
+                    </div>
+                </a>
+                <button type="button" class="admin-sidebar-close-btn" onclick="toggleAdminSidebar()" aria-label="Fechar menu">
+                    <i class="ph ph-x"></i>
+                </button>
+            </div>
+
+            <nav class="admin-nav">
+                <!-- GRUPO: OPERAÇÃO & ATENDIMENTO -->
+                <div class="admin-nav-group">
+                    <div class="admin-nav-group-title">Operação & Atendimento</div>
+                    <a href="{{ url_for('admin_dashboard') }}" class="admin-nav-item {% if request.path == '/admin' or request.path == '/admin/' %}active{% endif %}">
+                        <i class="ph ph-squares-four"></i>
+                        <span>Painel do Dia</span>
+                    </a>
+                    {% if tem_permissao('fila') %}
+                    <a href="{{ url_for('admin_entrega') }}" class="admin-nav-item highlight-danger {% if request.path.startswith('/admin/entrega') %}active{% endif %}">
+                        <i class="ph ph-qr-code"></i>
+                        <span>Modo Fila (Scanner)</span>
+                    </a>
+                    <a href="{{ url_for('admin_reservas') }}" class="admin-nav-item {% if request.path.startswith('/admin/reservas') %}active{% endif %}">
+                        <i class="ph ph-ticket"></i>
+                        <span>Gerenciar Reservas</span>
+                    </a>
+                    {% endif %}
+                    {% if tem_permissao('avisos') %}
+                    <a href="{{ url_for('admin_avisos') }}" class="admin-nav-item {% if request.path.startswith('/admin/avisos') %}active{% endif %}">
+                        <i class="ph ph-megaphone"></i>
+                        <span>Mural de Avisos</span>
+                    </a>
+                    {% endif %}
+                </div>
+
+                <!-- GRUPO: NUTRIÇÃO & QUALIDADE -->
+                {% if tem_permissao('cardapios') or tem_permissao('qualidade') or tem_permissao('pesquisas') %}
+                <div class="admin-nav-group">
+                    <div class="admin-nav-group-title">Nutrição & Qualidade</div>
+                    {% if tem_permissao('cardapios') %}
+                    <a href="{{ url_for('admin_cardapios') }}" class="admin-nav-item {% if request.path.startswith('/admin/cardapios') %}active{% endif %}">
+                        <i class="ph ph-calendar-plus" style="color: #8b5cf6;"></i>
+                        <span>Gerenciar Cardápios</span>
+                    </a>
+                    {% endif %}
+                    {% if tem_permissao('qualidade') %}
+                    <a href="{{ url_for('admin_qualidade') }}" class="admin-nav-item {% if request.path.startswith('/admin/qualidade') %}active{% endif %}">
+                        <i class="ph ph-thermometer" style="color: #10b981;"></i>
+                        <span>Recebimento / Térmico</span>
+                    </a>
+                    {% endif %}
+                    {% if tem_permissao('pesquisas') %}
+                    <a href="{{ url_for('admin_pesquisas') }}" class="admin-nav-item {% if request.path.startswith('/admin/pesquisas') %}active{% endif %}">
+                        <i class="ph ph-list-checks" style="color: #6366f1;"></i>
+                        <span>Pesquisas de Opinião</span>
+                    </a>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <!-- GRUPO: GESTÃO ESCOLAR -->
+                {% if tem_permissao('alunos') or tem_permissao('turmas') or tem_permissao('eventos') or tem_permissao('relatorios') %}
+                <div class="admin-nav-group">
+                    <div class="admin-nav-group-title">Gestão Escolar</div>
+                    {% if tem_permissao('alunos') %}
+                    <a href="{{ url_for('admin_alunos') }}" class="admin-nav-item {% if request.path.startswith('/admin/alunos') %}active{% endif %}">
+                        <i class="ph ph-student" style="color: #3b82f6;"></i>
+                        <span>Alunos</span>
+                    </a>
+                    {% endif %}
+                    {% if tem_permissao('turmas') %}
+                    <a href="{{ url_for('admin_turmas') }}" class="admin-nav-item {% if request.path.startswith('/admin/turmas') %}active{% endif %}">
+                        <i class="ph ph-buildings" style="color: #f97316;"></i>
+                        <span>Turmas</span>
+                    </a>
+                    {% endif %}
+                    {% if tem_permissao('eventos') %}
+                    <a href="{{ url_for('admin_eventos') }}" class="admin-nav-item {% if request.path.startswith('/admin/eventos') %}active{% endif %}">
+                        <i class="ph ph-calendar-star" style="color: #14b8a6;"></i>
+                        <span>Eventos & Visitantes</span>
+                    </a>
+                    {% endif %}
+                    {% if tem_permissao('relatorios') %}
+                    <a href="{{ url_for('admin_relatorios') }}" class="admin-nav-item {% if request.path.startswith('/admin/relatorios') %}active{% endif %}">
+                        <i class="ph ph-file-text" style="color: #0284c7;"></i>
+                        <span>Relatórios & Exportação</span>
+                    </a>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <!-- GRUPO: SISTEMA & SEGURANÇA -->
+                <div class="admin-nav-group">
+                    <div class="admin-nav-group-title">Sistema & Apoio</div>
+                    {% if tem_permissao('config') %}
+                    <a href="{{ url_for('admin.admin_configuracoes') }}" class="admin-nav-item {% if request.path.startswith('/admin/configuracoes') %}active{% endif %}">
+                        <i class="ph ph-gear" style="color: #a855f7;"></i>
+                        <span>Configurações</span>
+                    </a>
+                    {% elif tem_permissao('smtp') %}
+                    <a href="{{ url_for('admin.admin_configuracoes') }}" class="admin-nav-item {% if request.path.startswith('/admin/configuracoes') %}active{% endif %}">
+                        <i class="ph ph-envelope-simple" style="color: #a855f7;"></i>
+                        <span>Servidor de E-mail</span>
+                    </a>
+                    {% endif %}
+                    {% if tem_permissao('admins') %}
+                    <a href="{{ url_for('admin_administradores') }}" class="admin-nav-item {% if request.path.startswith('/admin/administradores') %}active{% endif %}">
+                        <i class="ph ph-shield-check" style="color: #eab308;"></i>
+                        <span>Acessos & Admins</span>
+                    </a>
+                    {% endif %}
+                    {% if tem_permissao('all') or tem_permissao('admins') %}
+                    <a href="{{ url_for('admin_auditoria') }}" class="admin-nav-item {% if request.path.startswith('/admin/auditoria') %}active{% endif %}">
+                        <i class="ph ph-shield-warning" style="color: #ef4444;"></i>
+                        <span>Logs de Auditoria</span>
+                    </a>
+                    {% endif %}
+                    {% if tem_permissao('base_conhecimento') %}
+                    <a href="{{ url_for('admin.admin_base_conhecimento') }}" class="admin-nav-item {% if request.path.startswith('/admin/base-conhecimento') %}active{% endif %}">
+                        <i class="ph ph-books" style="color: #8b5cf6;"></i>
+                        <span>Base de Conhecimento</span>
+                    </a>
+                    {% endif %}
+                </div>
+            </nav>
+
+            <!-- Rodapé da Sidebar com usuário logado -->
+            <div class="admin-sidebar-footer">
+                <div class="admin-user-info">
+                    <div class="admin-user-avatar">
+                        {{ session.get('admin_usuario', 'A')[0]|upper }}
+                    </div>
+                    <div class="admin-user-details">
+                        <span class="admin-user-name" title="{{ session.get('admin_usuario', 'Administrador') }}">{{ session.get('admin_usuario', 'Administrador') }}</span>
+                        <span class="admin-user-role">{{ 'Mestre' if (session.get('admin_usuario') == 'admin' or 'all' in session.get('admin_permissoes', [])) else 'Operador' }}</span>
+                    </div>
+                </div>
+                <a href="{{ url_for('admin_logout') }}" title="Sair do painel" style="color: #EF4444; font-size: 1.3rem; display: flex; align-items: center; padding: 4px; text-decoration: none;">
+                    <i class="ph ph-sign-out"></i>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Backdrop mobile para fechar sidebar -->
+        <div class="admin-sidebar-backdrop" id="sidebarBackdrop" onclick="toggleAdminSidebar()"></div>
+
+        <!-- Área Principal -->
+        <div class="admin-main-wrapper">
+            <!-- Barra Superior Administrativa -->
+            <header class="admin-topbar">
+                <div class="admin-topbar-left">
+                    <button type="button" class="admin-sidebar-toggle" onclick="toggleAdminSidebar()" aria-label="Menu Lateral">
+                        <i class="ph ph-list"></i>
+                    </button>
+                    <div style="font-weight: 600; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
+                        <span style="color: var(--text-muted); font-size: 0.9rem;">Área Administrativa</span>
+                    </div>
+                </div>
+
+                <div class="admin-topbar-right">
+                    <!-- Botão de Alternância de Modo Escuro -->
+                    <button type="button" class="btn-palette" id="btnDarkModeToggle" onclick="toggleDarkMode()" title="Alternar entre modo claro e escuro">
+                        <i class="ph ph-moon" id="iconDarkMode" style="font-size: 1.1rem;"></i>
+                        <span class="btn-text-desktop" id="textDarkMode">Modo Escuro</span>
+                    </button>
+
+                    <!-- Botão de Troca de Paleta de Cores -->
+                    <button type="button" class="btn-palette" onclick="openPaletteModal()" title="Trocar paleta de cores">
+                        <span class="palette-dot"></span>
+                        <span class="btn-text-desktop">Paleta</span>
+                    </button>
+
+                    {% if tem_permissao('fila') %}
+                    <a href="{{ url_for('admin_entrega') }}" class="btn btn-sm" style="background: #EF4444; color: white !important;" title="Abrir Modo Fila">
+                        <i class="ph ph-qr-code"></i> <span class="btn-text-desktop">Fila</span>
+                    </a>
+                    {% endif %}
+
+                    <a href="{{ url_for('admin_logout') }}" class="btn btn-sm btn-danger" style="color: white !important;" title="Sair do painel">
+                        <i class="ph ph-sign-out"></i> <span class="btn-text-desktop">Sair</span>
+                    </a>
+                </div>
+            </header>
+
+            <!-- Conteúdo Dinâmico -->
+            <main class="admin-main-content">
+    {% else %}
+    <!-- ======================================================= -->
+    <!-- LAYOUT ORIGINAL: PÚBLICO E ÁREA DO ALUNO                -->
+    <!-- ======================================================= -->
+    {% if session.get('aluno_id') and not request.path.startswith('/admin') and not request.path.startswith('/pesquisa') and not disable_autologout and global_config and global_config.tempo_autologout != 0 %}
     <div id="autologout-banner"
         style="background: var(--primary, #EF4444); color: white; text-align: center; padding: 5px; font-weight: bold; font-size: 0.9rem; z-index: 1000; position: relative;">
         Sessão expira em <span id="autologout-timer"></span>. Mexa na tela para continuar.
     </div>
     {% endif %}
+
     {% block navbar %}
     <nav class="navbar">
         <div class="navbar-brand" style="display: flex; align-items: center; gap: 10px;">
-            {% if global_config.logo_path %}
+            {% if global_config and global_config.logo_path %}
             <img src="{{ global_config.logo_path }}" alt="Logo" style="height: 35px; width: auto; object-fit: contain;">
             {% else %}
             <i class="ph ph-fork-knife"></i>
@@ -41,33 +278,37 @@
         </div>
         <div class="navbar-links">
             {% if request.path.startswith('/admin') %}
-            {% if session.get('is_admin') %}
-            <span>Admin: {{ session.get('admin_usuario', 'Administrador') }}</span>
-            <a href="{{ url_for('admin_dashboard') }}">Painel</a>
-            <a href="{{ url_for('admin_manual') }}" style="display: inline-flex; align-items: center; gap: 4px;"></i>
-                Manual</a>
-            {% if tem_permissao('fila') %}
-            <a href="{{ url_for('admin_entrega') }}">Fila</a>
-            {% endif %}
-            <a href="{{ url_for('admin_logout') }}" class="btn btn-danger"
-                style="padding: 0.5rem 1rem; border-radius: 6px;">Sair</a>
+                {% if session.get('is_admin') %}
+                <span>Admin: {{ session.get('admin_usuario', 'Administrador') }}</span>
+                <a href="{{ url_for('admin_dashboard') }}">Painel</a>
+                {% if tem_permissao('fila') %}
+                <a href="{{ url_for('admin_entrega') }}">Fila</a>
+                {% endif %}
+                <a href="{{ url_for('admin_logout') }}" class="btn btn-danger"
+                    style="padding: 0.5rem 1rem; border-radius: 6px; color: #ffffff !important;">Sair</a>
+                {% else %}
+                <a href="{{ url_for('admin_login') }}">Login Restrito</a>
+                {% endif %}
             {% else %}
-            <a href="{{ url_for('admin_login') }}">Login Restrito</a>
-            {% endif %}
-            {% else %}
-            {% if session.get('aluno_id') %}
-            <span>Olá, {{ session.get('aluno_nome') }}</span>
-            <a href="{{ url_for('logout') }}" class="btn btn-danger"
-                style="padding: 0.5rem 1rem; border-radius: 6px;">Sair</a>
-            {% else %}
-            <a href="{{ url_for('login') }}">Área do Estudante</a>
-            {% endif %}
+                <button type="button" class="btn-dark-toggle-student" id="btnStudentDarkMode" onclick="toggleStudentDarkMode()" title="Alternar entre modo claro e escuro">
+                    <i class="ph ph-moon" id="iconStudentDarkMode"></i>
+                    <span id="textStudentDarkMode" class="btn-text-desktop">Modo Escuro</span>
+                </button>
+                {% if session.get('aluno_id') %}
+                <span style="font-weight: 500; font-size: 0.95rem;">Olá, {{ session.get('aluno_nome') }}</span>
+                <a href="{{ url_for('logout') }}" class="btn btn-danger"
+                    style="padding: 0.5rem 1rem; border-radius: 6px; color: #ffffff !important;">Sair</a>
+                {% else %}
+                <a href="{{ url_for('login') }}">Área do Estudante</a>
+                {% endif %}
             {% endif %}
         </div>
     </nav>
     {% endblock %}
 
     <main>
+    {% endif %}
+
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
         <div class="alerts fade-in">
@@ -83,12 +324,259 @@
         {% endwith %}
 
         {% block content %}{% endblock %}
+
+    {% if is_admin_shell %}
+            </main>
+        </div>
+    </div>
+    {% else %}
     </main>
+    {% endif %}
+
+    {% if is_admin_shell %}
+    <!-- MODAL DE TROCA DE PALETA DE CORES -->
+    <div id="paletteModal" class="modal-overlay" style="display: none; align-items: center; justify-content: center; z-index: 9999;">
+        <div class="modal-content" style="background: white; border-radius: 16px; padding: 2rem; max-width: 580px; width: 90%; box-shadow: var(--shadow-lg);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+                <h2 style="margin: 0; font-size: 1.3rem; display: flex; align-items: center; gap: 8px;">
+                    <i class="ph ph-palette" style="color: var(--primary);"></i> Escolha a Paleta de Cores
+                </h2>
+                <button type="button" onclick="closePaletteModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+            </div>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.25rem;">
+                Alterne a aparência do painel de administração. O estilo padrão do sistema é o <strong>Verde Institucional</strong>.
+            </p>
+
+            <div class="palette-swatches-grid">
+                <!-- Opção 1: Padrão -->
+                <div class="palette-option-card" data-theme="padrao" onclick="applyTheme('padrao')">
+                    <div class="palette-circle-lg" style="background: #2F9E41;"></div>
+                    <span class="palette-label">Verde Padrão</span>
+                </div>
+
+                <!-- Opção 2: Azul Oceano -->
+                <div class="palette-option-card" data-theme="azul" onclick="applyTheme('azul')">
+                    <div class="palette-circle-lg" style="background: #2563EB;"></div>
+                    <span class="palette-label">Azul Oceano</span>
+                </div>
+
+                <!-- Opção 3: Índigo Real -->
+                <div class="palette-option-card" data-theme="indigo" onclick="applyTheme('indigo')">
+                    <div class="palette-circle-lg" style="background: #4F46E5;"></div>
+                    <span class="palette-label">Índigo Real</span>
+                </div>
+
+                <!-- Opção 4: Esmeralda Refinado -->
+                <div class="palette-option-card" data-theme="esmeralda" onclick="applyTheme('esmeralda')">
+                    <div class="palette-circle-lg" style="background: #059669;"></div>
+                    <span class="palette-label">Esmeralda</span>
+                </div>
+
+                <!-- Opção 5: Grafite Moderno -->
+                <div class="palette-option-card" data-theme="grafite" onclick="applyTheme('grafite')">
+                    <div class="palette-circle-lg" style="background: #475569;"></div>
+                    <span class="palette-label">Grafite</span>
+                </div>
+
+                <!-- Opção 6: Vinho Nobre -->
+                <div class="palette-option-card" data-theme="vinho" onclick="applyTheme('vinho')">
+                    <div class="palette-circle-lg" style="background: #991B1B;"></div>
+                    <span class="palette-label">Vinho Nobre</span>
+                </div>
+
+                <!-- Opção 7: Âmbar Aquecido -->
+                <div class="palette-option-card" data-theme="ambar" onclick="applyTheme('ambar')">
+                    <div class="palette-circle-lg" style="background: #D97706;"></div>
+                    <span class="palette-label">Âmbar Ouro</span>
+                </div>
+            </div>
+
+            <!-- Alternador de Modo Escuro no Modal -->
+            <div style="margin-top: 1.25rem; padding-top: 1.1rem; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+                <div>
+                    <div style="font-weight: 600; font-size: 0.95rem; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
+                        <i class="ph ph-moon-stars" style="color: var(--primary);"></i> Modo Escuro
+                    </div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted);">Ativar aparência noturna de alto contraste</div>
+                </div>
+                <button type="button" class="btn btn-sm" id="btnModalDarkMode" onclick="toggleDarkMode()" style="padding: 0.45rem 1rem; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text-main); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-weight: 500;">
+                    <i class="ph ph-moon" id="iconModalDarkMode"></i>
+                    <span id="textModalDarkMode">Ativar</span>
+                </button>
+            </div>
+
+            <div style="margin-top: 1.5rem; text-align: right;">
+                <button type="button" class="btn btn-secondary" onclick="closePaletteModal()" style="padding: 0.6rem 1.2rem;">
+                    Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     {% block modals %}{% endblock %}
 
-    {% if session.get('aluno_id') and not request.path.startswith('/admin') and global_config and
-    global_config.tempo_autologout != 0 %}
+    <script>
+        {% if is_admin_shell %}
+        // Funções para controle da Sidebar no mobile
+        function toggleAdminSidebar() {
+            const sidebar = document.getElementById('adminSidebar');
+            const backdrop = document.getElementById('sidebarBackdrop');
+            if (sidebar) {
+                const isOpen = sidebar.classList.toggle('open');
+                if (backdrop) {
+                    if (isOpen) {
+                        backdrop.classList.add('active');
+                    } else {
+                        backdrop.classList.remove('active');
+                    }
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Fecha sidebar ao clicar em qualquer item de navegacao no mobile
+            document.querySelectorAll('.admin-nav-item').forEach(function(item) {
+                item.addEventListener('click', function() {
+                    const sidebar = document.getElementById('adminSidebar');
+                    const backdrop = document.getElementById('sidebarBackdrop');
+                    if (sidebar && sidebar.classList.contains('open')) {
+                        sidebar.classList.remove('open');
+                        if (backdrop) backdrop.classList.remove('active');
+                    }
+                });
+            });
+        });
+
+        // Funções de Troca de Paleta de Cores
+        function openPaletteModal() {
+            const currentTheme = document.documentElement.getAttribute('data-admin-theme') || 'padrao';
+            document.querySelectorAll('.palette-option-card').forEach(card => {
+                if (card.dataset.theme === currentTheme) {
+                    card.classList.add('selected');
+                } else {
+                    card.classList.remove('selected');
+                }
+            });
+            document.getElementById('paletteModal').style.display = 'flex';
+        }
+
+        function closePaletteModal() {
+            document.getElementById('paletteModal').style.display = 'none';
+        }
+
+        function applyTheme(themeName) {
+            document.documentElement.setAttribute('data-admin-theme', themeName);
+            localStorage.setItem('admin_theme', themeName);
+
+            // Marca o card selecionado
+            document.querySelectorAll('.palette-option-card').forEach(card => {
+                if (card.dataset.theme === themeName) {
+                    card.classList.add('selected');
+                } else {
+                    card.classList.remove('selected');
+                }
+            });
+
+            // Envia requisição em segundo plano para persistir no banco e sessão
+            try {
+                fetch("{{ url_for('admin.admin_salvar_tema') }}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tema: themeName })
+                });
+            } catch(e) {}
+        }
+
+        // Funções de Controle do Modo Escuro Admin
+        function updateDarkModeUI(isDark) {
+            const icon = document.getElementById('iconDarkMode');
+            const text = document.getElementById('textDarkMode');
+            const iconModal = document.getElementById('iconModalDarkMode');
+            const textModal = document.getElementById('textModalDarkMode');
+            const btnModal = document.getElementById('btnModalDarkMode');
+
+            if (icon) icon.className = isDark ? 'ph ph-sun' : 'ph ph-moon';
+            if (text) text.innerText = isDark ? 'Modo Claro' : 'Modo Escuro';
+            if (iconModal) iconModal.className = isDark ? 'ph ph-sun' : 'ph ph-moon';
+            if (textModal) textModal.innerText = isDark ? 'Desativar' : 'Ativar';
+            if (btnModal) {
+                btnModal.style.borderColor = isDark ? 'var(--primary)' : 'var(--border)';
+                btnModal.style.color = isDark ? 'var(--primary)' : 'var(--text-main)';
+            }
+        }
+
+        function toggleDarkMode() {
+            const currentIsDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            const newIsDark = !currentIsDark;
+            if (newIsDark) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                localStorage.setItem('admin_dark_mode', '1');
+            } else {
+                document.documentElement.removeAttribute('data-theme');
+                localStorage.setItem('admin_dark_mode', '0');
+            }
+            updateDarkModeUI(newIsDark);
+
+            // Salva no banco de dados e na sessão via backend
+            try {
+                fetch("{{ url_for('admin.admin_salvar_tema') }}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ modo_escuro: newIsDark ? 1 : 0 })
+                });
+            } catch(e) {}
+        }
+        {% endif %}
+
+        // Funções de Controle do Modo Escuro do Estudante
+        function updateStudentDarkModeUI(isDark) {
+            const icon = document.getElementById('iconStudentDarkMode');
+            const text = document.getElementById('textStudentDarkMode');
+            if (icon) icon.className = isDark ? 'ph ph-sun' : 'ph ph-moon';
+            if (text) text.innerText = isDark ? 'Modo Claro' : 'Modo Escuro';
+
+            document.querySelectorAll('.student-dark-icon').forEach(el => {
+                el.className = isDark ? 'ph ph-sun student-dark-icon' : 'ph ph-moon student-dark-icon';
+            });
+            document.querySelectorAll('.student-dark-text').forEach(el => {
+                el.innerText = isDark ? 'Modo Claro' : 'Modo Escuro';
+            });
+        }
+
+        function toggleStudentDarkMode() {
+            const currentIsDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            const newIsDark = !currentIsDark;
+            if (newIsDark) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                localStorage.setItem('aluno_dark_mode', '1');
+                localStorage.setItem('app_dark_mode', '1');
+            } else {
+                document.documentElement.removeAttribute('data-theme');
+                localStorage.setItem('aluno_dark_mode', '0');
+                localStorage.setItem('app_dark_mode', '0');
+            }
+            updateStudentDarkModeUI(newIsDark);
+
+            try {
+                fetch("{{ url_for('main.aluno_modo_escuro') }}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ modo_escuro: newIsDark ? 1 : 0 })
+                });
+            } catch(e) {}
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            {% if is_admin_shell %}
+            updateDarkModeUI(isDark);
+            {% endif %}
+            updateStudentDarkModeUI(isDark);
+        });
+    </script>
+
+    {% if session.get('aluno_id') and not request.path.startswith('/admin') and not request.path.startswith('/pesquisa') and not disable_autologout and global_config and global_config.tempo_autologout != 0 %}
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             let timeoutSeconds = parseInt("{{ global_config.tempo_autologout if global_config and global_config.tempo_autologout else 60 }}", 10) || 60;
