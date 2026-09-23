@@ -114,7 +114,16 @@ def create_package(output_dir="dist", package_name="almoco-estudantil-dist", off
                     rel_path = os.path.relpath(full_path, base_dir)
                     
                     if not should_exclude(rel_path):
-                        zip_out.write(full_path, rel_path)
+                        if rel_path.endswith(('.bat', '.cmd')):
+                            with open(full_path, 'rb') as f_in:
+                                b_data = f_in.read().replace(b'\r\n', b'\n').replace(b'\n', b'\r\n')
+                            zip_out.writestr(rel_path, b_data)
+                        elif rel_path.endswith('.sh'):
+                            with open(full_path, 'rb') as f_in:
+                                b_data = f_in.read().replace(b'\r\n', b'\n')
+                            zip_out.writestr(rel_path, b_data)
+                        else:
+                            zip_out.write(full_path, rel_path)
                         total_files += 1
 
             # 2. Empacotar wheels se modo offline foi acionado
@@ -137,7 +146,22 @@ def create_package(output_dir="dist", package_name="almoco-estudantil-dist", off
                     full_path = os.path.join(root, file)
                     rel_path = os.path.relpath(full_path, base_dir)
                     if not should_exclude(rel_path):
-                        tar_out.add(full_path, arcname=rel_path)
+                        if rel_path.endswith(('.bat', '.cmd')):
+                            with open(full_path, 'rb') as f_in:
+                                b_data = f_in.read().replace(b'\r\n', b'\n').replace(b'\n', b'\r\n')
+                            ti = tarfile.TarInfo(name=rel_path)
+                            ti.size = len(b_data)
+                            import io
+                            tar_out.addfile(ti, io.BytesIO(b_data))
+                        elif rel_path.endswith('.sh'):
+                            with open(full_path, 'rb') as f_in:
+                                b_data = f_in.read().replace(b'\r\n', b'\n')
+                            ti = tarfile.TarInfo(name=rel_path)
+                            ti.size = len(b_data)
+                            import io
+                            tar_out.addfile(ti, io.BytesIO(b_data))
+                        else:
+                            tar_out.add(full_path, arcname=rel_path)
                         total_files += 1
 
             if offline and os.path.exists(temp_wheels_dir):
