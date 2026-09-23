@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from flask import render_template, request, redirect, url_for, session, flash, jsonify
+from flask import render_template, request, redirect, url_for, session, flash, jsonify, Response
 import csv
 import io
 import json
@@ -558,7 +558,12 @@ def admin_alunos_importar():
                 if serie_val is None and serie_extraida is not None:
                     serie_val = serie_extraida
 
-                permitido_almoco = 0 if (permitido_str.strip().upper() == 'N' or situacao_val != 'Matriculado') else 1
+                # Identificação flexível de matrícula ativa no SUAP/SIGAA
+                situacoes_ativas = {'matriculado', 'cursando', 'ativo', 'regular', 'em curso', 'em andamento'}
+                sit_norm = situacao_val.lower().strip() if situacao_val else 'matriculado'
+                is_matriculado_ativo = (sit_norm in situacoes_ativas)
+
+                permitido_almoco = 0 if (permitido_str.strip().upper() == 'N' or not is_matriculado_ativo) else 1
 
                 # ─── Resolução da Turma Automatizada por SerieAno + Curso ───
                 nome_turma_alvo = formatar_nome_turma(curso_val, serie_val)
@@ -638,8 +643,8 @@ def admin_alunos_importar():
                             permitido_almoco, serie_val, ano_ingresso_val, situacao_val, curso_val, aluno_id
                         ))
 
-                        # Se a situação veio diferente de Matriculado (ou permitido_almoco == 0), bloqueia reservas futuras e desativa recorrência
-                        if permitido_almoco == 0 or situacao_val != 'Matriculado':
+                        # Se a situação veio como não-ativo (ou permitido_almoco == 0), bloqueia reservas futuras e desativa recorrência
+                        if permitido_almoco == 0 or not is_matriculado_ativo:
                             conn.execute("""
                                 UPDATE reservas 
                                 SET status = 'CANCELADA',
@@ -648,6 +653,7 @@ def admin_alunos_importar():
                                   AND cardapio_id IN (SELECT id FROM cardapios WHERE data >= ?)
                             """, (f"Situação acadêmica no CSV: {situacao_val}", aluno_id, data_hoje))
                             conn.execute("UPDATE aluno_recorrencia_dias SET ativo = 0 WHERE aluno_id = ?", (aluno_id,))
+
 
                         # Se o aluno mudou de serieAno ou Curso, migra para a nova turma e registra na trajetória acadêmica!
                         if mudou_turma or mudou_serie_ou_curso:
