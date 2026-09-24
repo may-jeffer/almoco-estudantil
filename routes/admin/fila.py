@@ -434,6 +434,44 @@ def api_baixar_reserva():
         ).fetchone()
         
         if not reserva:
+            # Verifica se o código digitado é Matrícula ou CPF de um Participante de Evento
+            codigo_clean = codigo.replace('.', '').replace('-', '').strip()
+            aluno_evt = conn.execute("""
+                SELECT a.id, a.nome, a.matricula, a.cpf, a.restricoes, a.turma_id,
+                       t.nome as turma_nome, t.data_inicio, t.data_fim
+                FROM alunos a
+                JOIN turmas t ON a.turma_id = t.id
+                WHERE t.is_evento = 1 AND (a.matricula = ? OR a.cpf = ? OR REPLACE(REPLACE(a.cpf, '.', ''), '-', '') = ?)
+            """, (codigo, codigo, codigo_clean)).fetchone()
+
+            if aluno_evt:
+                hoje = date_hoje_str()
+                if (aluno_evt['data_inicio'] and hoje < aluno_evt['data_inicio']) or (aluno_evt['data_fim'] and hoje > aluno_evt['data_fim']):
+                    return {"success": False, "message": f"Atenção: O evento '{aluno_evt['turma_nome']}' está fora da validade!", "type": "warning"}
+                
+                turma_nome = aluno_evt['turma_nome'] or 'Evento'
+                turma_tag = f" ({turma_nome})"
+                ja_comeu = conn.execute("SELECT id FROM reservas WHERE aluno_id = ? AND cardapio_id = ? AND status = 'CONSUMIDA'", (aluno_evt['id'], cardapio_id)).fetchone()
+                if ja_comeu:
+                    return {"success": False, "message": f"{aluno_evt['nome']}{turma_tag} já consumiu esta refeição hoje!", "type": "warning"}
+
+                codigo_reserva = "EVT-MAN-" + uuid.uuid4().hex[:8].upper()
+                conn.execute("""
+                    INSERT INTO reservas (aluno_id, cardapio_id, status, codigo_unico, data_registro, tipo_consumo, turma_id)
+                    VALUES (?, ?, 'CONSUMIDA', ?, ?, 'EVENTO', ?)
+                """, (aluno_evt['id'], cardapio_id, codigo_reserva, datetime_now_str(), aluno_evt['turma_id']))
+                conn.commit()
+                registrar_auditoria("Registrar Entrega Evento Manual", f"Digitou código manual e entregou refeição para {aluno_evt['nome']}{turma_tag}")
+                return {
+                    "success": True, 
+                    "message": f"Refeição de Evento liberada: {aluno_evt['nome']}{turma_tag}", 
+                    "aluno": aluno_evt['nome'],
+                    "turma": turma_nome,
+                    "tipo_consumo": "EVENTO",
+                    "codigo_unico": codigo_reserva,
+                    "restricoes": aluno_evt['restricoes']
+                }
+
             return {"success": False, "message": "Reserva não encontrada!", "type": "error"}
         
         turma_nome = reserva['turma_nome'] or 'Sem Turma'
@@ -465,14 +503,21 @@ def api_adicionar_extra():
         return {"success": False, "message": "Sem permissão de acesso à fila", "type": "error"}, 403
     
     data = request.get_json()
-    busca = data.get('aluno_busca') # Pode ser matrícula ou CPF
+    busca = data.get('aluno_busca', '').strip() # Pode ser matrícula, nome ou CPF
     cardapio_id = data.get('cardapio_id')
     
     if not busca or not cardapio_id:
         return {"success": False, "message": "Dados inválidos"}, 400
         
     with closing(get_db_connection()) as conn:
-        aluno = conn.execute("SELECT a.id, a.nome, a.permitido_almoco, a.restricoes, t.nome as turma_nome FROM alunos a LEFT JOIN turmas t ON a.turma_id = t.id WHERE a.matricula = ? OR a.cpf = ?", (busca, busca)).fetchone()
+        busca_clean = busca.replace('.', '').replace('-', '').strip()
+        aluno = conn.execute("""
+            SELECT a.id, a.nome, a.matricula, a.cpf, a.permitido_almoco, a.restricoes, a.turma_id,
+                   t.nome as turma_nome, t.is_evento, t.data_inicio, t.data_fim 
+            FROM alunos a 
+            LEFT JOIN turmas t ON a.turma_id = t.id 
+            WHERE a.matricula = ? OR a.cpf = ? OR REPLACE(REPLACE(a.cpf, '.', ''), '-', '') = ? OR a.nome = ?
+        """, (busca, busca, busca_clean, busca)).fetchone()
         
         if not aluno:
             return {"success": False, "message": "Estudante não encontrado no sistema.", "type": "error"}
@@ -485,12 +530,12 @@ def api_adicionar_extra():
         if aluno['permitido_almoco'] == 0 and not confirmado:
             return {
                 "success": False, 
-                "message": f"O aluno {aluno['nome']}{turma_tag} está BLOQUEADO para reservas no portal. Deseja entregar a sobra mesmo assim?", 
+                "message": f"O aluno {aluno['nome']}{turma_tag} está BLOQUEADO para reservas no portal. Deseja entregar mesmo assim?", 
                 "requires_confirmation": True,
                 "type": "warning"
             }
             
-        # Verificar se já comeu hoje (por reserva normal ou extra)
+        # Verificar se já comeu hoje (por reserva normal, extra ou evento)
         ja_comeu = conn.execute("SELECT id, status, tipo_consumo FROM reservas WHERE aluno_id = ? AND cardapio_id = ? AND status = 'CONSUMIDA'", (aluno['id'], cardapio_id)).fetchone()
         if ja_comeu:
             return {"success": False, "message": f"Atenção: {aluno['nome']}{turma_tag} já consumiu refeição hoje!", "type": "warning"}
@@ -500,7 +545,7 @@ def api_adicionar_extra():
         if reserva_ativa:
             conn.execute("UPDATE reservas SET status='CONSUMIDA' WHERE id = ?", (reserva_ativa['id'],))
             conn.commit()
-            registrar_auditoria("Registrar Entrega Extra", f"Deu baixa na reserva ativa de {aluno['nome']}{turma_tag} via adicionar_extra")
+            registrar_auditoria("Registrar Entrega Manual", f"Deu baixa na reserva ativa de {aluno['nome']}{turma_tag} via lançamento manual")
             return {
                 "success": True, 
                 "message": f"Foi dada baixa na reserva PADRÃO de {aluno['nome']}{turma_tag}.", 
@@ -511,11 +556,36 @@ def api_adicionar_extra():
                 "restricoes": aluno['restricoes']
             }
         
-        # Se não comeu e não tem reserva ativa, insere a sobra
+        # Verificar se é participante de evento (turma de evento ou matrícula EVT-)
+        eh_evento = (aluno['is_evento'] == 1) or (aluno['matricula'] and aluno['matricula'].startswith('EVT-'))
+        if eh_evento:
+            hoje = date_hoje_str()
+            if (aluno['data_inicio'] and hoje < aluno['data_inicio']) or (aluno['data_fim'] and hoje > aluno['data_fim']):
+                return {"success": False, "message": f"Atenção: O evento '{turma_nome}' está fora do período de validade!", "type": "warning"}
+
+            codigo = "EVT-MAN-" + uuid.uuid4().hex[:8].upper()
+            conn.execute(
+                "INSERT INTO reservas (aluno_id, cardapio_id, status, codigo_unico, data_registro, tipo_consumo, turma_id) VALUES (?, ?, 'CONSUMIDA', ?, ?, 'EVENTO', ?)",
+                (aluno['id'], cardapio_id, codigo, datetime_now_str(), aluno['turma_id'])
+            )
+            conn.commit()
+            registrar_auditoria("Registrar Entrega Evento Manual", f"Registrou refeição de evento manualmente para {aluno['nome']}{turma_tag}")
+            
+            return {
+                "success": True, 
+                "message": f"Refeição de Evento liberada: {aluno['nome']}{turma_tag}", 
+                "aluno": aluno['nome'],
+                "turma": turma_nome,
+                "tipo_consumo": "EVENTO",
+                "codigo_unico": codigo,
+                "restricoes": aluno['restricoes']
+            }
+
+        # Se não é evento e não tem reserva ativa, insere a sobra (EXTRA)
         codigo = generate_unique_code()
         conn.execute(
-            "INSERT INTO reservas (aluno_id, cardapio_id, status, codigo_unico, data_registro, tipo_consumo) VALUES (?, ?, 'CONSUMIDA', ?, ?, 'EXTRA')",
-            (aluno['id'], cardapio_id, codigo, datetime_now_str())
+            "INSERT INTO reservas (aluno_id, cardapio_id, status, codigo_unico, data_registro, tipo_consumo, turma_id) VALUES (?, ?, 'CONSUMIDA', ?, ?, 'EXTRA', ?)",
+            (aluno['id'], cardapio_id, codigo, datetime_now_str(), aluno['turma_id'])
         )
         conn.commit()
         registrar_auditoria("Registrar Sobra", f"Registrou refeição extra (sobra) para {aluno['nome']}{turma_tag}")
