@@ -811,3 +811,25 @@ def init_db():
                 conn.commit()
             except sqlite3.OperationalError:
                 pass
+
+            # Migração automática 41: Atualizar participantes de evento que foram lançados como EXTRA
+            try:
+                cur.execute("""
+                    UPDATE reservas
+                    SET tipo_consumo = 'EVENTO',
+                        turma_id = COALESCE(
+                            reservas.turma_id,
+                            (SELECT a.turma_id FROM alunos a WHERE a.id = reservas.aluno_id),
+                            (SELECT ep.turma_id FROM eventos_participantes ep WHERE ep.aluno_id = reservas.aluno_id LIMIT 1)
+                        )
+                    WHERE tipo_consumo = 'EXTRA'
+                      AND aluno_id IN (
+                          SELECT id FROM alunos 
+                          WHERE matricula LIKE 'EVT-%' 
+                             OR turma_id IN (SELECT id FROM turmas WHERE is_evento = 1)
+                      )
+                """)
+                conn.commit()
+            except Exception as e:
+                print(f"Aviso migração 41: {e}")
+
