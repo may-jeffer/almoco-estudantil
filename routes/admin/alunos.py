@@ -9,7 +9,7 @@ import base64
 from io import BytesIO
 from database import closing, get_db_connection
 from utils.auth import is_logged_in_admin, tem_permissao
-from utils.helpers import datetime_now_str, date_hoje_str, sanitize_field, registrar_auditoria, formatar_nome_turma, obter_ou_criar_turma
+from utils.helpers import datetime_now_str, date_hoje_str, sanitize_field, registrar_auditoria, formatar_nome_turma, obter_ou_criar_turma, parse_data_nascimento
 from utils.filters import format_cpf
 from utils.qrcode_gen import generate_std_badge_code
 from . import admin_bp
@@ -25,7 +25,7 @@ def admin_alunos():
         nome = request.form.get('nome', '').strip()
         matricula = request.form.get('matricula', '').strip()
         cpf = request.form.get('cpf', '').strip()
-        data_nascimento = request.form.get('data_nascimento', '').strip()
+        data_nascimento = parse_data_nascimento(request.form.get('data_nascimento', '').strip()) or request.form.get('data_nascimento', '').strip()
         email = request.form.get('email', '').strip() or None
         restricoes = request.form.get('restricoes', '').strip() or None
         
@@ -176,7 +176,7 @@ def admin_alunos_editar(id):
     nome = request.form.get('nome', '').strip()
     matricula = request.form.get('matricula', '').strip()
     cpf = request.form.get('cpf', '').strip()
-    data_nascimento = request.form.get('data_nascimento', '').strip()
+    data_nascimento = parse_data_nascimento(request.form.get('data_nascimento', '').strip()) or request.form.get('data_nascimento', '').strip()
     email = request.form.get('email', '').strip() or None
     restricoes = request.form.get('restricoes', '').strip() or None
     
@@ -492,14 +492,10 @@ def admin_alunos_importar():
                 if not nome or not cpf:
                     continue
                 
-                # Trata data de nascimento
-                if '/' in data_nascimento:
-                    try:
-                        parts = data_nascimento.split('/')
-                        if len(parts) == 3 and len(parts[2]) == 4:
-                            data_nascimento = f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
-                    except:
-                        pass
+                # Trata data de nascimento com suporte a anos abreviados (ex: 26 -> 2026)
+                data_nascimento_norm = parse_data_nascimento(data_nascimento)
+                if data_nascimento_norm:
+                    data_nascimento = data_nascimento_norm
 
                 # Resolução inteligente de Curso, Série e Turma
                 curso_val = None

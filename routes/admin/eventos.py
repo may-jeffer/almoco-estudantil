@@ -10,7 +10,7 @@ import base64
 from io import BytesIO
 from database import closing, get_db_connection
 from utils.auth import is_logged_in_admin, tem_permissao
-from utils.helpers import datetime_now_str, date_hoje_str, sanitize_field, registrar_auditoria
+from utils.helpers import datetime_now_str, date_hoje_str, sanitize_field, registrar_auditoria, parse_data_nascimento
 from utils.qrcode_gen import generate_badge_code
 from . import admin_bp
 
@@ -116,12 +116,17 @@ def admin_evento_adicionar_participante(id):
     
     nome = sanitize_field(request.form.get('nome'))
     cpf = sanitize_field(request.form.get('cpf'))
-    data_nascimento = sanitize_field(request.form.get('data_nascimento'))
+    data_nascimento_raw = sanitize_field(request.form.get('data_nascimento'))
     email = sanitize_field(request.form.get('email', ''))
     instituicao = sanitize_field(request.form.get('instituicao', ''))
     
-    if not nome or not cpf or not data_nascimento:
+    if not nome or not cpf or not data_nascimento_raw:
         flash('Nome, CPF e Data de Nascimento são obrigatórios.', 'error')
+        return redirect(url_for('admin.admin_evento_detalhe', id=id))
+
+    data_nascimento = parse_data_nascimento(data_nascimento_raw)
+    if not data_nascimento:
+        flash(f"Data de nascimento inválida ('{data_nascimento_raw}'). Use DD/MM/AAAA ou DD/MM/AA.", 'error')
         return redirect(url_for('admin.admin_evento_detalhe', id=id))
         
     cpf_clean = re.sub(r'\D', '', cpf)
@@ -192,12 +197,17 @@ def admin_evento_editar_participante(id, aluno_id):
     
     nome = sanitize_field(request.form.get('nome'))
     cpf = sanitize_field(request.form.get('cpf'))
-    data_nascimento = sanitize_field(request.form.get('data_nascimento'))
+    data_nascimento_raw = sanitize_field(request.form.get('data_nascimento'))
     email = sanitize_field(request.form.get('email', ''))
     instituicao = sanitize_field(request.form.get('instituicao', ''))
     
-    if not nome or not cpf or not data_nascimento:
+    if not nome or not cpf or not data_nascimento_raw:
         flash('Nome, CPF e Data de Nascimento são obrigatórios.', 'error')
+        return redirect(url_for('admin.admin_evento_detalhe', id=id))
+
+    data_nascimento = parse_data_nascimento(data_nascimento_raw)
+    if not data_nascimento:
+        flash(f"Data de nascimento inválida ('{data_nascimento_raw}'). Use DD/MM/AAAA ou DD/MM/AA.", 'error')
         return redirect(url_for('admin.admin_evento_detalhe', id=id))
         
     cpf_clean = re.sub(r'\D', '', cpf)
@@ -337,20 +347,16 @@ def admin_evento_importar(id):
                 if len(row) >= 3:
                     nome = sanitize_field(row[0])
                     cpf = sanitize_field(row[1])
-                    data_nascimento = sanitize_field(row[2])
+                    data_nascimento_raw = sanitize_field(row[2])
                     email = sanitize_field(row[3]) if len(row) > 3 else ''
                     instituicao = sanitize_field(row[4]) if len(row) > 4 else ''
                     
-                    if not nome or not cpf or not data_nascimento:
+                    if not nome or not cpf or not data_nascimento_raw:
                         continue
                         
-                    # Converter DD/MM/AAAA para YYYY-MM-DD
-                    if '/' in data_nascimento:
-                        try:
-                            dia, mes, ano = data_nascimento.split('/')
-                            data_nascimento = f"{ano.strip()}-{mes.strip().zfill(2)}-{dia.strip().zfill(2)}"
-                        except:
-                            pass
+                    data_nascimento = parse_data_nascimento(data_nascimento_raw)
+                    if not data_nascimento:
+                        continue
                         
                     cpf_clean = re.sub(r'\D', '', cpf)
                     if len(cpf_clean) == 11:
@@ -468,30 +474,7 @@ def admin_evento_importar_grade(id):
                 })
                 continue
 
-            data_nascimento_iso = None
-            nasc_clean = nasc_raw.replace('.', '/').replace('-', '/')
-            partes = nasc_clean.split('/')
-            if len(partes) == 3:
-                p1, p2, p3 = partes[0].strip(), partes[1].strip(), partes[2].strip()
-                if len(p1) == 4:
-                    ano, mes, dia = p1, p2, p3
-                else:
-                    dia, mes, ano = p1, p2, p3
-                try:
-                    dt = datetime(int(ano), int(mes), int(dia))
-                    if 1900 <= dt.year <= datetime.now().year:
-                        data_nascimento_iso = dt.strftime('%Y-%m-%d')
-                except (ValueError, TypeError):
-                    pass
-            elif len(nasc_raw) == 8 and nasc_raw.isdigit():
-                dia, mes, ano = nasc_raw[:2], nasc_raw[2:4], nasc_raw[4:]
-                try:
-                    dt = datetime(int(ano), int(mes), int(dia))
-                    if 1900 <= dt.year <= datetime.now().year:
-                        data_nascimento_iso = dt.strftime('%Y-%m-%d')
-                except (ValueError, TypeError):
-                    pass
-
+            data_nascimento_iso = parse_data_nascimento(nasc_raw)
             if not data_nascimento_iso:
                 erros_count += 1
                 resultados.append({
@@ -499,7 +482,7 @@ def admin_evento_importar_grade(id):
                     "status": "erro",
                     "nome": nome,
                     "cpf": cpf_formatted,
-                    "motivo": f"Data de nascimento inválida ('{nasc_raw}'). Use DD/MM/AAAA."
+                    "motivo": f"Data de nascimento inválida ('{nasc_raw}'). Use DD/MM/AAAA ou DD/MM/AA."
                 })
                 continue
 

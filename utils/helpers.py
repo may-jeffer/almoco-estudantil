@@ -354,3 +354,93 @@ def obter_ou_criar_turma(conn, curso, serie_ano=None, turno=None, ano_letivo=Non
 
     return None
 
+
+def parse_data_nascimento(val):
+    """
+    Normaliza e valida data de nascimento para o formato ISO 'YYYY-MM-DD'.
+    Converte automaticamente anos abreviados com 2 dígitos (ex: '26' -> '2026', '98' -> '1998').
+    Suporta separadores comuns ('/', '-', '.') e formatos:
+      - DD/MM/AAAA, DD/MM/AA
+      - AAAA-MM-DD
+      - DDMMAAAA, DDMMAA
+    Retorna a string formatada em ISO 'YYYY-MM-DD' se válida, ou None se inválida.
+    """
+    if not val:
+        return None
+    s = str(val).strip()
+    if not s:
+        return None
+
+    ano_atual = datetime.now().year
+    limite_2d = (ano_atual % 100) + 5  # se ano atual for 2026, limite é 31
+
+    def expand_ano(a_str):
+        if not a_str.isdigit():
+            return None
+        if len(a_str) == 2:
+            a_int = int(a_str)
+            return (2000 + a_int) if a_int <= limite_2d else (1900 + a_int)
+        elif len(a_str) == 4:
+            return int(a_str)
+        return None
+
+    # Tenta quebrar por delimitadores /, -, .
+    for sep in ['/', '-', '.']:
+        if sep in s:
+            parts = [p.strip() for p in s.split(sep) if p.strip()]
+            if len(parts) == 3:
+                p1, p2, p3 = parts[0], parts[1], parts[2]
+                if not (p1.isdigit() and p2.isdigit() and p3.isdigit()):
+                    return None
+                if len(p1) == 4:  # Formato ISO: AAAA/MM/DD ou AAAA-MM-DD
+                    ano = int(p1)
+                    mes = int(p2)
+                    dia = int(p3)
+                else:  # Formato BR: DD/MM/AAAA ou DD/MM/AA
+                    dia = int(p1)
+                    mes = int(p2)
+                    ano = expand_ano(p3)
+                    if ano is None:
+                        return None
+                try:
+                    dt = datetime(ano, mes, dia)
+                    if 1900 <= dt.year <= (ano_atual + 5):
+                        return dt.strftime('%Y-%m-%d')
+                except (ValueError, TypeError):
+                    return None
+            break
+
+    # Se forem apenas dígitos sem separador
+    digits = ''.join(c for c in s if c.isdigit())
+    if len(digits) == 8:
+        # 1. Tenta DDMMAAAA
+        try:
+            dia, mes, ano = int(digits[:2]), int(digits[2:4]), int(digits[4:])
+            dt = datetime(ano, mes, dia)
+            if 1900 <= dt.year <= (ano_atual + 5):
+                return dt.strftime('%Y-%m-%d')
+        except (ValueError, TypeError):
+            pass
+        # 2. Tenta AAAAMMDD
+        try:
+            ano, mes, dia = int(digits[:4]), int(digits[4:6]), int(digits[6:])
+            dt = datetime(ano, mes, dia)
+            if 1900 <= dt.year <= (ano_atual + 5):
+                return dt.strftime('%Y-%m-%d')
+        except (ValueError, TypeError):
+            pass
+    elif len(digits) == 6:
+        # DDMMAA
+        dia, mes = int(digits[:2]), int(digits[2:4])
+        ano = expand_ano(digits[4:])
+        if ano:
+            try:
+                dt = datetime(ano, mes, dia)
+                if 1900 <= dt.year <= (ano_atual + 5):
+                    return dt.strftime('%Y-%m-%d')
+            except (ValueError, TypeError):
+                pass
+
+    return None
+
+

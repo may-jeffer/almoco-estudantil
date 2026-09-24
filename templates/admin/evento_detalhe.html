@@ -184,6 +184,49 @@
     // ==========================================
     let contadorLinhaId = 0;
 
+    function normalizarDataInputGrade(valor) {
+        if (!valor) return '';
+        let s = valor.trim();
+        let parts = s.split(/[\/\-\.]/);
+        if (parts.length === 3) {
+            let p1 = parts[0].trim();
+            let p2 = parts[1].trim();
+            let p3 = parts[2].trim();
+            if (p1.length === 4 && /^\d+$/.test(p1)) {
+                // AAAA-MM-DD -> DD/MM/AAAA
+                return `${p3.padStart(2, '0')}/${p2.padStart(2, '0')}/${p1}`;
+            }
+            if (/^\d+$/.test(p1) && /^\d+$/.test(p2) && /^\d+$/.test(p3)) {
+                let dia = p1.padStart(2, '0');
+                let mes = p2.padStart(2, '0');
+                let ano = p3;
+                if (ano.length === 2) {
+                    let anoInt = parseInt(ano, 10);
+                    let anoAtual = new Date().getFullYear();
+                    let limite2d = (anoAtual % 100) + 5;
+                    ano = (anoInt <= limite2d ? (2000 + anoInt) : (1900 + anoInt)).toString();
+                }
+                return `${dia}/${mes}/${ano}`;
+            }
+        }
+        let digits = s.replace(/\D/g, '');
+        if (digits.length === 6) {
+            let dia = digits.substring(0, 2);
+            let mes = digits.substring(2, 4);
+            let anoInt = parseInt(digits.substring(4, 6), 10);
+            let anoAtual = new Date().getFullYear();
+            let limite2d = (anoAtual % 100) + 5;
+            let ano = (anoInt <= limite2d ? (2000 + anoInt) : (1900 + anoInt)).toString();
+            return `${dia}/${mes}/${ano}`;
+        } else if (digits.length === 8) {
+            let dia = digits.substring(0, 2);
+            let mes = digits.substring(2, 4);
+            let ano = digits.substring(4, 8);
+            return `${dia}/${mes}/${ano}`;
+        }
+        return valor;
+    }
+
     function abrirGradeImportacao() {
         const tbody = document.getElementById('gradeTbody');
         if (tbody.children.length === 0) {
@@ -202,7 +245,7 @@
         const rowNum = tbody.children.length + 1;
         const nomeVal = dados.nome || '';
         const cpfVal = dados.cpf || '';
-        const nascVal = dados.data_nascimento || '';
+        const nascVal = normalizarDataInputGrade(dados.data_nascimento || '');
         const emailVal = dados.email || '';
         const instVal = dados.instituicao || '';
 
@@ -251,6 +294,13 @@
                 }
             });
         });
+
+        const nascInput = tr.querySelector('.grade-nasc');
+        if (nascInput) {
+            nascInput.addEventListener('blur', function() {
+                this.value = normalizarDataInputGrade(this.value);
+            });
+        }
     }
 
     function processarPasteNaCelula(targetInput, text) {
@@ -291,7 +341,11 @@
             cols.forEach((val, cOffset) => {
                 const destCol = startColIndex + cOffset;
                 if (destCol < inputs.length && inputs[destCol]) {
-                    inputs[destCol].value = val;
+                    if (inputs[destCol].classList.contains('grade-nasc')) {
+                        inputs[destCol].value = normalizarDataInputGrade(val);
+                    } else {
+                        inputs[destCol].value = val;
+                    }
                 }
             });
         });

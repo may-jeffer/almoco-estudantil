@@ -7,7 +7,7 @@ import time
 from database import closing, get_db_connection, get_config
 from utils.auth import is_logged_in_aluno
 from utils.mailer import enviar_email_recuperacao
-from utils.helpers import date_hoje_str, datetime_now_str
+from utils.helpers import date_hoje_str, datetime_now_str, parse_data_nascimento
 import json
 
 main_bp = Blueprint('main', __name__)
@@ -83,21 +83,7 @@ def login():
         
         lembrar_me = request.form.get('lembrar_me') == 'on'
         
-        normalized_data_nascimento = data_nascimento
-        if '/' in data_nascimento:
-            try:
-                parts = data_nascimento.split('/')
-                if len(parts) == 3:
-                    normalized_data_nascimento = f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
-            except:
-                pass
-        elif '-' in data_nascimento:
-            try:
-                parts = data_nascimento.split('-')
-                if len(parts) == 3 and len(parts[0]) != 4:
-                    normalized_data_nascimento = f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
-            except:
-                pass
+        normalized_data_nascimento = parse_data_nascimento(data_nascimento) or data_nascimento
                 
         config = get_config()
         modo_login = config['modo_login_aluno'] if 'modo_login_aluno' in dict(config) else 'DATA_NASC'
@@ -377,11 +363,7 @@ def pesquisa_identificar(slug):
 
         aluno = None
         if modo_login == 'DATA_NASC':
-            normalized_data = data_nascimento
-            if '/' in data_nascimento:
-                parts = data_nascimento.split('/')
-                if len(parts) == 3:
-                    normalized_data = f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
+            normalized_data = parse_data_nascimento(data_nascimento) or data_nascimento
             
             aluno = conn.execute(
                 "SELECT * FROM alunos WHERE (cpf = ? OR cpf = ? OR cpf = ?) AND (data_nascimento = ? OR data_nascimento = ?)",
