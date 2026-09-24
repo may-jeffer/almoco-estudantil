@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 
 from database import closing, get_db_connection, get_config
 from utils.auth import is_logged_in_admin, tem_permissao
-from utils.helpers import datetime_now_str, date_hoje_str, sanitize_field, registrar_auditoria
+from utils.helpers import datetime_now_str, date_hoje_str, sanitize_field, registrar_auditoria, normalizar_cpf
 from utils.mailer import enviar_email_recuperacao, diagnosticar_smtp
 from . import admin_bp
 
@@ -160,8 +160,8 @@ def admin_administradores():
     if request.method == 'POST':
         nome = request.form.get('nome', '').strip()
         cpf_raw = request.form.get('cpf', '').strip()
-        cpf_clean = re.sub(r'\D', '', cpf_raw)
-        cpf = f"{cpf_clean[:3]}.{cpf_clean[3:6]}.{cpf_clean[6:9]}-{cpf_clean[9:]}" if len(cpf_clean) == 11 else cpf_raw
+        cpf_clean, cpf_formatted = normalizar_cpf(cpf_raw)
+        cpf = cpf_formatted if cpf_clean else cpf_raw
         setor = request.form.get('setor', '').strip()
         email = request.form.get('email', '').strip().lower()
         usuario = request.form.get('usuario', '').strip().lower()
@@ -171,8 +171,8 @@ def admin_administradores():
             flash('Usuário e Senha são campos obrigatórios.', 'error')
             return redirect(url_for('admin.admin_administradores'))
 
-        if cpf_clean and len(cpf_clean) != 11:
-            flash('CPF inválido. O CPF deve conter exatamente 11 dígitos numéricos.', 'error')
+        if cpf_raw and not cpf_clean:
+            flash('CPF inválido. O CPF deve conter 11 dígitos numéricos.', 'error')
             return redirect(url_for('admin.admin_administradores'))
         
         plist = request.form.getlist('permissoes[]')
@@ -275,13 +275,13 @@ def admin_administradores_editar(id):
     
     nome = request.form.get('nome', '').strip()
     cpf_raw = request.form.get('cpf', '').strip()
-    cpf_clean = re.sub(r'\D', '', cpf_raw)
-    cpf = f"{cpf_clean[:3]}.{cpf_clean[3:6]}.{cpf_clean[6:9]}-{cpf_clean[9:]}" if len(cpf_clean) == 11 else cpf_raw
+    cpf_clean, cpf_formatted = normalizar_cpf(cpf_raw)
+    cpf = cpf_formatted if cpf_clean else cpf_raw
     setor = request.form.get('setor', '').strip()
     email = request.form.get('email', '').strip().lower()
 
-    if cpf_clean and len(cpf_clean) != 11:
-        flash('CPF inválido. O CPF deve conter exatamente 11 dígitos numéricos.', 'error')
+    if cpf_raw and not cpf_clean:
+        flash('CPF inválido. O CPF deve conter 11 dígitos numéricos.', 'error')
         return redirect(url_for('admin.admin_administradores'))
 
     plist = request.form.getlist('permissoes[]')
@@ -355,8 +355,10 @@ def admin_esqueci_senha():
             flash('Informe seu CPF, E-mail ou Usuário de administrador.', 'error')
             return render_template('admin/esqueci_senha.html')
 
-        ident_clean = re.sub(r'\D', '', identificador)
-        ident_cpf = f"{ident_clean[:3]}.{ident_clean[3:6]}.{ident_clean[6:9]}-{ident_clean[9:]}" if len(ident_clean) == 11 else identificador
+        ident_clean, ident_cpf = normalizar_cpf(identificador)
+        if not ident_clean:
+            ident_clean = re.sub(r'\D', '', identificador)
+            ident_cpf = identificador
 
         with closing(get_db_connection()) as conn:
             admin = conn.execute("""

@@ -10,7 +10,7 @@ import base64
 from io import BytesIO
 from database import closing, get_db_connection
 from utils.auth import is_logged_in_admin, tem_permissao
-from utils.helpers import datetime_now_str, date_hoje_str, sanitize_field, registrar_auditoria, parse_data_nascimento
+from utils.helpers import datetime_now_str, date_hoje_str, sanitize_field, registrar_auditoria, parse_data_nascimento, normalizar_cpf
 from utils.qrcode_gen import generate_badge_code
 from . import admin_bp
 
@@ -129,8 +129,10 @@ def admin_evento_adicionar_participante(id):
         flash(f"Data de nascimento inválida ('{data_nascimento_raw}'). Use DD/MM/AAAA ou DD/MM/AA.", 'error')
         return redirect(url_for('admin.admin_evento_detalhe', id=id))
         
-    cpf_clean = re.sub(r'\D', '', cpf)
-    cpf_formatted = f"{cpf_clean[:3]}.{cpf_clean[3:6]}.{cpf_clean[6:9]}-{cpf_clean[9:]}" if len(cpf_clean) == 11 else cpf_clean
+    cpf_clean, cpf_formatted = normalizar_cpf(cpf)
+    if not cpf_clean:
+        flash(f"CPF inválido ('{cpf}'). O CPF deve conter 11 dígitos.", 'error')
+        return redirect(url_for('admin.admin_evento_detalhe', id=id))
     matricula = "EVT-" + cpf_clean
     
     with closing(get_db_connection()) as conn:
@@ -210,8 +212,10 @@ def admin_evento_editar_participante(id, aluno_id):
         flash(f"Data de nascimento inválida ('{data_nascimento_raw}'). Use DD/MM/AAAA ou DD/MM/AA.", 'error')
         return redirect(url_for('admin.admin_evento_detalhe', id=id))
         
-    cpf_clean = re.sub(r'\D', '', cpf)
-    cpf_formatted = f"{cpf_clean[:3]}.{cpf_clean[3:6]}.{cpf_clean[6:9]}-{cpf_clean[9:]}" if len(cpf_clean) == 11 else cpf_clean
+    cpf_clean, cpf_formatted = normalizar_cpf(cpf)
+    if not cpf_clean:
+        flash(f"CPF inválido ('{cpf}'). O CPF deve conter 11 dígitos.", 'error')
+        return redirect(url_for('admin.admin_evento_detalhe', id=id))
     
     with closing(get_db_connection()) as conn:
         try:
@@ -358,11 +362,9 @@ def admin_evento_importar(id):
                     if not data_nascimento:
                         continue
                         
-                    cpf_clean = re.sub(r'\D', '', cpf)
-                    if len(cpf_clean) == 11:
-                        cpf_formatted = f"{cpf_clean[:3]}.{cpf_clean[3:6]}.{cpf_clean[6:9]}-{cpf_clean[9:]}"
-                    else:
-                        cpf_formatted = cpf_clean
+                    cpf_clean, cpf_formatted = normalizar_cpf(cpf)
+                    if not cpf_clean:
+                        continue
                         
                     matricula = "EVT-" + cpf_clean
                         
@@ -444,23 +446,18 @@ def admin_evento_importar_grade(id):
                 })
                 continue
 
-            # Validação 2: CPF
-            cpf_clean = re.sub(r'\D', '', cpf_raw)
-            if len(cpf_clean) == 10:
-                cpf_clean = cpf_clean.zfill(11)
-
-            if len(cpf_clean) != 11:
+            # Validação 2: CPF (corrige omissão de 0 ou 00 no início)
+            cpf_clean, cpf_formatted = normalizar_cpf(cpf_raw)
+            if not cpf_clean:
                 erros_count += 1
                 resultados.append({
                     "linha": row_num,
                     "status": "erro",
                     "nome": nome,
                     "cpf": cpf_raw,
-                    "motivo": f"CPF inválido ({len(cpf_clean)} dígitos, esperado 11)."
+                    "motivo": f"CPF inválido ('{cpf_raw}'). Deve conter 11 dígitos numéricos."
                 })
                 continue
-
-            cpf_formatted = f"{cpf_clean[:3]}.{cpf_clean[3:6]}.{cpf_clean[6:9]}-{cpf_clean[9:]}"
 
             # Validação 3: Data de Nascimento
             if not nasc_raw:

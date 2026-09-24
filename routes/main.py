@@ -7,7 +7,7 @@ import time
 from database import closing, get_db_connection, get_config
 from utils.auth import is_logged_in_aluno
 from utils.mailer import enviar_email_recuperacao
-from utils.helpers import date_hoje_str, datetime_now_str, parse_data_nascimento
+from utils.helpers import date_hoje_str, datetime_now_str, parse_data_nascimento, normalizar_cpf
 import json
 
 main_bp = Blueprint('main', __name__)
@@ -71,12 +71,11 @@ def login():
             return render_template('login.html')
         login_limiter.record_attempt(ip)
 
-        raw_cpf = request.form.get('cpf', '')
-        cpf_clean = re.sub(r'\D', '', raw_cpf)
-        if len(cpf_clean) == 11:
-            cpf_formatted = f"{cpf_clean[:3]}.{cpf_clean[3:6]}.{cpf_clean[6:9]}-{cpf_clean[9:]}"
-        else:
-            cpf_formatted = cpf_clean
+        raw_cpf = request.form.get('cpf', '').strip()
+        cpf_clean, cpf_formatted = normalizar_cpf(raw_cpf)
+        if not cpf_clean:
+            cpf_clean = re.sub(r'\D', '', raw_cpf)
+            cpf_formatted = raw_cpf
             
         data_nascimento = request.form.get('data_nascimento', '').strip()
         senha = request.form.get('senha')
@@ -347,10 +346,10 @@ def pesquisa_identificar(slug):
     modo_login = dict(config).get('modo_login_aluno', 'DATA_NASC') if config else 'DATA_NASC'
 
     cpf_raw = request.form.get('cpf', '').strip()
-    cpf_clean = re.sub(r'\D', '', cpf_raw)
-    
-    # Formatação padrão do CPF
-    cpf_formatted = f"{cpf_clean[:3]}.{cpf_clean[3:6]}.{cpf_clean[6:9]}-{cpf_clean[9:]}" if len(cpf_clean) == 11 else cpf_clean
+    cpf_clean, cpf_formatted = normalizar_cpf(cpf_raw)
+    if not cpf_clean:
+        cpf_clean = re.sub(r'\D', '', cpf_raw)
+        cpf_formatted = cpf_raw
 
     data_nascimento = request.form.get('data_nascimento', '').strip()
     senha = request.form.get('senha', '')

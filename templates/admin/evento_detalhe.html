@@ -227,6 +227,20 @@
         return valor;
     }
 
+    function normalizarCpfInputGrade(valor) {
+        if (!valor) return '';
+        let digits = valor.toString().replace(/\D/g, '');
+        if (!digits) return valor;
+        // Se o Excel removeu 0 ou 00 (8 a 10 dígitos)
+        if (digits.length >= 8 && digits.length <= 10) {
+            digits = digits.padStart(11, '0');
+        }
+        if (digits.length === 11) {
+            return `${digits.substring(0,3)}.${digits.substring(3,6)}.${digits.substring(6,9)}-${digits.substring(9,11)}`;
+        }
+        return valor;
+    }
+
     function abrirGradeImportacao() {
         const tbody = document.getElementById('gradeTbody');
         if (tbody.children.length === 0) {
@@ -244,7 +258,7 @@
 
         const rowNum = tbody.children.length + 1;
         const nomeVal = dados.nome || '';
-        const cpfVal = dados.cpf || '';
+        const cpfVal = normalizarCpfInputGrade(dados.cpf || '');
         const nascVal = normalizarDataInputGrade(dados.data_nascimento || '');
         const emailVal = dados.email || '';
         const instVal = dados.instituicao || '';
@@ -295,6 +309,13 @@
             });
         });
 
+        const cpfInput = tr.querySelector('.grade-cpf');
+        if (cpfInput) {
+            cpfInput.addEventListener('blur', function() {
+                this.value = normalizarCpfInputGrade(this.value);
+            });
+        }
+
         const nascInput = tr.querySelector('.grade-nasc');
         if (nascInput) {
             nascInput.addEventListener('blur', function() {
@@ -341,7 +362,9 @@
             cols.forEach((val, cOffset) => {
                 const destCol = startColIndex + cOffset;
                 if (destCol < inputs.length && inputs[destCol]) {
-                    if (inputs[destCol].classList.contains('grade-nasc')) {
+                    if (inputs[destCol].classList.contains('grade-cpf')) {
+                        inputs[destCol].value = normalizarCpfInputGrade(val);
+                    } else if (inputs[destCol].classList.contains('grade-nasc')) {
                         inputs[destCol].value = normalizarDataInputGrade(val);
                     } else {
                         inputs[destCol].value = val;

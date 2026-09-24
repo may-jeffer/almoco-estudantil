@@ -444,3 +444,28 @@ def parse_data_nascimento(val):
     return None
 
 
+def normalizar_cpf(cpf_raw):
+    """
+    Normaliza e formata CPF brasileiro.
+    Extrai apenas dígitos numéricos e corrige CPFs cujos zeros à esquerda (ex: 0 ou 00)
+    foram omitidos por planilhas (Excel/Calc) ou digitados sem zeros (de 8 a 10 dígitos).
+    
+    Retorna uma tupla (cpf_clean, cpf_formatted):
+      - cpf_clean: 11 dígitos numéricos (ex: '00123456789')
+      - cpf_formatted: formatado com pontuação (ex: '001.234.567-89')
+    Se for inválido (vazio ou quantidade de dígitos inadequada), retorna (None, None).
+    """
+    if not cpf_raw:
+        return None, None
+    digits = ''.join(c for c in str(cpf_raw) if c.isdigit())
+    if not digits:
+        return None, None
+    if 8 <= len(digits) <= 10:
+        digits = digits.zfill(11)
+    if len(digits) != 11:
+        return None, None
+    formatted = f"{digits[:3]}.{digits[3:6]}.{digits[6:9]}-{digits[9:]}"
+    return digits, formatted
+
+
+

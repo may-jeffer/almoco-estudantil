@@ -9,7 +9,7 @@ import base64
 from io import BytesIO
 from database import closing, get_db_connection
 from utils.auth import is_logged_in_admin, tem_permissao
-from utils.helpers import datetime_now_str, date_hoje_str, sanitize_field, registrar_auditoria, formatar_nome_turma, obter_ou_criar_turma, parse_data_nascimento
+from utils.helpers import datetime_now_str, date_hoje_str, sanitize_field, registrar_auditoria, formatar_nome_turma, obter_ou_criar_turma, parse_data_nascimento, normalizar_cpf
 from utils.filters import format_cpf
 from utils.qrcode_gen import generate_std_badge_code
 from . import admin_bp
@@ -24,7 +24,9 @@ def admin_alunos():
     if request.method == 'POST':
         nome = request.form.get('nome', '').strip()
         matricula = request.form.get('matricula', '').strip()
-        cpf = request.form.get('cpf', '').strip()
+        cpf_raw = request.form.get('cpf', '').strip()
+        cpf_clean, cpf_formatted = normalizar_cpf(cpf_raw)
+        cpf = cpf_formatted if cpf_formatted else cpf_raw
         data_nascimento = parse_data_nascimento(request.form.get('data_nascimento', '').strip()) or request.form.get('data_nascimento', '').strip()
         email = request.form.get('email', '').strip() or None
         restricoes = request.form.get('restricoes', '').strip() or None
@@ -175,7 +177,9 @@ def admin_alunos_editar(id):
     
     nome = request.form.get('nome', '').strip()
     matricula = request.form.get('matricula', '').strip()
-    cpf = request.form.get('cpf', '').strip()
+    cpf_raw = request.form.get('cpf', '').strip()
+    cpf_clean, cpf_formatted = normalizar_cpf(cpf_raw)
+    cpf = cpf_formatted if cpf_formatted else cpf_raw
     data_nascimento = parse_data_nascimento(request.form.get('data_nascimento', '').strip()) or request.form.get('data_nascimento', '').strip()
     email = request.form.get('email', '').strip() or None
     restricoes = request.form.get('restricoes', '').strip() or None
@@ -576,8 +580,10 @@ def admin_alunos_importar():
                     mensagens_erro.append(f"Linha {idx} ({nome}): Turma '{nome_turma_alvo}' não existe no sistema. Marque a opção 'Criar turmas inexistentes automaticamente' para criá-la.")
                     continue
 
-                cpf_digitos = ''.join(filter(str.isdigit, str(cpf or '')))
-                cpf_padrao = format_cpf(cpf_digitos) if len(cpf_digitos) == 11 else cpf
+                cpf_digitos, cpf_padrao = normalizar_cpf(cpf)
+                if not cpf_digitos:
+                    cpf_digitos = ''.join(filter(str.isdigit, str(cpf or '')))
+                    cpf_padrao = format_cpf(cpf_digitos) if len(cpf_digitos) == 11 else cpf
 
                 try:
                     # 1. Procura primeiro pela matrícula (identificador acadêmico único)

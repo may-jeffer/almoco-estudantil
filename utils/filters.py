@@ -16,6 +16,8 @@ def format_cpf(value):
         return ''
     # Remove all non-numeric characters
     cpf_digits = ''.join(filter(str.isdigit, str(value)))
+    if 8 <= len(cpf_digits) <= 10:
+        cpf_digits = cpf_digits.zfill(11)
     # If it has 11 digits, format it
     if len(cpf_digits) == 11:
         return f"{cpf_digits[:3]}.{cpf_digits[3:6]}.{cpf_digits[6:9]}-{cpf_digits[9:]}"
