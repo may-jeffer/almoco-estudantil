@@ -116,6 +116,9 @@ def admin_dashboard():
         
         refeicoes_servidas_hoje = 0
         reservas_hoje = 0
+        reservas_normais_hoje = 0
+        extras_hoje = 0
+        eventos_hoje = 0
         ultimas_retiradas = []
         
         if cardapio_hoje:
@@ -124,10 +127,26 @@ def admin_dashboard():
                 (cardapio_hoje['id'],)
             ).fetchone()[0]
             
-            reservas_hoje = conn.execute(
-                "SELECT COUNT(*) FROM reservas WHERE cardapio_id = ? AND status IN ('ATIVA', 'CONSUMIDA')", 
+            # Reservas agendadas (estudantes regulares)
+            reservas_normais_hoje = conn.execute(
+                "SELECT COUNT(*) FROM reservas WHERE cardapio_id = ? AND status IN ('ATIVA', 'CONSUMIDA') AND (tipo_consumo = 'NORMAL' OR tipo_consumo IS NULL)", 
                 (cardapio_hoje['id'],)
             ).fetchone()[0]
+
+            # Participantes de eventos agendados
+            eventos_hoje = conn.execute(
+                "SELECT COUNT(*) FROM reservas WHERE cardapio_id = ? AND status IN ('ATIVA', 'CONSUMIDA') AND tipo_consumo = 'EVENTO'", 
+                (cardapio_hoje['id'],)
+            ).fetchone()[0]
+
+            # Extras entregues (sem reserva prévia)
+            extras_hoje = conn.execute(
+                "SELECT COUNT(*) FROM reservas WHERE cardapio_id = ? AND status = 'CONSUMIDA' AND tipo_consumo = 'EXTRA'", 
+                (cardapio_hoje['id'],)
+            ).fetchone()[0]
+
+            # Total de reservas agendadas (regulares + eventos)
+            reservas_hoje = reservas_normais_hoje + eventos_hoje
             
             ultimas_retiradas = conn.execute("""
                 SELECT r.codigo_unico, r.data_registro, a.nome as aluno_nome, a.matricula, t.nome as turma_nome
@@ -147,6 +166,9 @@ def admin_dashboard():
                            config=config,
                            refeicoes_servidas_hoje=refeicoes_servidas_hoje,
                            reservas_hoje=reservas_hoje,
+                           reservas_normais_hoje=reservas_normais_hoje,
+                           extras_hoje=extras_hoje,
+                           eventos_hoje=eventos_hoje,
                            cardapio_hoje=cardapio_hoje,
                            ultimas_retiradas=ultimas_retiradas)
 

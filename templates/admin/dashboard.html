@@ -42,6 +42,9 @@
             <div>
                 <span style="display: block; font-size: 1.7rem; font-weight: 700; color: var(--text-main); line-height: 1.1;">{{ refeicoes_servidas_hoje }}</span>
                 <span style="color: var(--text-muted); font-size: 0.82rem; font-weight: 500;">Servidas Hoje</span>
+                {% if extras_hoje is defined and extras_hoje > 0 %}
+                <span style="display: block; font-size: 0.72rem; color: #0284c7; font-weight: 500; margin-top: 2px;">{{ refeicoes_servidas_hoje - extras_hoje }} reservas + {{ extras_hoje }} extras</span>
+                {% endif %}
             </div>
         </div>
 
@@ -53,6 +56,11 @@
             <div>
                 <span style="display: block; font-size: 1.7rem; font-weight: 700; color: var(--text-main); line-height: 1.1;">{{ reservas_hoje }}</span>
                 <span style="color: var(--text-muted); font-size: 0.82rem; font-weight: 500;">Reservas do Dia</span>
+                {% if eventos_hoje is defined and eventos_hoje > 0 %}
+                <span style="display: block; font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">{{ reservas_normais_hoje }} regulares + {{ eventos_hoje }} eventos</span>
+                {% else %}
+                <span style="display: block; font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">Agendadas no portal</span>
+                {% endif %}
             </div>
         </div>
 
