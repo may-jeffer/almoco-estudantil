@@ -31,13 +31,13 @@
 
     {% if cardapios_hoje %}
     <!-- Seletor de Refeição Ativa -->
-    <div class="card" style="padding: 1rem; background: #f8fafc; border: 1px solid var(--border); margin-bottom: 1.5rem;">
+    <div class="card card-seletor-refeicao" style="padding: 1rem; border: 1px solid var(--border); margin-bottom: 1.5rem;">
         <form method="GET" action="{{ url_for('admin_entrega') }}" id="form-refeicao">
             <label for="cardapio_id_select" style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.5rem;">
                 <i class="ph ph-bowl-food"></i> REFEIÇÃO SENDO SERVIDA AGORA:
             </label>
             <select name="cardapio_id" id="cardapio_id_select" onchange="this.form.submit()" 
-                    style="width: 100%; font-size: 1.2rem; font-weight: bold; padding: 0.75rem; border-radius: 8px; border: 2px solid var(--primary); color: var(--primary); background: white;">
+                    style="width: 100%; font-size: 1.2rem; font-weight: bold; padding: 0.75rem; border-radius: 8px; border: 2px solid var(--primary); color: var(--primary);">
                 {% for c in cardapios_hoje %}
                 <option value="{{ c.id }}" {% if cardapio_hoje and c.id == cardapio_hoje.id %}selected{% endif %}>
                     {{ c.tipo_refeicao }} ({{ c.data | datetimeformat }})
@@ -75,7 +75,7 @@
     </div>
 
     <!-- Container para Mensagens Flutuantes (AJAX) -->
-    <div id="liveAlertPlaceholder" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 350px; z-index: 9999; text-align: center; background: rgba(255,255,255,0.95); padding: 0.5rem 1rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);"></div>
+    <div id="liveAlertPlaceholder" class="live-alert-container"></div>
 
     <!-- Modal customizado para avisos / confirmações de liberação -->
     <div id="confirm-modal" class="modal-overlay">
@@ -106,7 +106,7 @@
                 Alergia / Restrição!
             </h2>
             <p style="font-size: 1.1rem; color: var(--text-muted); margin-bottom: 1rem;">O estudante possui a seguinte especificidade:</p>
-            <div style="background: #fee2e2; border: 1px solid #fecaca; border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem;">
+            <div class="allergy-box" style="background: #fee2e2; border: 1px solid #fecaca; border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem;">
                 <strong id="allergy-modal-restricao" style="font-size: 1.4rem; color: #991b1b;"></strong>
             </div>
             <button type="button" class="btn btn-primary" onclick="closeAllergyModal()" style="background:#ef4444; width:100%; font-size:1.1rem;">
@@ -144,7 +144,7 @@
     </div>
 
     <!-- 2.5 BLOCO ADICIONAR SOBRA MANUALMENTE -->
-    <div class="card" style="padding: 1rem 1.5rem; background: #e0f2fe; border: 1px solid #bae6fd;">
+    <div class="card card-sobra-box" style="padding: 1rem 1.5rem; border: 1px solid var(--border);">
         <h3 style="font-size: 1rem; color: #0369a1; margin-bottom: 0.75rem;"><i class="ph ph-plus-circle"></i> Repassar Sobra (Aluno sem Reserva)</h3>
         <form id="form-extra-ajax" style="display: flex; flex-direction: column; gap: 0.75rem;">
             <div class="form-group" style="margin: 0; position: relative;">
@@ -152,7 +152,7 @@
                 <input type="text" id="aluno_busca" autocomplete="off" style="font-size: 1.1rem; width: 100%;" required
                     placeholder="Digite a matrícula ou nome...">
                 <div id="busca-resultados"
-                    style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #bae6fd; border-radius: 0 0 8px 8px; z-index: 100; display: none; max-height: 200px; overflow-y: auto; box-shadow: var(--shadow-md);">
+                    style="position: absolute; top: 100%; left: 0; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 0 0 8px 8px; z-index: 100; display: none; max-height: 200px; overflow-y: auto; box-shadow: var(--shadow-md);">
                 </div>
             </div>
             <button type="submit" class="btn" style="background: #0284c7; color: white; padding: 0.8rem 1rem; width: 100%;"><i
@@ -165,7 +165,7 @@
         <h2 style="font-size: 1.25rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;"><i
                 class="ph ph-magnifying-glass"></i> Busca Rápida na Lista do Dia</h2>
         <input type="text" id="searchBox" placeholder="Digite o nome do aluno ou matrícula..."
-            style="margin-top: 1rem; margin-bottom: 1rem; font-size: 1.1rem; padding: 1rem; border-radius: 12px; background: #FAFAFA;">
+            style="margin-top: 1rem; margin-bottom: 1rem; font-size: 1.1rem; padding: 1rem; border-radius: 12px;">
 
         <div id="studentListContainer" style="max-height: 400px; overflow-y: auto;">
             {% for r in reservas_hoje %}
@@ -208,26 +208,27 @@
 <script>
     function showAlert(message, type) {
 		const wrapper = document.createElement('div');
+        wrapper.className = 'toast-wrapper';
 		wrapper.innerHTML = `
-			<div class="alert alert-${type} fade-in" style="box-shadow: var(--shadow-lg);">
-				<div>${message}</div>
-				<button type="button" onclick="closeAlert(this)" style="background:none; border:none; margin-left:10px; cursor:pointer;">&times;</button>
+			<div class="alert alert-${type} toast-alert fade-in">
+				<div style="flex: 1; word-break: break-word;">${message}</div>
+				<button type="button" onclick="closeAlert(this)" class="toast-close-btn" aria-label="Fechar">&times;</button>
 			</div>
 		`;
 		const container = document.getElementById('liveAlertPlaceholder');
 		container.style.display = 'block';
 		container.append(wrapper);
 		setTimeout(() => {
-			if (wrapper) { wrapper.remove(); }
+			if (wrapper && wrapper.parentNode) { wrapper.remove(); }
 			if (container.children.length === 0) { container.style.display = 'none'; }
-		}, 4000);
+		}, 4500);
 	}
 
 	function closeAlert(btn) {
-		const alertDiv = btn.closest('.alert');
-		if (alertDiv) { alertDiv.remove(); }
+		const wrapper = btn.closest('.toast-wrapper');
+		if (wrapper) { wrapper.remove(); }
         const container = document.getElementById('liveAlertPlaceholder');
-        if (container.children.length === 0) { container.style.display = 'none'; }
+        if (container && container.children.length === 0) { container.style.display = 'none'; }
 	}
 
     function submitManualCode(code) {
@@ -519,8 +520,9 @@
                             resultadosDiv.innerHTML = '';
                             data.alunos.forEach(aluno => {
                                 const item = document.createElement('div');
+                                item.className = 'busca-item-aluno';
                                 item.style.padding = '0.75rem';
-                                item.style.borderBottom = '1px solid #f0f9ff';
+                                item.style.borderBottom = '1px solid var(--border)';
                                 item.style.cursor = 'pointer';
                                 item.innerHTML = `
                                     <strong style="display:block; color:var(--text-main);">${aluno.nome}</strong>
@@ -614,4 +616,142 @@
         });
     }
 </script>
+
+<style>
+    /* Estilos do Aviso Flutuante (Toast) na Tela de Entrega */
+    .live-alert-container {
+        display: none;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 90%;
+        max-width: 440px;
+        z-index: 9999;
+        text-align: center;
+        pointer-events: none;
+    }
+    .toast-wrapper {
+        pointer-events: auto;
+        margin-bottom: 0.5rem;
+    }
+    .toast-alert {
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 0.9rem 1.25rem;
+        border-radius: 10px;
+        margin: 0;
+        font-size: 0.95rem;
+        line-height: 1.4;
+        text-align: left;
+    }
+    .toast-close-btn {
+        background: none;
+        border: none;
+        font-size: 1.35rem;
+        line-height: 1;
+        cursor: pointer;
+        color: inherit;
+        opacity: 0.7;
+        padding: 0 4px;
+        transition: opacity 0.15s ease;
+    }
+    .toast-close-btn:hover {
+        opacity: 1;
+    }
+
+    /* Cores no Modo Claro */
+    .card-seletor-refeicao {
+        background: #f8fafc;
+    }
+    .card-sobra-box {
+        background: #e0f2fe;
+        border-color: #bae6fd !important;
+    }
+    #searchBox {
+        background: #FAFAFA;
+        border: 1px solid var(--border);
+    }
+    .busca-item-aluno:hover {
+        background: #f0f9ff;
+    }
+
+    /* Ajustes específicos para Modo Escuro */
+    [data-theme="dark"] .live-alert-container {
+        background: transparent !important;
+    }
+    [data-theme="dark"] .toast-alert {
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6) !important;
+    }
+    [data-theme="dark"] .toast-alert.alert-warning {
+        background-color: #242014 !important;
+        border: 1px solid rgba(245, 158, 11, 0.45) !important;
+        border-left: 5px solid #F59E0B !important;
+        color: #FCD34D !important;
+    }
+    [data-theme="dark"] .toast-alert.alert-success {
+        background-color: #122820 !important;
+        border: 1px solid rgba(16, 185, 129, 0.45) !important;
+        border-left: 5px solid #10B981 !important;
+        color: #6EE7B7 !important;
+    }
+    [data-theme="dark"] .toast-alert.alert-error,
+    [data-theme="dark"] .toast-alert.alert-danger {
+        background-color: #2A1719 !important;
+        border: 1px solid rgba(239, 68, 68, 0.45) !important;
+        border-left: 5px solid #EF4444 !important;
+        color: #FCA5A5 !important;
+    }
+    [data-theme="dark"] .toast-alert.alert-info {
+        background-color: #152438 !important;
+        border: 1px solid rgba(59, 130, 246, 0.45) !important;
+        border-left: 5px solid #3B82F6 !important;
+        color: #93C5FD !important;
+    }
+
+    [data-theme="dark"] .card-seletor-refeicao {
+        background: var(--surface) !important;
+    }
+    [data-theme="dark"] #cardapio_id_select {
+        background: var(--surface) !important;
+        color: #60a5fa !important;
+        border-color: #3b82f6 !important;
+    }
+    [data-theme="dark"] .card-sobra-box {
+        background: #0f2338 !important;
+        border-color: #1e3a5f !important;
+    }
+    [data-theme="dark"] .card-sobra-box h3 {
+        color: #38bdf8 !important;
+    }
+    [data-theme="dark"] .card-sobra-box label {
+        color: #7dd3fc !important;
+    }
+    [data-theme="dark"] #busca-resultados {
+        background: #1e293b !important;
+        border-color: #334155 !important;
+    }
+    [data-theme="dark"] .busca-item-aluno:hover {
+        background: #334155 !important;
+    }
+    [data-theme="dark"] #searchBox {
+        background: #0f172a !important;
+        color: var(--text-main) !important;
+        border-color: var(--border) !important;
+    }
+    [data-theme="dark"] .allergy-box {
+        background: rgba(239, 68, 68, 0.2) !important;
+        border-color: rgba(239, 68, 68, 0.4) !important;
+    }
+    [data-theme="dark"] #allergy-modal-restricao {
+        color: #fca5a5 !important;
+    }
+    [data-theme="dark"] .aluno-fila-item .badge {
+        background: #334155 !important;
+        color: #cbd5e1 !important;
+    }
+</style>
 {% endblock %}

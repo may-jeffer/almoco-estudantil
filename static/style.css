@@ -746,6 +746,30 @@ td .btn-table-action {
 .alert-warning { background-color: #FEF3C7; color: #92400E; border: 1px solid #FDE68A; }
 .alert-info { background-color: #DBEAFE; color: #1E40AF; border: 1px solid #BFDBFE; }
 
+/* Dark mode alerts */
+[data-theme="dark"] .alert-success {
+  background-color: rgba(16, 185, 129, 0.16) !important;
+  color: #6EE7B7 !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+}
+[data-theme="dark"] .alert-error,
+[data-theme="dark"] .alert-danger {
+  background-color: rgba(239, 68, 68, 0.16) !important;
+  color: #FCA5A5 !important;
+  border-color: rgba(239, 68, 68, 0.35) !important;
+}
+[data-theme="dark"] .alert-warning {
+  background-color: rgba(245, 158, 11, 0.18) !important;
+  color: #FCD34D !important;
+  border-color: rgba(245, 158, 11, 0.38) !important;
+}
+[data-theme="dark"] .alert-info {
+  background-color: rgba(59, 130, 246, 0.16) !important;
+  color: #93C5FD !important;
+  border-color: rgba(59, 130, 246, 0.35) !important;
+}
+
+
 /* Navbar */
 .navbar {
   background-color: var(--surface);
