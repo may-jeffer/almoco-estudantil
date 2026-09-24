@@ -620,6 +620,7 @@ def admin_relatorio_dia(cardapio_id):
     
     turma_id = request.args.get('turma_id', type=int)
     status_filter = request.args.get('status')
+    tipo_consumo_filter = request.args.get('tipo_consumo')
     
     with closing(get_db_connection()) as conn:
         cardapio = conn.execute("SELECT * FROM cardapios WHERE id = ?", (cardapio_id,)).fetchone()
@@ -639,6 +640,12 @@ def admin_relatorio_dia(cardapio_id):
         if status_filter:
             query += " AND r.status = ?"
             params.append(status_filter)
+        if tipo_consumo_filter:
+            if tipo_consumo_filter == 'NORMAL':
+                query += " AND (r.tipo_consumo = 'NORMAL' OR r.tipo_consumo IS NULL)"
+            else:
+                query += " AND r.tipo_consumo = ?"
+                params.append(tipo_consumo_filter)
             
         query += " ORDER BY a.nome ASC"
         
@@ -661,8 +668,9 @@ def admin_relatorio_dia(cardapio_id):
         # Cálculo de Resumo por Turma (Consolidado)
         resumo_query = """
             SELECT t.nome as turma_nome, 
-                   SUM(CASE WHEN r.tipo_consumo IN ('NORMAL', 'EVENTO') OR r.tipo_consumo IS NULL THEN 1 ELSE 0 END) as total,
-                   SUM(CASE WHEN r.status = 'CONSUMIDA' AND (r.tipo_consumo IN ('NORMAL', 'EVENTO') OR r.tipo_consumo IS NULL) THEN 1 ELSE 0 END) as consumidas_normais,
+                   SUM(CASE WHEN (r.tipo_consumo = 'NORMAL' OR r.tipo_consumo IS NULL) THEN 1 ELSE 0 END) as total,
+                   SUM(CASE WHEN r.status = 'CONSUMIDA' AND (r.tipo_consumo = 'NORMAL' OR r.tipo_consumo IS NULL) THEN 1 ELSE 0 END) as consumidas_normais,
+                   SUM(CASE WHEN r.status = 'CONSUMIDA' AND r.tipo_consumo = 'EVENTO' THEN 1 ELSE 0 END) as consumidas_eventos,
                    SUM(CASE WHEN r.status = 'CONSUMIDA' AND r.tipo_consumo = 'EXTRA' THEN 1 ELSE 0 END) as consumidas_extras
             FROM reservas r
             JOIN alunos a ON r.aluno_id = a.id
@@ -676,8 +684,9 @@ def admin_relatorio_dia(cardapio_id):
         # Totais Globais (Sem Paginação) para os cards do topo (Respeitando filtros de turma/status)
         totais_query = """
             SELECT 
-                SUM(CASE WHEN r.status = 'ATIVA' THEN 1 ELSE 0 END) as total_ativas,
-                SUM(CASE WHEN r.status = 'CONSUMIDA' AND (r.tipo_consumo IN ('NORMAL', 'EVENTO') OR r.tipo_consumo IS NULL) THEN 1 ELSE 0 END) as consumidas_normal,
+                SUM(CASE WHEN r.status = 'ATIVA' AND (r.tipo_consumo = 'NORMAL' OR r.tipo_consumo IS NULL) THEN 1 ELSE 0 END) as total_ativas,
+                SUM(CASE WHEN r.status = 'CONSUMIDA' AND (r.tipo_consumo = 'NORMAL' OR r.tipo_consumo IS NULL) THEN 1 ELSE 0 END) as consumidas_normal,
+                SUM(CASE WHEN r.status = 'CONSUMIDA' AND r.tipo_consumo = 'EVENTO' THEN 1 ELSE 0 END) as consumidas_evento,
                 SUM(CASE WHEN r.status = 'CONSUMIDA' AND r.tipo_consumo = 'EXTRA' THEN 1 ELSE 0 END) as consumidas_extra
             FROM reservas r
             JOIN alunos a ON r.aluno_id = a.id
@@ -692,9 +701,10 @@ def admin_relatorio_dia(cardapio_id):
         row_totais = conn.execute(totais_query, params_totais).fetchone()
         total_ativas = row_totais['total_ativas'] or 0
         consumidas_normal = row_totais['consumidas_normal'] or 0
+        consumidas_evento = row_totais['consumidas_evento'] or 0
         consumidas_extra = row_totais['consumidas_extra'] or 0
         
-        total_consumidas = consumidas_normal + consumidas_extra
+        total_consumidas = consumidas_normal + consumidas_evento + consumidas_extra
         total_geral = total_ativas + consumidas_normal
         total_sobras = total_ativas
         
@@ -704,12 +714,14 @@ def admin_relatorio_dia(cardapio_id):
                            total_geral=total_geral, 
                            total_consumidas=total_consumidas,
                            consumidas_normal=consumidas_normal,
+                           consumidas_evento=consumidas_evento,
                            consumidas_extra=consumidas_extra,
                            total_sobras=total_sobras,
                            turmas=turmas,
                            resumo_turmas=resumo_turmas,
                            filtro_turma=turma_id,
                            filtro_status=status_filter,
+                           filtro_tipo=tipo_consumo_filter,
                            pagina=pagina,
                            total_paginas=total_paginas,
                            total=total)

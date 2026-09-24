@@ -18,7 +18,7 @@
         <p style="color: var(--text-muted);">Cardápio Principal: {{ cardapio.descricao }}</p>
     </div>
 
-    <div class="grid" style="margin-bottom: 2rem; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+    <div class="grid" style="margin-bottom: 2rem; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));">
         <div class="card" style="text-align: center; padding: 1.5rem; border-top: 4px solid var(--primary);">
             <p style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Reservas Agendadas</p>
             <h1 style="font-size: 2.5rem; color: var(--text-main); margin: 0;">{{ total_geral }}</h1>
@@ -30,6 +30,14 @@
             <h1 style="font-size: 2.5rem; color: #10b981; margin: 0;">{{ consumidas_normal }}</h1>
             <p style="font-size: 0.85rem; margin-top: 0.5rem; color: var(--text-muted);">Baixas Regulares</p>
         </div>
+
+        {% if consumidas_evento > 0 %}
+        <div class="card" style="text-align: center; padding: 1.5rem; border-top: 4px solid #8b5cf6;">
+            <p style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Eventos</p>
+            <h1 style="font-size: 2.5rem; color: #8b5cf6; margin: 0;">{{ consumidas_evento }}</h1>
+            <p style="font-size: 0.85rem; margin-top: 0.5rem; color: var(--text-muted);">Participantes de Eventos</p>
+        </div>
+        {% endif %}
 
         <div class="card" style="text-align: center; padding: 1.5rem; border-top: 4px solid #0ea5e9;">
             <p style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Extras</p>
@@ -43,17 +51,17 @@
             <p style="font-size: 0.85rem; margin-top: 0.5rem; color: var(--text-muted);">Reservou e não retirou</p>
         </div>
 
-        <div class="card" style="text-align: center; padding: 1.5rem; background: #f8fafc; border: 1px solid #cbd5e1;">
+        <div class="card" style="text-align: center; padding: 1.5rem; background: var(--surface); border: 1px solid var(--border);">
             <p style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; font-weight: bold;">Total Entregue</p>
-            <h1 style="font-size: 3rem; color: #334155; margin: 0;">{{ total_consumidas }}</h1>
+            <h1 style="font-size: 3rem; color: var(--text-main); margin: 0;">{{ total_consumidas }}</h1>
             <p style="font-size: 0.85rem; margin-top: 0.5rem; color: var(--text-muted);">Total de Pratos Servidos</p>
         </div>
     </div>
 
     <!-- Filtros de Pesquisa (Não aparecem na impressão) -->
-    <div class="card no-print" style="margin-bottom: 2rem; background: #f8fafc;">
+    <div class="card no-print" style="margin-bottom: 2rem; background: var(--surface);">
         <h4 style="margin-bottom: 1rem;"><i class="ph ph-funnel"></i> Filtrar Resultados</h4>
-        <form method="GET" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: flex-end;">
+        <form method="GET" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; align-items: flex-end;">
             <div class="form-group" style="margin-bottom: 0;">
                 <label>Filtrar por Turma</label>
                 <select name="turma_id" onchange="this.form.submit()">
@@ -71,6 +79,15 @@
                     <option value="CONSUMIDA" {% if filtro_status == 'CONSUMIDA' %}selected{% endif %}>Apenas Entregues</option>
                 </select>
             </div>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label>Origem / Tipo</label>
+                <select name="tipo_consumo" onchange="this.form.submit()">
+                    <option value="">Todos os Tipos</option>
+                    <option value="NORMAL" {% if filtro_tipo == 'NORMAL' %}selected{% endif %}>Reserva Normal</option>
+                    <option value="EVENTO" {% if filtro_tipo == 'EVENTO' %}selected{% endif %}>Evento</option>
+                    <option value="EXTRA" {% if filtro_tipo == 'EXTRA' %}selected{% endif %}>Extra (Sobra)</option>
+                </select>
+            </div>
             <div>
                 <a href="{{ url_for('admin_relatorio_dia', cardapio_id=cardapio.id) }}" class="btn" style="background: var(--border); color: var(--text-main); width: 100%;">Limpar Filtros</a>
             </div>
@@ -79,35 +96,61 @@
 
     <!-- Resumo Consolidado por Turma -->
     <div class="card" style="margin-bottom: 2rem;">
-        <h3 style="margin-bottom: 1rem; border-bottom: 2px solid var(--primary); padding-bottom: 0.5rem;">Resumo Consolidado por Turma</h3>
-        <table style="width: 100%; border-collapse: collapse;">
-            <thead>
-                <tr style="background: #f1f5f9;">
-                    <th style="padding: 0.75rem; text-align: left;">Turma / Curso</th>
-                    <th style="padding: 0.75rem; text-align: center;">Pedidos Normal</th>
-                    <th style="padding: 0.75rem; text-align: center;">Entregue Normal</th>
-                    <th style="padding: 0.75rem; text-align: center; color:#0284c7;">Extras (+)</th>
-                    <th style="padding: 0.75rem; text-align: right;">% Frequência</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for r in resumo_turmas %}
-                <tr style="border-bottom: 1px solid var(--border);">
-                    <td style="padding: 0.75rem;"><strong>{{ r.turma_nome if r.turma_nome else 'Outros / Sem Turma' }}</strong></td>
-                    <td style="padding: 0.75rem; text-align: center;">{{ r.total }}</td>
-                    <td style="padding: 0.75rem; text-align: center;">{{ r.consumidas_normais }}</td>
-                    <td style="padding: 0.75rem; text-align: center; color: #0284c7; font-weight:bold;">{{ r.consumidas_extras }}</td>
-                    <td style="padding: 0.75rem; text-align: right; font-weight: 600;">
-                        {% if r.total > 0 %}
-                            {{ (r.consumidas_normais / r.total * 100) | round(1) }}%
-                        {% else %}
-                            0%
+        <h3 style="margin-bottom: 1rem; border-bottom: 2px solid var(--primary); padding-bottom: 0.5rem;"><i class="ph ph-chart-bar" style="margin-right: 6px;"></i> Resumo Consolidado por Turma</h3>
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: var(--surface); border-bottom: 2px solid var(--border);">
+                        <th style="padding: 0.75rem; text-align: left;">Turma / Curso</th>
+                        <th style="padding: 0.75rem; text-align: center;">Pedidos Normal</th>
+                        <th style="padding: 0.75rem; text-align: center;">Entregue Normal</th>
+                        {% if consumidas_evento > 0 %}
+                        <th style="padding: 0.75rem; text-align: center; color: #8b5cf6;">Eventos</th>
                         {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                        <th style="padding: 0.75rem; text-align: center; color:#0284c7;">Extras (+)</th>
+                        <th style="padding: 0.75rem; text-align: right;">% Frequência</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in resumo_turmas %}
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 0.75rem;"><strong>{{ r.turma_nome if r.turma_nome else 'Outros / Sem Turma' }}</strong></td>
+                        <td style="padding: 0.75rem; text-align: center;">{{ r.total }}</td>
+                        <td style="padding: 0.75rem; text-align: center; color: #10b981; font-weight: 500;">{{ r.consumidas_normais }}</td>
+                        {% if consumidas_evento > 0 %}
+                        <td style="padding: 0.75rem; text-align: center; color: #8b5cf6; font-weight: 600;">{{ r.consumidas_eventos if r.consumidas_eventos > 0 else '—' }}</td>
+                        {% endif %}
+                        <td style="padding: 0.75rem; text-align: center; color: #0284c7; font-weight: 600;">{{ r.consumidas_extras if r.consumidas_extras > 0 else '—' }}</td>
+                        <td style="padding: 0.75rem; text-align: right; font-weight: 600;">
+                            {% if r.total > 0 %}
+                                {{ (r.consumidas_normais / r.total * 100) | round(1) }}%
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr style="border-top: 2px solid var(--border); font-weight: bold; background: var(--surface);">
+                        <td style="padding: 0.75rem;">Total Geral</td>
+                        <td style="padding: 0.75rem; text-align: center;">{{ total_geral }}</td>
+                        <td style="padding: 0.75rem; text-align: center; color: #10b981;">{{ consumidas_normal }}</td>
+                        {% if consumidas_evento > 0 %}
+                        <td style="padding: 0.75rem; text-align: center; color: #8b5cf6;">{{ consumidas_evento }}</td>
+                        {% endif %}
+                        <td style="padding: 0.75rem; text-align: center; color: #0284c7;">{{ consumidas_extra }}</td>
+                        <td style="padding: 0.75rem; text-align: right;">
+                            {% if total_geral > 0 %}
+                                {{ (consumidas_normal / total_geral * 100) | round(1) }}%
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
     </div>
 
     <div class="card" style="box-shadow: none; border: 1px solid var(--border);">
@@ -115,12 +158,12 @@
         
         <table style="width: 100%; border-collapse: collapse;">
             <thead>
-                <tr style="border-bottom: 1px solid #000;">
-                    <th style="padding: 0.5rem; text-align: left; background: none; color: #000; font-weight: bold;">Estudante</th>
-                    <th style="padding: 0.5rem; text-align: left; background: none; color: #000; font-weight: bold;">Matrícula / Turma</th>
-                    <th style="padding: 0.5rem; text-align: left; background: none; color: #000; font-weight: bold;">Restrição/Dieta Extra?</th>
-                    <th style="padding: 0.5rem; text-align: left; background: none; color: #000; font-weight: bold;">Origem</th>
-                    <th style="padding: 0.5rem; text-align: left; background: none; color: #000; font-weight: bold;">Situação</th>
+                <tr style="border-bottom: 2px solid var(--border);">
+                    <th style="padding: 0.5rem; text-align: left; background: none; color: var(--text-main); font-weight: bold;">Estudante</th>
+                    <th style="padding: 0.5rem; text-align: left; background: none; color: var(--text-main); font-weight: bold;">Matrícula / Turma</th>
+                    <th style="padding: 0.5rem; text-align: left; background: none; color: var(--text-main); font-weight: bold;">Restrição/Dieta Extra?</th>
+                    <th style="padding: 0.5rem; text-align: left; background: none; color: var(--text-main); font-weight: bold;">Origem</th>
+                    <th style="padding: 0.5rem; text-align: left; background: none; color: var(--text-main); font-weight: bold;">Situação</th>
                 </tr>
             </thead>
             <tbody>
@@ -143,7 +186,7 @@
                         {% if r.tipo_consumo == 'EXTRA' %}
                             <span class="badge" style="background:#0ea5e9; color:white; font-size:0.75rem;">Extra</span>
                         {% elif r.tipo_consumo == 'EVENTO' %}
-                            <span class="badge" style="background:#a78bfa; color:white; font-size:0.75rem;">Evento</span>
+                            <span class="badge" style="background:#8b5cf6; color:white; font-size:0.75rem;">Evento</span>
                         {% else %}
                             <span style="color:var(--text-muted); font-size:0.85rem;">Normal</span>
                         {% endif %}
@@ -158,7 +201,7 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="4" style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                    <td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-muted);">
                         Nenhum registro encontrado para os filtros aplicados.
                     </td>
                 </tr>
@@ -170,7 +213,7 @@
         {% if total_paginas > 1 %}
         <div class="no-print" style="display: flex; align-items: center; justify-content: center; gap: 0.4rem; margin-top: 1.5rem; flex-wrap: wrap; padding-bottom: 1rem;">
             {% if pagina > 1 %}
-            <a href="{{ url_for('admin_relatorio_dia', cardapio_id=cardapio.id, page=pagina-1, turma_id=filtro_turma, status=filtro_status) }}" class="btn btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;">
+            <a href="{{ url_for('admin_relatorio_dia', cardapio_id=cardapio.id, page=pagina-1, turma_id=filtro_turma, status=filtro_status, tipo_consumo=filtro_tipo) }}" class="btn btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;">
                 <i class="ph ph-caret-left"></i>
             </a>
             {% endif %}
@@ -179,14 +222,14 @@
                 {% if p == pagina %}
                 <span class="btn btn-primary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem; cursor: default;">{{ p }}</span>
                 {% elif p == 1 or p == total_paginas or (p >= pagina - 2 and p <= pagina + 2) %}
-                <a href="{{ url_for('admin_relatorio_dia', cardapio_id=cardapio.id, page=p, turma_id=filtro_turma, status=filtro_status) }}" class="btn btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;">{{ p }}</a>
+                <a href="{{ url_for('admin_relatorio_dia', cardapio_id=cardapio.id, page=p, turma_id=filtro_turma, status=filtro_status, tipo_consumo=filtro_tipo) }}" class="btn btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;">{{ p }}</a>
                 {% elif p == pagina - 3 or p == pagina + 3 %}
                 <span style="color: var(--text-muted); padding: 0 0.25rem;">…</span>
                 {% endif %}
             {% endfor %}
 
             {% if pagina < total_paginas %}
-            <a href="{{ url_for('admin_relatorio_dia', cardapio_id=cardapio.id, page=pagina+1, turma_id=filtro_turma, status=filtro_status) }}" class="btn btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;">
+            <a href="{{ url_for('admin_relatorio_dia', cardapio_id=cardapio.id, page=pagina+1, turma_id=filtro_turma, status=filtro_status, tipo_consumo=filtro_tipo) }}" class="btn btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;">
                 <i class="ph ph-caret-right"></i>
             </a>
             {% endif %}
