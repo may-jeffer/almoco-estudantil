@@ -346,11 +346,15 @@ def obter_ou_criar_turma(conn, curso, serie_ano=None, turno=None, ano_letivo=Non
     if criar_se_nao_existir:
         ano_let = ano_letivo or int(datetime.now().strftime('%Y'))
         cur = conn.cursor()
-        cur.execute("""
-            INSERT INTO turmas (nome, curso, serie_ano, turno, ano_letivo, ativa)
-            VALUES (?, ?, ?, ?, ?, 1)
-        """, (nome_turma, curso_limpo, serie_int, turno, ano_let))
-        return cur.lastrowid
+        try:
+            cur.execute("""
+                INSERT INTO turmas (nome, curso, serie_ano, turno, ano_letivo, ativa)
+                VALUES (?, ?, ?, ?, ?, 1)
+            """, (nome_turma, curso_limpo, serie_int, turno, ano_let))
+            return cur.lastrowid
+        except Exception:
+            cur.execute("INSERT INTO turmas (nome) VALUES (?)", (nome_turma,))
+            return cur.lastrowid
 
     return None
 

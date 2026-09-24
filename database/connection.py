@@ -14,7 +14,7 @@ def remove_accents(text):
     return "".join(c for c in unicodedata.normalize('NFD', text) if unicodedata.category(c) != 'Mn').lower()
 
 def get_db_connection():
-    conn = sqlite3.connect(DB_FILE)
+    conn = sqlite3.connect(DB_FILE, timeout=30.0)
     conn.row_factory = sqlite3.Row
     conn.create_function("remove_accents", 1, remove_accents)
     return conn
@@ -22,6 +22,11 @@ def get_db_connection():
 def init_db():
     with closing(get_db_connection()) as conn:
         with conn:
+            try:
+                conn.execute("PRAGMA journal_mode = WAL")
+                conn.execute("PRAGMA busy_timeout = 30000")
+            except Exception:
+                pass
             conn.executescript('''
                 CREATE TABLE IF NOT EXISTS turmas (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -560,6 +565,8 @@ def init_db():
 
             # Migração automática 33: Metadados SUAP na tabela alunos
             novas_colunas_alunos = [
+                ('curso', 'TEXT'),
+                ('instituicao', 'TEXT'),
                 ('serie_ano_atual', 'INTEGER'),
                 ('ano_ingresso', 'INTEGER'),
                 ('situacao_matricula', "TEXT DEFAULT 'Matriculado'")

@@ -7,7 +7,7 @@ import re
 import qrcode
 import base64
 from io import BytesIO
-from database import closing, get_db_connection
+from database import closing, get_db_connection, init_db
 from utils.auth import is_logged_in_admin, tem_permissao
 from utils.helpers import datetime_now_str, date_hoje_str, sanitize_field, registrar_auditoria, formatar_nome_turma, obter_ou_criar_turma, parse_data_nascimento, normalizar_cpf
 from utils.filters import format_cpf
@@ -424,6 +424,12 @@ def admin_alunos_importar():
     if not is_logged_in_admin(): return redirect(url_for('admin.admin_login'))
     if not tem_permissao('alunos'): return redirect(url_for('admin.admin_dashboard'))
     
+    # Auto-migra o banco para garantir que todas as colunas e tabelas recentes existam
+    try:
+        init_db()
+    except Exception as e_init:
+        print(f"Aviso init_db na importação: {e_init}")
+    
     if 'arquivo_csv' not in request.files:
         flash('Nenhum arquivo enviado.', 'error')
         return redirect(url_for('admin.admin_alunos'))
@@ -437,15 +443,24 @@ def admin_alunos_importar():
     bloquear_ausentes = request.form.get('bloquear_ausentes') == '1'
         
     try:
-        stream = io.StringIO(file.stream.read().decode("utf-8-sig"), newline=None)
-        csv_input = csv.reader(stream, delimiter=';')
-        
-        first_row = next(csv_input, None)
-        delimiter_used = ';'
-        if first_row and len(first_row) == 1 and ',' in first_row[0]:
+        raw_bytes = file.read()
+        try:
+            content = raw_bytes.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            try:
+                content = raw_bytes.decode("latin1")
+            except Exception:
+                content = raw_bytes.decode("utf-8", errors="replace")
+
+        first_line = content.split('\n')[0] if content else ''
+        if '\t' in first_line and first_line.count('\t') > first_line.count(';') and first_line.count('\t') > first_line.count(','):
+            delimiter_used = '\t'
+        elif ',' in first_line and first_line.count(',') > first_line.count(';'):
             delimiter_used = ','
-            
-        stream.seek(0)
+        else:
+            delimiter_used = ';'
+
+        stream = io.StringIO(content, newline=None)
         csv_input = csv.reader(stream, delimiter=delimiter_used)
         
         header_row = next(csv_input, None)
@@ -476,7 +491,7 @@ def admin_alunos_importar():
         
         with closing(get_db_connection()) as conn:
             for idx, row in enumerate(csv_input, start=2):
-                if len(row) < 4:
+                if not row or len(row) < 3 or not any(row):
                     continue
 
                 def get_f(key, fallback_idx=None, default=''):
@@ -504,10 +519,8 @@ def admin_alunos_importar():
                 # Resolução inteligente de Curso, Série e Turma
                 curso_val = None
                 serie_val = None
-                turma_str = ''
 
                 if col_map and 'curso' in col_map:
-                    # Mapeado por cabeçalho
                     curso_val = get_f('curso') or None
                     serie_str = get_f('serie_ano')
                     serie_val = int(serie_str) if serie_str.isdigit() else None
@@ -519,7 +532,6 @@ def admin_alunos_importar():
                     restricoes_val = get_f('restricoes') or None
                     permitido_str = get_f('permitido_almoco', default='S') or 'S'
                 elif len(row) == 12:
-                    # Modelo padrão oficial (12 colunas sem Turma)
                     curso_val = sanitize_field(row[4]) or None
                     serie_str = sanitize_field(row[5])
                     serie_val = int(serie_str) if serie_str.isdigit() else None
@@ -531,7 +543,6 @@ def admin_alunos_importar():
                     restricoes_val = sanitize_field(row[10]) or None
                     permitido_str = sanitize_field(row[11]) or 'S'
                 elif len(row) >= 13:
-                    # Formato clássico SUAP de 13 colunas (Turma na col 4, Série na col 5, Curso na col 6)
                     serie_str = sanitize_field(row[5])
                     serie_val = int(serie_str) if serie_str.isdigit() else None
                     curso_val = sanitize_field(row[6]) or None
@@ -543,7 +554,6 @@ def admin_alunos_importar():
                     restricoes_val = sanitize_field(row[11]) or None
                     permitido_str = sanitize_field(row[12]) or 'S'
                 else:
-                    # Formato compacto (8 colunas)
                     curso_val = sanitize_field(row[4]) if len(row) > 4 else None
                     serie_val = None
                     email_val = sanitize_field(row[5]) if len(row) > 5 else None
@@ -599,7 +609,6 @@ def admin_alunos_importar():
                         """, (cpf, cpf_padrao, cpf_digitos)).fetchone()
 
                     if row_matr and row_cpf and row_matr['id'] != row_cpf['id']:
-                        # Consolida duplicatas anteriores na linha com crachá/histórico ou row_matr
                         id_principal = row_matr['id']
                         id_duplicado = row_cpf['id']
                         if row_cpf['codigo_cracha'] and not row_matr['codigo_cracha']:
@@ -607,10 +616,16 @@ def admin_alunos_importar():
 
                         conn.execute("UPDATE OR IGNORE reservas SET aluno_id = ? WHERE aluno_id = ?", (id_principal, id_duplicado))
                         conn.execute("DELETE FROM reservas WHERE aluno_id = ?", (id_duplicado,))
-                        conn.execute("UPDATE OR IGNORE aluno_turma_historico SET aluno_id = ? WHERE aluno_id = ?", (id_principal, id_duplicado))
-                        conn.execute("DELETE FROM aluno_turma_historico WHERE aluno_id = ?", (id_duplicado,))
-                        conn.execute("UPDATE OR IGNORE aluno_recorrencia_dias SET aluno_id = ? WHERE aluno_id = ?", (id_principal, id_duplicado))
-                        conn.execute("DELETE FROM aluno_recorrencia_dias WHERE aluno_id = ?", (id_duplicado,))
+                        try:
+                            conn.execute("UPDATE OR IGNORE aluno_turma_historico SET aluno_id = ? WHERE aluno_id = ?", (id_principal, id_duplicado))
+                            conn.execute("DELETE FROM aluno_turma_historico WHERE aluno_id = ?", (id_duplicado,))
+                        except Exception:
+                            pass
+                        try:
+                            conn.execute("UPDATE OR IGNORE aluno_recorrencia_dias SET aluno_id = ? WHERE aluno_id = ?", (id_principal, id_duplicado))
+                            conn.execute("DELETE FROM aluno_recorrencia_dias WHERE aluno_id = ?", (id_duplicado,))
+                        except Exception:
+                            pass
                         conn.execute("DELETE FROM alunos WHERE id = ?", (id_duplicado,))
 
                         existente = conn.execute("SELECT id, turma_id, serie_ano_atual, curso, codigo_cracha, matricula, cpf, situacao_matricula FROM alunos WHERE id = ?", (id_principal,)).fetchone()
@@ -645,7 +660,6 @@ def admin_alunos_importar():
                             permitido_almoco, serie_val, ano_ingresso_val, situacao_val, curso_val, aluno_id
                         ))
 
-                        # Se a situação veio como não-ativo (ou permitido_almoco == 0), bloqueia reservas futuras e desativa recorrência
                         if permitido_almoco == 0 or not is_matriculado_ativo:
                             conn.execute("""
                                 UPDATE reservas 
@@ -654,43 +668,50 @@ def admin_alunos_importar():
                                 WHERE aluno_id = ? AND status = 'ATIVA'
                                   AND cardapio_id IN (SELECT id FROM cardapios WHERE data >= ?)
                             """, (f"Situação acadêmica no CSV: {situacao_val}", aluno_id, data_hoje))
-                            conn.execute("UPDATE aluno_recorrencia_dias SET ativo = 0 WHERE aluno_id = ?", (aluno_id,))
+                            try:
+                                conn.execute("UPDATE aluno_recorrencia_dias SET ativo = 0 WHERE aluno_id = ?", (aluno_id,))
+                            except Exception:
+                                pass
 
-
-                        # Se o aluno mudou de serieAno ou Curso, migra para a nova turma e registra na trajetória acadêmica!
                         if mudou_turma or mudou_serie_ou_curso:
-                            if turma_antiga_id:
+                            try:
+                                if turma_antiga_id:
+                                    conn.execute("""
+                                        UPDATE aluno_turma_historico 
+                                        SET data_fim = ?, situacao = 'Transferido' 
+                                        WHERE aluno_id = ? AND turma_id = ? AND data_fim IS NULL
+                                    """, (data_hoje, aluno_id, turma_antiga_id))
+
+                                t_row = conn.execute("SELECT ano_letivo, periodo_letivo, serie_ano, nome FROM turmas WHERE id = ?", (turma_id,)).fetchone()
+                                ano_let = t_row['ano_letivo'] if t_row else None
+                                per_let = t_row['periodo_letivo'] if t_row and t_row['periodo_letivo'] else 1
+                                ser_let = serie_val or (t_row['serie_ano'] if t_row else None)
+                                nome_t_destino = t_row['nome'] if t_row else nome_turma_alvo
+
                                 conn.execute("""
-                                    UPDATE aluno_turma_historico 
-                                    SET data_fim = ?, situacao = 'Transferido' 
-                                    WHERE aluno_id = ? AND turma_id = ? AND data_fim IS NULL
-                                """, (data_hoje, aluno_id, turma_antiga_id))
-
-                            t_row = conn.execute("SELECT ano_letivo, periodo_letivo, serie_ano, nome FROM turmas WHERE id = ?", (turma_id,)).fetchone()
-                            ano_let = t_row['ano_letivo'] if t_row else None
-                            per_let = t_row['periodo_letivo'] if t_row and t_row['periodo_letivo'] else 1
-                            ser_let = serie_val or (t_row['serie_ano'] if t_row else None)
-                            nome_t_destino = t_row['nome'] if t_row else nome_turma_alvo
-
-                            conn.execute("""
-                                INSERT INTO aluno_turma_historico (
-                                    aluno_id, turma_id, ano_letivo, periodo_letivo, serie_ano, situacao, data_inicio, observacao
-                                ) VALUES (?, ?, ?, ?, ?, 'Cursando', ?, ?)
-                                ON CONFLICT(aluno_id, turma_id, ano_letivo, periodo_letivo) 
-                                DO UPDATE SET 
-                                    situacao = 'Cursando', 
-                                    data_inicio = excluded.data_inicio, 
-                                    data_fim = NULL, 
-                                    serie_ano = excluded.serie_ano,
-                                    observacao = excluded.observacao
-                            """, (aluno_id, turma_id, ano_let, per_let, ser_let, data_hoje, f"Migrado automaticamente para {nome_t_destino} via importação CSV"))
+                                    INSERT INTO aluno_turma_historico (
+                                        aluno_id, turma_id, ano_letivo, periodo_letivo, serie_ano, situacao, data_inicio, observacao
+                                    ) VALUES (?, ?, ?, ?, ?, 'Cursando', ?, ?)
+                                    ON CONFLICT(aluno_id, turma_id, ano_letivo, periodo_letivo) 
+                                    DO UPDATE SET 
+                                        situacao = 'Cursando', 
+                                        data_inicio = excluded.data_inicio, 
+                                        data_fim = NULL, 
+                                        serie_ano = excluded.serie_ano,
+                                        observacao = excluded.observacao
+                                """, (aluno_id, turma_id, ano_let, per_let, ser_let, data_hoje, f"Migrado automaticamente para {nome_t_destino} via importação CSV"))
+                            except Exception:
+                                pass
 
                         elif situacao_val != 'Matriculado' and situacao_antiga != situacao_val:
-                            conn.execute("""
-                                UPDATE aluno_turma_historico 
-                                SET situacao = ?, data_fim = ?
-                                WHERE aluno_id = ? AND data_fim IS NULL
-                            """, (situacao_val, data_hoje, aluno_id))
+                            try:
+                                conn.execute("""
+                                    UPDATE aluno_turma_historico 
+                                    SET situacao = ?, data_fim = ?
+                                    WHERE aluno_id = ? AND data_fim IS NULL
+                                """, (situacao_val, data_hoje, aluno_id))
+                            except Exception:
+                                pass
 
                         adicionados += 1
                         alunos_processados_ids.add(aluno_id)
@@ -709,16 +730,19 @@ def admin_alunos_importar():
                         alunos_processados_ids.add(aluno_id)
 
                         if turma_id:
-                            t_row = conn.execute("SELECT ano_letivo, periodo_letivo, serie_ano FROM turmas WHERE id = ?", (turma_id,)).fetchone()
-                            ano_let = t_row['ano_letivo'] if t_row else None
-                            per_let = t_row['periodo_letivo'] if t_row and t_row['periodo_letivo'] else 1
-                            ser_let = serie_val or (t_row['serie_ano'] if t_row else None)
+                            try:
+                                t_row = conn.execute("SELECT ano_letivo, periodo_letivo, serie_ano FROM turmas WHERE id = ?", (turma_id,)).fetchone()
+                                ano_let = t_row['ano_letivo'] if t_row else None
+                                per_let = t_row['periodo_letivo'] if t_row and t_row['periodo_letivo'] else 1
+                                ser_let = serie_val or (t_row['serie_ano'] if t_row else None)
 
-                            conn.execute("""
-                                INSERT OR IGNORE INTO aluno_turma_historico (
-                                    aluno_id, turma_id, ano_letivo, periodo_letivo, serie_ano, situacao, data_inicio, observacao
-                                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'Criação via importação CSV')
-                            """, (aluno_id, turma_id, ano_let, per_let, ser_let, 'Cursando' if situacao_val == 'Matriculado' else situacao_val, data_hoje))
+                                conn.execute("""
+                                    INSERT OR IGNORE INTO aluno_turma_historico (
+                                        aluno_id, turma_id, ano_letivo, periodo_letivo, serie_ano, situacao, data_inicio, observacao
+                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, 'Criação via importação CSV')
+                                """, (aluno_id, turma_id, ano_let, per_let, ser_let, 'Cursando' if situacao_val == 'Matriculado' else situacao_val, data_hoje))
+                            except Exception:
+                                pass
 
                         adicionados += 1
                 except Exception as e:
@@ -726,56 +750,68 @@ def admin_alunos_importar():
                     mensagens_erro.append(f"Linha {idx} ({nome}): {str(e)}")
 
             # ─── Bloqueio de Estudantes Regulares Ausentes na Planilha ───
-            # "quem não estiver na listagem de alunos de importação via csv pode bloquear a reserva pois não está mais matriculado"
             total_bloqueados_ausentes = 0
             if bloquear_ausentes and alunos_processados_ids:
-                placeholders = ','.join(['?'] * len(alunos_processados_ids))
-                query_ausentes = f"""
+                conn.execute("CREATE TEMP TABLE IF NOT EXISTS _import_ids (id INTEGER PRIMARY KEY)")
+                conn.execute("DELETE FROM _import_ids")
+                conn.executemany("INSERT OR IGNORE INTO _import_ids (id) VALUES (?)", [(i,) for i in alunos_processados_ids])
+
+                query_ausentes = """
                     SELECT id, nome, matricula, situacao_matricula, permitido_almoco 
                     FROM alunos 
-                    WHERE id NOT IN ({placeholders})
+                    WHERE id NOT IN (SELECT id FROM _import_ids)
                       AND matricula NOT LIKE 'EVT-%'
                       AND (turma_id NOT IN (SELECT id FROM turmas WHERE is_evento = 1) OR turma_id IS NULL)
                 """
-                alunos_ausentes = conn.execute(query_ausentes, list(alunos_processados_ids)).fetchall()
+                alunos_ausentes = conn.execute(query_ausentes).fetchall()
                 if alunos_ausentes:
-                    ids_ausentes = [a['id'] for a in alunos_ausentes]
-                    ph_aus = ','.join(['?'] * len(ids_ausentes))
+                    conn.execute("CREATE TEMP TABLE IF NOT EXISTS _ausentes_ids (id INTEGER PRIMARY KEY)")
+                    conn.execute("DELETE FROM _ausentes_ids")
+                    conn.executemany("INSERT OR IGNORE INTO _ausentes_ids (id) VALUES (?)", [(a['id'],) for a in alunos_ausentes])
 
                     # Bloqueia reservas e atualiza situação
-                    conn.execute(f"""
+                    conn.execute("""
                         UPDATE alunos 
                         SET permitido_almoco = 0,
                             situacao_matricula = CASE WHEN situacao_matricula = 'Matriculado' THEN 'Não Matriculado' ELSE situacao_matricula END
-                        WHERE id IN ({ph_aus})
-                    """, ids_ausentes)
+                        WHERE id IN (SELECT id FROM _ausentes_ids)
+                    """)
 
                     # Desativa recorrências semanais ativas
-                    conn.execute(f"""
-                        UPDATE aluno_recorrencia_dias 
-                        SET ativo = 0 
-                        WHERE aluno_id IN ({ph_aus}) AND ativo = 1
-                    """, ids_ausentes)
+                    try:
+                        conn.execute("""
+                            UPDATE aluno_recorrencia_dias 
+                            SET ativo = 0 
+                            WHERE aluno_id IN (SELECT id FROM _ausentes_ids) AND ativo = 1
+                        """)
+                    except Exception:
+                        pass
 
                     # Cancela reservas futuras pendentes
-                    conn.execute(f"""
+                    conn.execute("""
                         UPDATE reservas 
                         SET status = 'CANCELADA',
                             motivo_cancelamento = 'Não consta na listagem de matrícula ativa (importação CSV)'
-                        WHERE aluno_id IN ({ph_aus}) AND status = 'ATIVA'
+                        WHERE aluno_id IN (SELECT id FROM _ausentes_ids) AND status = 'ATIVA'
                           AND cardapio_id IN (SELECT id FROM cardapios WHERE data >= ?)
-                    """, ids_ausentes + [data_hoje])
+                    """, (data_hoje,))
 
                     # Encerra histórico na turma anterior
-                    conn.execute(f"""
-                        UPDATE aluno_turma_historico 
-                        SET data_fim = ?,
-                            situacao = 'Não Matriculado',
-                            observacao = 'Encerrado: ausente da listagem de matrícula ativa'
-                        WHERE aluno_id IN ({ph_aus}) AND data_fim IS NULL
-                    """, [data_hoje] + ids_ausentes)
+                    try:
+                        conn.execute("""
+                            UPDATE aluno_turma_historico 
+                            SET data_fim = ?,
+                                situacao = 'Não Matriculado',
+                                observacao = 'Encerrado: ausente da listagem de matrícula ativa'
+                            WHERE aluno_id IN (SELECT id FROM _ausentes_ids) AND data_fim IS NULL
+                        """, (data_hoje,))
+                    except Exception:
+                        pass
 
                     total_bloqueados_ausentes = len([a for a in alunos_ausentes if a['permitido_almoco'] == 1 or a['situacao_matricula'] == 'Matriculado'])
+
+                conn.execute("DROP TABLE IF EXISTS _import_ids")
+                conn.execute("DROP TABLE IF EXISTS _ausentes_ids")
 
             conn.commit()
             registrar_auditoria("Importar Alunos CSV", f"Processou planilha: {adicionados} atualizados/criados, {total_bloqueados_ausentes} ausentes bloqueados, {erros} erros.")
@@ -784,16 +820,26 @@ def admin_alunos_importar():
         if total_bloqueados_ausentes > 0:
             resumo_msgs.append(f"{total_bloqueados_ausentes} aluno(s) ausente(s) da planilha tiveram o acesso a reservas bloqueado (não matriculados)")
 
-        if erros > 0 and len(mensagens_erro) <= 5:
-            flash(f"Importação: {', '.join(resumo_msgs)}. Avisos: " + " | ".join(mensagens_erro), 'warning')
-        elif erros > 0:
-            flash(f"Importação: {', '.join(resumo_msgs)}. {erros} linha(s) rejeitada(s) por erros de validação ou turmas inexistentes.", 'warning')
+        if erros > 0:
+            session['ultimo_erro_importacao_alunos'] = mensagens_erro[:150]
+            amostra_erros = " | ".join(mensagens_erro[:3])
+            msg = f"Importação: {', '.join(resumo_msgs)}. {erros} linha(s) rejeitada(s). Exemplos: {amostra_erros}"
+            if erros > 3:
+                msg += f" ... (e mais {erros - 3} avisos. Veja o detalhamento na lista abaixo)."
+            flash(msg, 'warning')
         else:
+            session.pop('ultimo_erro_importacao_alunos', None)
             flash(f"Importação concluída com sucesso! {', '.join(resumo_msgs)}.", 'success')
         
     except Exception as e:
         flash(f'Erro inesperado lendo arquivo CSV: {str(e)}', 'error')
         
+    return redirect(url_for('admin.admin_alunos'))
+
+@admin_bp.route('/admin/alunos/limpar_erros_importacao', methods=['POST'])
+def admin_alunos_limpar_erros_importacao():
+    if not is_logged_in_admin(): return redirect(url_for('admin.admin_login'))
+    session.pop('ultimo_erro_importacao_alunos', None)
     return redirect(url_for('admin.admin_alunos'))
 
 @admin_bp.route('/admin/alunos/reset_senha/<int:id>', methods=['POST'])
