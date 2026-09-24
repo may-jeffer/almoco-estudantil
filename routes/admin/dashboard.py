@@ -145,8 +145,8 @@ def admin_dashboard():
                 (cardapio_hoje['id'],)
             ).fetchone()[0]
 
-            # Total de reservas agendadas (regulares + eventos)
-            reservas_hoje = reservas_normais_hoje + eventos_hoje
+            # Número principal do card: estritamente reservas regulares do portal
+            reservas_hoje = reservas_normais_hoje
             
             ultimas_retiradas = conn.execute("""
                 SELECT r.codigo_unico, r.data_registro, a.nome as aluno_nome, a.matricula, t.nome as turma_nome

@@ -219,7 +219,9 @@ def admin_entrega():
                 ORDER BY a.nome ASC
             """, (cardapio_hoje['id'],)).fetchall()
             
-            total_reservas_sistema = sum(1 for r in reservas_hoje if (r['tipo_consumo'] in ('NORMAL', 'EVENTO') or r['tipo_consumo'] is None))
+            total_reservas_regulares = sum(1 for r in reservas_hoje if (r['tipo_consumo'] == 'NORMAL' or r['tipo_consumo'] is None))
+            total_eventos = sum(1 for r in reservas_hoje if r['tipo_consumo'] == 'EVENTO')
+            total_reservas_sistema = total_reservas_regulares
             total_entregues_reserva = sum(1 for r in reservas_hoje if r['status'] == 'CONSUMIDA' and (r['tipo_consumo'] in ('NORMAL', 'EVENTO') or r['tipo_consumo'] is None))
             total_extras = sum(1 for r in reservas_hoje if r['status'] == 'CONSUMIDA' and r['tipo_consumo'] == 'EXTRA')
             total_entregues = sum(1 for r in reservas_hoje if r['status'] == 'CONSUMIDA')
@@ -227,7 +229,7 @@ def admin_entrega():
             if cardapio_hoje['qtd_solicitada'] is not None and cardapio_hoje['qtd_solicitada'] > 0:
                 qtd_solicitada_empresa = cardapio_hoje['qtd_solicitada']
             else:
-                qtd_solicitada_empresa = total_reservas_sistema
+                qtd_solicitada_empresa = total_reservas_regulares + total_eventos
         
     https_alert = not request.is_secure
         
@@ -237,6 +239,7 @@ def admin_entrega():
                            reservas_hoje=reservas_hoje, 
                            total_reservas=total_reservas_sistema,
                            total_reservas_sistema=total_reservas_sistema,
+                           total_eventos=total_eventos,
                            total_extras=total_extras,
                            total_entregues=total_entregues, 
                            qtd_solicitada_empresa=qtd_solicitada_empresa,

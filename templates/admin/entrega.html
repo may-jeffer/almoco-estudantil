@@ -56,9 +56,11 @@
         </div>
         
         <div class="card" style="padding: 0.9rem; text-align: center; border-bottom: 4px solid var(--primary); margin-bottom: 0;">
-            <p style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; margin-bottom: 0.25rem; font-weight: 600;">Reservas Sistema</p>
+            <p style="color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; margin-bottom: 0.25rem; font-weight: 600;">Reservas Portal</p>
             <h3 id="contador-reservas-sistema" style="font-size: 1.6rem; color: var(--primary); margin: 0;">{{ total_reservas_sistema }}</h3>
-            <small style="color: var(--text-muted); font-size: 0.7rem;">Agendadas</small>
+            <small style="color: var(--text-muted); font-size: 0.7rem;">
+                {% if total_eventos is defined and total_eventos > 0 %}<strong style="color: #8b5cf6;">+ {{ total_eventos }} eventos</strong>{% else %}Agendadas{% endif %}
+            </small>
         </div>
 
         <div class="card" style="padding: 0.9rem; text-align: center; border-bottom: 4px solid #0ea5e9; margin-bottom: 0;">
