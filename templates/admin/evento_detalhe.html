@@ -544,16 +544,13 @@
             });
 
             banner.style.display = 'block';
+            banner.className = '';
             if (data.erros_count === 0) {
-                banner.style.background = '#dcfce7';
-                banner.style.color = '#166534';
-                banner.style.border = '1px solid #a7f3d0';
+                banner.classList.add('grade-banner-sucesso');
                 banner.innerHTML = `<strong style="font-size: 1rem;"><i class="ph ph-check-circle" style="font-size: 1.2rem;"></i> Todos os ${data.adicionados} participante(s) foram importados com sucesso!</strong><p style="margin: 4px 0 0 0; font-size: 0.85rem;">Clique em 'Concluir e Atualizar Lista' abaixo para visualizar na lista oficial do evento.</p>`;
                 document.getElementById('btnReenviarErros').style.display = 'none';
             } else {
-                banner.style.background = '#fffbeb';
-                banner.style.color = '#92400e';
-                banner.style.border = '1px solid #fde68a';
+                banner.classList.add('grade-banner-aviso');
                 banner.innerHTML = `<strong style="font-size: 0.95rem;"><i class="ph ph-warning" style="font-size: 1.15rem;"></i> Resultado: ${data.adicionados} importado(s) com sucesso e ${data.erros_count} com erro.</strong><p style="margin: 4px 0 0 0; font-size: 0.82rem;">As linhas com erro estão destacadas em vermelho. Você pode corrigir os campos diretamente na tabela e clicar no botão 'Reenviar Linhas com Erro'.</p>`;
                 document.getElementById('btnReenviarErros').style.display = 'inline-flex';
             }
@@ -811,12 +808,12 @@
                     <button type="button" class="btn btn-secondary" onclick="fecharModal('modalImportarGrade')">
                         Fechar
                     </button>
-                    <button type="button" id="btnReenviarErros" class="btn btn-secondary" onclick="enviarGrade(true)" style="display: none; background: #fff1f2; color: #e11d48; border-color: #fecdd3; font-weight: 600;">
+                    <button type="button" id="btnReenviarErros" class="btn btn-grade-reenviar" onclick="enviarGrade(true)" style="display: none;">
                         <i class="ph ph-arrow-clockwise"></i> Reenviar Linhas com Erro
                     </button>
                 </div>
                 <div style="display: flex; gap: 0.5rem; align-items: center;">
-                    <button type="button" id="btnConcluirGrade" class="btn btn-secondary" onclick="concluirEAtualizar()" style="display: none; background: #ecfdf5; color: #065f46; border-color: #a7f3d0; font-weight: 600;">
+                    <button type="button" id="btnConcluirGrade" class="btn btn-grade-concluir" onclick="concluirEAtualizar()" style="display: none;">
                         <i class="ph ph-check-circle"></i> Concluir e Atualizar Lista
                     </button>
                     <button type="button" id="btnEnviarGrade" class="btn btn-primary" onclick="enviarGrade(false)" style="background: #10b981; border-color: #059669; font-weight: bold; padding: 0.65rem 1.5rem; display: inline-flex; align-items: center; gap: 8px;">
@@ -869,6 +866,53 @@
         background: #fef2f2 !important;
     }
 
+    /* Botões Especializados da Grade */
+    .btn-grade-concluir {
+        background: #ecfdf5 !important;
+        color: #065f46 !important;
+        border: 1px solid #a7f3d0 !important;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s ease;
+    }
+    .btn-grade-concluir:hover {
+        background: #d1fae5 !important;
+        color: #047857 !important;
+        border-color: #6ee7b7 !important;
+        transform: translateY(-1px);
+    }
+
+    .btn-grade-reenviar {
+        background: #fff1f2 !important;
+        color: #e11d48 !important;
+        border: 1px solid #fecdd3 !important;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s ease;
+    }
+    .btn-grade-reenviar:hover {
+        background: #ffe4e6 !important;
+        color: #be123c !important;
+        border-color: #fda4af !important;
+        transform: translateY(-1px);
+    }
+
+    /* Banners Dinâmicos */
+    .grade-banner-sucesso {
+        background: #dcfce7 !important;
+        color: #166534 !important;
+        border: 1px solid #a7f3d0 !important;
+    }
+    .grade-banner-aviso {
+        background: #fffbeb !important;
+        color: #92400e !important;
+        border: 1px solid #fde68a !important;
+    }
+
     [data-theme="dark"] .grade-row-sucesso {
         background: rgba(16, 185, 129, 0.12) !important;
     }
@@ -880,6 +924,40 @@
     }
     [data-theme="dark"] .grade-input:focus {
         background: #0F172A;
+    }
+
+    /* MODO ESCURO: Botões e Banners da Grade */
+    [data-theme="dark"] .btn-grade-concluir {
+        background: rgba(16, 185, 129, 0.15) !important;
+        color: #34d399 !important;
+        border: 1px solid rgba(16, 185, 129, 0.4) !important;
+    }
+    [data-theme="dark"] .btn-grade-concluir:hover {
+        background: rgba(16, 185, 129, 0.3) !important;
+        color: #6ee7b7 !important;
+        border-color: #10b981 !important;
+    }
+
+    [data-theme="dark"] .btn-grade-reenviar {
+        background: rgba(239, 68, 68, 0.15) !important;
+        color: #f87171 !important;
+        border: 1px solid rgba(239, 68, 68, 0.4) !important;
+    }
+    [data-theme="dark"] .btn-grade-reenviar:hover {
+        background: rgba(239, 68, 68, 0.3) !important;
+        color: #fca5a5 !important;
+        border-color: #ef4444 !important;
+    }
+
+    [data-theme="dark"] .grade-banner-sucesso {
+        background: rgba(16, 185, 129, 0.15) !important;
+        color: #a7f3d0 !important;
+        border: 1px solid rgba(16, 185, 129, 0.35) !important;
+    }
+    [data-theme="dark"] .grade-banner-aviso {
+        background: rgba(245, 158, 11, 0.15) !important;
+        color: #fde68a !important;
+        border: 1px solid rgba(245, 158, 11, 0.35) !important;
     }
     </style>
 {% endblock %}
