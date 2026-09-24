@@ -1,14 +1,17 @@
 # -*- coding: utf-8 -*-
-from flask import render_template, request, redirect, url_for, session, flash, Response
+from flask import render_template, request, redirect, url_for, session, flash, Response, jsonify
 import csv
 import io
 import re
+import sqlite3
+from datetime import datetime
 import qrcode
 import base64
 from io import BytesIO
 from database import closing, get_db_connection
 from utils.auth import is_logged_in_admin, tem_permissao
 from utils.helpers import datetime_now_str, date_hoje_str, sanitize_field, registrar_auditoria
+from utils.qrcode_gen import generate_badge_code
 from . import admin_bp
 
 @admin_bp.route('/admin/eventos', methods=['GET', 'POST'])
@@ -389,3 +392,190 @@ def admin_evento_importar(id):
         flash(f'Erro lendo arquivo CSV: {str(e)}', 'error')
         
     return redirect(url_for('admin.admin_evento_detalhe', id=id))
+
+@admin_bp.route('/admin/eventos/<int:id>/importar-grade', methods=['POST'])
+def admin_evento_importar_grade(id):
+    if not is_logged_in_admin():
+        return jsonify({"success": False, "error": "Sessão expirada ou não autorizado."}), 403
+    if not tem_permissao('eventos'):
+        return jsonify({"success": False, "error": "Você não tem permissão para gerenciar eventos."}), 403
+
+    payload = request.get_json(silent=True) or {}
+    linhas = payload.get('participantes', [])
+    if not isinstance(linhas, list) or len(linhas) == 0:
+        return jsonify({"success": False, "error": "Nenhum participante enviado para processamento."}), 400
+
+    with closing(get_db_connection()) as conn:
+        evento = conn.execute("SELECT id, nome FROM turmas WHERE id = ? AND is_evento = 1", (id,)).fetchone()
+        if not evento:
+            return jsonify({"success": False, "error": "Evento não encontrado."}), 404
+
+        resultados = []
+        adicionados = 0
+        erros_count = 0
+
+        for idx, item in enumerate(linhas):
+            row_num = item.get('linha', idx + 1)
+            nome = sanitize_field(str(item.get('nome', '')).strip())
+            cpf_raw = sanitize_field(str(item.get('cpf', '')).strip())
+            nasc_raw = sanitize_field(str(item.get('data_nascimento', '')).strip())
+            email = sanitize_field(str(item.get('email', '')).strip())
+            instituicao = sanitize_field(str(item.get('instituicao', '')).strip())
+
+            # Se a linha estiver totalmente vazia, pula sem contar erro
+            if not nome and not cpf_raw and not nasc_raw and not email and not instituicao:
+                continue
+
+            # Validação 1: Nome
+            if not nome:
+                erros_count += 1
+                resultados.append({
+                    "linha": row_num,
+                    "status": "erro",
+                    "nome": nome,
+                    "cpf": cpf_raw,
+                    "motivo": "Nome completo não informado."
+                })
+                continue
+
+            # Validação 2: CPF
+            cpf_clean = re.sub(r'\D', '', cpf_raw)
+            if len(cpf_clean) == 10:
+                cpf_clean = cpf_clean.zfill(11)
+
+            if len(cpf_clean) != 11:
+                erros_count += 1
+                resultados.append({
+                    "linha": row_num,
+                    "status": "erro",
+                    "nome": nome,
+                    "cpf": cpf_raw,
+                    "motivo": f"CPF inválido ({len(cpf_clean)} dígitos, esperado 11)."
+                })
+                continue
+
+            cpf_formatted = f"{cpf_clean[:3]}.{cpf_clean[3:6]}.{cpf_clean[6:9]}-{cpf_clean[9:]}"
+
+            # Validação 3: Data de Nascimento
+            if not nasc_raw:
+                erros_count += 1
+                resultados.append({
+                    "linha": row_num,
+                    "status": "erro",
+                    "nome": nome,
+                    "cpf": cpf_formatted,
+                    "motivo": "Data de nascimento não informada."
+                })
+                continue
+
+            data_nascimento_iso = None
+            nasc_clean = nasc_raw.replace('.', '/').replace('-', '/')
+            partes = nasc_clean.split('/')
+            if len(partes) == 3:
+                p1, p2, p3 = partes[0].strip(), partes[1].strip(), partes[2].strip()
+                if len(p1) == 4:
+                    ano, mes, dia = p1, p2, p3
+                else:
+                    dia, mes, ano = p1, p2, p3
+                try:
+                    dt = datetime(int(ano), int(mes), int(dia))
+                    if 1900 <= dt.year <= datetime.now().year:
+                        data_nascimento_iso = dt.strftime('%Y-%m-%d')
+                except (ValueError, TypeError):
+                    pass
+            elif len(nasc_raw) == 8 and nasc_raw.isdigit():
+                dia, mes, ano = nasc_raw[:2], nasc_raw[2:4], nasc_raw[4:]
+                try:
+                    dt = datetime(int(ano), int(mes), int(dia))
+                    if 1900 <= dt.year <= datetime.now().year:
+                        data_nascimento_iso = dt.strftime('%Y-%m-%d')
+                except (ValueError, TypeError):
+                    pass
+
+            if not data_nascimento_iso:
+                erros_count += 1
+                resultados.append({
+                    "linha": row_num,
+                    "status": "erro",
+                    "nome": nome,
+                    "cpf": cpf_formatted,
+                    "motivo": f"Data de nascimento inválida ('{nasc_raw}'). Use DD/MM/AAAA."
+                })
+                continue
+
+            matricula = "EVT-" + cpf_clean
+            try:
+                aluno_existente = conn.execute(
+                    "SELECT id FROM alunos WHERE cpf = ? OR cpf = ? OR matricula = ?",
+                    (cpf_clean, cpf_formatted, matricula)
+                ).fetchone()
+
+                if not aluno_existente:
+                    cur = conn.cursor()
+                    cur.execute(
+                        """INSERT INTO alunos 
+                           (nome, matricula, cpf, data_nascimento, email, instituicao, turma_id, permitido_almoco) 
+                           VALUES (?, ?, ?, ?, ?, ?, ?, 1)""",
+                        (nome, matricula, cpf_formatted, data_nascimento_iso, email, instituicao, id)
+                    )
+                    aluno_id = cur.lastrowid
+                else:
+                    aluno_id = aluno_existente['id']
+                    conn.execute(
+                        """UPDATE alunos SET 
+                           nome = COALESCE(NULLIF(nome, ''), ?), 
+                           email = CASE WHEN email IS NULL OR email = '' THEN ? ELSE email END,
+                           instituicao = CASE WHEN instituicao IS NULL OR instituicao = '' THEN ? ELSE instituicao END
+                           WHERE id = ?""",
+                        (nome, email, instituicao, aluno_id)
+                    )
+
+                codigo_cracha = generate_badge_code(id, aluno_id)
+                try:
+                    conn.execute(
+                        "INSERT INTO eventos_participantes (aluno_id, turma_id, codigo_cracha) VALUES (?, ?, ?)",
+                        (aluno_id, id, codigo_cracha)
+                    )
+                    adicionados += 1
+                    resultados.append({
+                        "linha": row_num,
+                        "status": "sucesso",
+                        "nome": nome,
+                        "cpf": cpf_formatted,
+                        "motivo": "Adicionado com sucesso ao evento (crachá gerado)."
+                    })
+                except sqlite3.IntegrityError:
+                    conn.execute(
+                        "UPDATE eventos_participantes SET codigo_cracha = ? WHERE aluno_id = ? AND turma_id = ? AND codigo_cracha IS NULL",
+                        (codigo_cracha, aluno_id, id)
+                    )
+                    adicionados += 1
+                    resultados.append({
+                        "linha": row_num,
+                        "status": "sucesso",
+                        "nome": nome,
+                        "cpf": cpf_formatted,
+                        "motivo": "Participante já existente no evento (vínculo reconfirmado)."
+                    })
+
+            except Exception as e:
+                erros_count += 1
+                resultados.append({
+                    "linha": row_num,
+                    "status": "erro",
+                    "nome": nome,
+                    "cpf": cpf_formatted,
+                    "motivo": f"Erro interno ao salvar: {str(e)}"
+                })
+
+        conn.commit()
+        if adicionados > 0:
+            registrar_auditoria("Importar Participantes Grade", f"Importou {adicionados} participantes via Grade Interativa no evento '{evento['nome']}' (ID {id})")
+
+        return jsonify({
+            "success": True,
+            "total_processados": len(resultados),
+            "adicionados": adicionados,
+            "erros_count": erros_count,
+            "resultados": resultados
+        })
