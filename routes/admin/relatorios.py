@@ -470,7 +470,71 @@ def admin_relatorio_eventos():
                 query += " GROUP BY a.id ORDER BY total_refeicoes DESC, a.nome ASC"
                 relatorio = conn.execute(query, (evento_id,)).fetchall()
 
-    return render_template('admin/relatorio_eventos.html', eventos=eventos, relatorio=relatorio, evento_id=evento_id, evento_selecionado=evento_selecionado)
+    return render_template('admin/relatorio_eventos.html', 
+                           eventos=eventos, 
+                           relatorio=relatorio, 
+                           evento_id=evento_id, 
+                           evento_selecionado=evento_selecionado)
+
+@admin_bp.route('/admin/relatorios/eventos/<int:evento_id>/imprimir')
+@admin_bp.route('/admin/relatorios/eventos/imprimir')
+def admin_relatorio_eventos_imprimir(evento_id=None):
+    """Página dedicada para impressão oficial do relatório de consumo por evento."""
+    if not is_logged_in_admin(): return redirect(url_for('admin.admin_login'))
+    if not tem_permissao('relatorios'): return redirect(url_for('admin.admin_dashboard'))
+    
+    if evento_id is None:
+        evento_id = request.args.get('evento_id', type=int)
+        
+    if not evento_id:
+        flash('Selecione um evento válido para imprimir.', 'warning')
+        return redirect(url_for('admin.admin_relatorio_eventos'))
+        
+    with closing(get_db_connection()) as conn:
+        evento_selecionado = conn.execute("SELECT * FROM turmas WHERE id = ? AND is_evento = 1", (evento_id,)).fetchone()
+        if not evento_selecionado:
+            flash('Evento não encontrado.', 'error')
+            return redirect(url_for('admin.admin_relatorio_eventos'))
+            
+        query = """
+            SELECT 
+                a.nome, a.cpf, a.instituicao, a.email,
+                COUNT(r.id) as total_refeicoes,
+                GROUP_CONCAT(c.data || ' (' || c.tipo_refeicao || ')', ', ') as datas_consumo
+            FROM alunos a
+            JOIN eventos_participantes ep ON a.id = ep.aluno_id
+            LEFT JOIN reservas r ON a.id = r.aluno_id AND r.status = 'CONSUMIDA'
+            LEFT JOIN cardapios c ON r.cardapio_id = c.id
+            WHERE ep.turma_id = ?
+        """
+        if evento_selecionado['data_inicio'] and evento_selecionado['data_fim']:
+            query += " AND (c.data IS NULL OR (c.data >= ? AND c.data <= ?))"
+            query += " GROUP BY a.id ORDER BY total_refeicoes DESC, a.nome ASC"
+            relatorio = conn.execute(query, (evento_id, evento_selecionado['data_inicio'], evento_selecionado['data_fim'])).fetchall()
+        else:
+            query += " GROUP BY a.id ORDER BY total_refeicoes DESC, a.nome ASC"
+            relatorio = conn.execute(query, (evento_id,)).fetchall()
+            
+        total_participantes = len(relatorio)
+        participantes_atendidos = sum(1 for item in relatorio if (item['total_refeicoes'] or 0) > 0)
+        total_refeicoes_servidas = sum((item['total_refeicoes'] or 0) for item in relatorio)
+        media_refeicoes = round(total_refeicoes_servidas / participantes_atendidos, 1) if participantes_atendidos > 0 else 0
+        data_emissao = datetime.now().strftime('%d/%m/%Y às %H:%M')
+        config = get_config()
+        admin_user = session.get('admin_usuario', 'admin')
+        adm_row = conn.execute("SELECT nome FROM administradores WHERE usuario = ?", (admin_user,)).fetchone()
+        emissor_nome = (adm_row['nome'] if (adm_row and adm_row['nome']) else None) or session.get('admin_nome') or admin_user
+        
+    return render_template('admin/relatorio_eventos_imprimir.html',
+                           evento_selecionado=evento_selecionado,
+                           relatorio=relatorio,
+                           total_participantes=total_participantes,
+                           participantes_atendidos=participantes_atendidos,
+                           total_refeicoes_servidas=total_refeicoes_servidas,
+                           media_refeicoes=media_refeicoes,
+                           data_emissao=data_emissao,
+                           emissor_nome=emissor_nome,
+                           config=config)
 
 @admin_bp.route('/admin/relatorios/periodo/excel')
 def admin_relatorio_periodo_excel():
@@ -621,6 +685,8 @@ def admin_relatorio_dia(cardapio_id):
     turma_id = request.args.get('turma_id', type=int)
     status_filter = request.args.get('status')
     tipo_consumo_filter = request.args.get('tipo_consumo')
+    sem_paginacao = (request.args.get('sem_paginacao') == '1' or request.args.get('todas') == '1')
+    auto_print = request.args.get('print') == '1'
     
     with closing(get_db_connection()) as conn:
         cardapio = conn.execute("SELECT * FROM cardapios WHERE id = ?", (cardapio_id,)).fetchone()
@@ -649,6 +715,10 @@ def admin_relatorio_dia(cardapio_id):
             
         query += " ORDER BY a.nome ASC"
         
+        # Total para os filtros atuais
+        count_query = f"SELECT COUNT(*) FROM ({query})"
+        total = conn.execute(count_query, params).fetchone()[0]
+
         # Paginação
         pagina = request.args.get('page', 1, type=int)
         offset = (pagina - 1) * RELATORIO_POR_PAGINA
@@ -725,6 +795,112 @@ def admin_relatorio_dia(cardapio_id):
                            pagina=pagina,
                            total_paginas=total_paginas,
                            total=total)
+
+@admin_bp.route('/admin/relatorios/<int:cardapio_id>/imprimir')
+def admin_relatorio_dia_imprimir(cardapio_id):
+    """Página dedicada para impressão oficial do relatório diário de refeições."""
+    if not is_logged_in_admin(): return redirect(url_for('admin.admin_login'))
+    if not tem_permissao('relatorios'): return redirect(url_for('admin.admin_dashboard'))
+    
+    turma_id = request.args.get('turma_id', type=int)
+    status_filter = request.args.get('status')
+    tipo_consumo_filter = request.args.get('tipo_consumo')
+    
+    with closing(get_db_connection()) as conn:
+        cardapio = conn.execute("SELECT * FROM cardapios WHERE id = ?", (cardapio_id,)).fetchone()
+        if not cardapio:
+            flash('Cardápio não encontrado.', 'error')
+            return redirect(url_for('admin.admin_relatorios'))
+            
+        query = """
+            SELECT a.nome, a.matricula, a.restricoes, t.nome as turma_nome, r.status, r.tipo_consumo, t.id as turma_id
+            FROM reservas r
+            JOIN alunos a ON r.aluno_id = a.id
+            LEFT JOIN turmas t ON a.turma_id = t.id
+            WHERE r.cardapio_id = ? AND r.status != 'CANCELADA'
+        """
+        params = [cardapio_id]
+        
+        if turma_id:
+            query += " AND t.id = ?"
+            params.append(turma_id)
+        if status_filter:
+            query += " AND r.status = ?"
+            params.append(status_filter)
+        if tipo_consumo_filter:
+            if tipo_consumo_filter == 'NORMAL':
+                query += " AND (r.tipo_consumo = 'NORMAL' OR r.tipo_consumo IS NULL)"
+            else:
+                query += " AND r.tipo_consumo = ?"
+                params.append(tipo_consumo_filter)
+            
+        query += " ORDER BY a.nome ASC"
+        reservas = conn.execute(query, params).fetchall()
+        total = len(reservas)
+        
+        # Resumo por Turma
+        resumo_query = """
+            SELECT t.nome as turma_nome, 
+                   SUM(CASE WHEN (r.tipo_consumo = 'NORMAL' OR r.tipo_consumo IS NULL) THEN 1 ELSE 0 END) as total,
+                   SUM(CASE WHEN r.status = 'CONSUMIDA' AND (r.tipo_consumo = 'NORMAL' OR r.tipo_consumo IS NULL) THEN 1 ELSE 0 END) as consumidas_normais,
+                   SUM(CASE WHEN r.status = 'CONSUMIDA' AND r.tipo_consumo = 'EVENTO' THEN 1 ELSE 0 END) as consumidas_eventos,
+                   SUM(CASE WHEN r.status = 'CONSUMIDA' AND r.tipo_consumo = 'EXTRA' THEN 1 ELSE 0 END) as consumidas_extras
+            FROM reservas r
+            JOIN alunos a ON r.aluno_id = a.id
+            LEFT JOIN turmas t ON a.turma_id = t.id
+            WHERE r.cardapio_id = ? AND r.status != 'CANCELADA'
+            GROUP BY t.id
+            ORDER BY t.nome ASC
+        """
+        resumo_turmas = conn.execute(resumo_query, (cardapio_id,)).fetchall()
+        
+        # Totais Globais
+        totais_query = """
+            SELECT 
+                SUM(CASE WHEN r.status = 'ATIVA' AND (r.tipo_consumo = 'NORMAL' OR r.tipo_consumo IS NULL) THEN 1 ELSE 0 END) as total_ativas,
+                SUM(CASE WHEN r.status = 'CONSUMIDA' AND (r.tipo_consumo = 'NORMAL' OR r.tipo_consumo IS NULL) THEN 1 ELSE 0 END) as consumidas_normal,
+                SUM(CASE WHEN r.status = 'CONSUMIDA' AND r.tipo_consumo = 'EVENTO' THEN 1 ELSE 0 END) as consumidas_evento,
+                SUM(CASE WHEN r.status = 'CONSUMIDA' AND r.tipo_consumo = 'EXTRA' THEN 1 ELSE 0 END) as consumidas_extra
+            FROM reservas r
+            JOIN alunos a ON r.aluno_id = a.id
+            LEFT JOIN turmas t ON a.turma_id = t.id
+            WHERE r.cardapio_id = ? AND r.status != 'CANCELADA'
+        """
+        params_totais = [cardapio_id]
+        if turma_id:
+            totais_query += " AND t.id = ?"
+            params_totais.append(turma_id)
+            
+        row_totais = conn.execute(totais_query, params_totais).fetchone()
+        total_ativas = row_totais['total_ativas'] or 0
+        consumidas_normal = row_totais['consumidas_normal'] or 0
+        consumidas_evento = row_totais['consumidas_evento'] or 0
+        consumidas_extra = row_totais['consumidas_extra'] or 0
+        
+        total_consumidas = consumidas_normal + consumidas_evento + consumidas_extra
+        total_geral = total_ativas + consumidas_normal
+        total_sobras = total_ativas
+        
+        data_emissao = datetime.now().strftime('%d/%m/%Y às %H:%M')
+        config = get_config()
+        admin_user = session.get('admin_usuario', 'admin')
+        adm_row = conn.execute("SELECT nome FROM administradores WHERE usuario = ?", (admin_user,)).fetchone()
+        emissor_nome = (adm_row['nome'] if (adm_row and adm_row['nome']) else None) or session.get('admin_nome') or admin_user
+        
+    return render_template('admin/relatorio_dia_imprimir.html',
+                           cardapio=cardapio,
+                           reservas=reservas,
+                           total_geral=total_geral,
+                           total_consumidas=total_consumidas,
+                           consumidas_normal=consumidas_normal,
+                           consumidas_evento=consumidas_evento,
+                           consumidas_extra=consumidas_extra,
+                           total_sobras=total_sobras,
+                           resumo_turmas=resumo_turmas,
+                           total=total,
+                           data_emissao=data_emissao,
+                           emissor_nome=emissor_nome,
+                           config=config)
 
 
 @admin_bp.route('/admin/relatorios/<int:cardapio_id>/excel')

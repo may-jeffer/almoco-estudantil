@@ -1,11 +1,12 @@
 import os
-from flask import Flask
+from flask import Flask, session
+from contextlib import closing
 
 from utils.legacy import setup_legacy_url_patch
 setup_legacy_url_patch()
 
 from config import get_secure_secret_key
-from database import init_db, get_config
+from database import init_db, get_config, get_db_connection
 from utils.filters import register_filters
 from utils.auth import tem_permissao
 from routes import main_bp, aluno_bp, admin_bp
@@ -40,11 +41,24 @@ def create_app():
     # Template filters
     register_filters(app)
 
-    # Context processor - inject global config and permission checker
+    # Context processor - inject global config, permission checker, and current admin display name
     @app.context_processor
     def inject_config():
         config = get_config()
-        return dict(global_config=config, tem_permissao=tem_permissao)
+        current_admin_nome = session.get('admin_nome')
+        if not current_admin_nome and session.get('admin_usuario'):
+            try:
+                with closing(get_db_connection()) as conn:
+                    adm = conn.execute("SELECT nome FROM administradores WHERE usuario = ?", (session.get('admin_usuario'),)).fetchone()
+                    if adm and adm['nome']:
+                        current_admin_nome = adm['nome']
+                        session['admin_nome'] = adm['nome']
+            except Exception:
+                pass
+        if not current_admin_nome:
+            current_admin_nome = session.get('admin_usuario', 'Administrador')
+
+        return dict(global_config=config, tem_permissao=tem_permissao, current_admin_nome=current_admin_nome)
 
     # Register blueprints
     app.register_blueprint(main_bp)

@@ -44,9 +44,9 @@
                     {% endif %}
                 </p>
             </div>
-            <button class="btn btn-secondary" onclick="window.print()">
+            <a href="{{ url_for('admin.admin_relatorio_eventos_imprimir', evento_id=evento_selecionado.id) }}" target="_blank" class="btn btn-secondary">
                 <i class="ph ph-printer"></i> Imprimir
-            </button>
+            </a>
         </div>
 
         {% if relatorio %}

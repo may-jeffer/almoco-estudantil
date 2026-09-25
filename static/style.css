@@ -2095,3 +2095,493 @@ tr:hover {
   color: #A7F3D0 !important;
 }
 
+/* ==========================================================================
+   DOCUMENTOS INSTITUCIONAIS FORMATADOS PARA IMPRESSÃO E AUDITORIA (A4)
+   ========================================================================== */
+
+.documento-relatorio-a4 {
+  background: #ffffff;
+  color: #111827;
+  border-radius: 8px;
+  border: 1px solid var(--border, #e5e7eb);
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.05));
+  padding: 30px 35px;
+  margin: 0 auto 2.5rem auto;
+  max-width: 1050px;
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  transition: all 0.2s ease;
+}
+
+.doc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid #111827;
+  padding-bottom: 16px;
+  margin-bottom: 20px;
+  gap: 20px;
+}
+
+.doc-header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+}
+
+.doc-logo {
+  max-height: 55px;
+  width: auto;
+  object-fit: contain;
+}
+
+.doc-logo-placeholder {
+  width: 52px;
+  height: 52px;
+  background: #f1f5f9;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  color: #475569;
+}
+
+.doc-inst-info h2 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0;
+  color: #111827;
+}
+
+.doc-inst-sub {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #4b5563;
+  text-transform: uppercase;
+  margin: 2px 0 4px 0;
+  letter-spacing: 0.02em;
+}
+
+.doc-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 4px 0 0 0;
+  letter-spacing: -0.01em;
+}
+
+.doc-header-right {
+  text-align: right;
+}
+
+.doc-badge-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  font-size: 0.8rem;
+  color: #4b5563;
+}
+
+.doc-badge-tag {
+  display: inline-block;
+  background: #111827;
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-bottom: 4px;
+}
+
+.doc-meta-item strong {
+  color: #111827;
+}
+
+.doc-section-info {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 12px 18px;
+  margin-bottom: 20px;
+}
+
+.doc-info-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+}
+
+.doc-info-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.info-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: #64748b;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.info-val-highlight {
+  font-size: 1.05rem;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.doc-kpis-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.doc-kpi-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 10px 14px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.doc-kpi-card.highlight {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.kpi-title {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.03em;
+}
+
+.kpi-num {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.2;
+  margin: 3px 0 1px 0;
+}
+
+.kpi-sub {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.doc-table-section {
+  margin-bottom: 25px;
+}
+
+.doc-table-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1.5px solid #cbd5e1;
+}
+
+.doc-table-title span {
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #334155;
+  letter-spacing: 0.03em;
+}
+
+.doc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 8.5pt;
+  margin-bottom: 8px;
+}
+
+.doc-table th {
+  background: #f1f5f9;
+  color: #334155;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 7.5pt;
+  letter-spacing: 0.04em;
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+  text-align: left;
+}
+
+.doc-table td {
+  padding: 7px 10px;
+  border: 1px solid #e2e8f0;
+  color: #1e293b;
+  vertical-align: middle;
+}
+
+.doc-table tr:nth-child(even) {
+  background: #f8fafc;
+}
+
+.doc-table tfoot td {
+  background: #f1f5f9;
+  border-top: 2px solid #0f172a;
+  font-size: 8.5pt;
+  padding: 8px 10px;
+  color: #0f172a;
+}
+
+.doc-part-nome {
+  font-size: 0.95em;
+  color: #0f172a;
+}
+
+.doc-part-email {
+  font-size: 0.78em;
+  color: #64748b;
+  margin-top: 1px;
+}
+
+.doc-signatures-section {
+  margin-top: 32px;
+  page-break-inside: avoid;
+}
+
+.doc-disclaimer {
+  font-size: 0.76rem;
+  color: #475569;
+  line-height: 1.4;
+  font-style: italic;
+  margin-bottom: 30px;
+  text-align: justify;
+  background: #fafafa;
+  padding: 10px 14px;
+  border-left: 3px solid #cbd5e1;
+  border-radius: 0 4px 4px 0;
+}
+
+.doc-signatures-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.doc-sig-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.doc-sig-line {
+  width: 100%;
+  border-top: 1px solid #0f172a;
+  margin-bottom: 6px;
+}
+
+.doc-sig-box strong {
+  font-size: 0.82rem;
+  color: #0f172a;
+  display: block;
+}
+
+.doc-sig-box span {
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
+.doc-footer {
+  display: flex;
+  justify-content: space-between;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 8px;
+  margin-top: 16px;
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+/* Modo Escuro em Tela para o Documento */
+@media screen {
+  [data-theme="dark"] .documento-relatorio-a4 {
+    background: #1e293b;
+    color: #f8fafc;
+    border-color: #334155;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.4);
+  }
+  [data-theme="dark"] .doc-header {
+    border-bottom-color: #475569;
+  }
+  [data-theme="dark"] .doc-inst-info h2,
+  [data-theme="dark"] .doc-title,
+  [data-theme="dark"] .info-val-highlight,
+  [data-theme="dark"] .kpi-num,
+  [data-theme="dark"] .doc-part-nome,
+  [data-theme="dark"] .doc-table tfoot td,
+  [data-theme="dark"] .doc-sig-box strong,
+  [data-theme="dark"] .doc-meta-item strong {
+    color: #f8fafc;
+  }
+  [data-theme="dark"] .doc-badge-tag {
+    background: #334155;
+    color: #f8fafc;
+  }
+  [data-theme="dark"] .doc-inst-sub,
+  [data-theme="dark"] .doc-badge-meta,
+  [data-theme="dark"] .info-label,
+  [data-theme="dark"] .kpi-title,
+  [data-theme="dark"] .kpi-sub,
+  [data-theme="dark"] .doc-part-email,
+  [data-theme="dark"] .doc-disclaimer,
+  [data-theme="dark"] .doc-sig-box span {
+    color: #94a3b8;
+  }
+  [data-theme="dark"] .doc-section-info,
+  [data-theme="dark"] .doc-kpi-card {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: #334155;
+  }
+  [data-theme="dark"] .doc-kpi-card.highlight {
+    background: rgba(16, 185, 129, 0.08);
+    border-color: rgba(16, 185, 129, 0.3);
+  }
+  [data-theme="dark"] .doc-table th {
+    background: #0f172a;
+    color: #cbd5e1;
+    border-color: #334155;
+  }
+  [data-theme="dark"] .doc-table td {
+    border-color: #334155;
+    color: #f8fafc;
+  }
+  [data-theme="dark"] .doc-table tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.02);
+  }
+  [data-theme="dark"] .doc-disclaimer {
+    background: rgba(255, 255, 255, 0.02);
+    border-left-color: #475569;
+  }
+  [data-theme="dark"] .doc-sig-line {
+    border-top-color: #475569;
+  }
+  [data-theme="dark"] .doc-footer {
+    border-top-color: #334155;
+    color: #64748b;
+  }
+}
+
+/* ==========================================================================
+   REGRAS DE IMPRESSÃO ESTITAS PARA O DOCUMENTO A4
+   ========================================================================== */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm 12mm;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .documento-relatorio-a4 {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  .doc-header {
+    border-bottom: 2px solid #000000 !important;
+  }
+
+  .doc-inst-info h2,
+  .doc-title,
+  .doc-meta-item strong,
+  .info-val-highlight,
+  .kpi-num,
+  .doc-part-nome,
+  .doc-table tfoot td,
+  .doc-sig-box strong {
+    color: #000000 !important;
+  }
+
+  .doc-badge-tag {
+    background: #000000 !important;
+    color: #ffffff !important;
+  }
+
+  .doc-section-info {
+    background: #f8fafc !important;
+    border: 1px solid #cbd5e1 !important;
+  }
+
+  .doc-kpi-card {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+  }
+
+  .doc-kpi-card.highlight {
+    background: #f0fdf4 !important;
+    border: 1px solid #86efac !important;
+  }
+
+  .doc-table th {
+    background: #f1f5f9 !important;
+    color: #000000 !important;
+    border: 1px solid #94a3b8 !important;
+  }
+
+  .doc-table td {
+    border: 1px solid #cbd5e1 !important;
+    color: #000000 !important;
+  }
+
+  .doc-table tr:nth-child(even) {
+    background: #f8fafc !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+
+  tr {
+    page-break-inside: avoid !important;
+  }
+
+  .doc-signatures-section {
+    page-break-inside: avoid !important;
+  }
+
+  .doc-sig-line {
+    border-top: 1px solid #000000 !important;
+  }
+
+  .doc-disclaimer {
+    background: #f8fafc !important;
+    border-left: 3px solid #94a3b8 !important;
+    color: #334155 !important;
+  }
+}
+
+

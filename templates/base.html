@@ -49,6 +49,54 @@
             } catch(e) {}
         })();
     </script>
+    <style>
+        /* REGRAS GLOBAIS DE IMPRESSÃO - PROTEÇÃO CONTRA VAZAMENTO DE SIDEBAR/TOPBAR */
+        @media print {
+            .admin-sidebar,
+            .admin-topbar,
+            .admin-sidebar-backdrop,
+            .admin-sidebar-footer,
+            .navbar,
+            .no-print,
+            .btn,
+            button,
+            #paletteModal,
+            .alerts,
+            #autologout-banner,
+            nav {
+                display: none !important;
+            }
+
+            body, html {
+                background: #ffffff !important;
+                color: #111827 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .admin-layout {
+                display: block !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            .admin-main-wrapper,
+            .admin-main-content,
+            main {
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                min-height: auto !important;
+                background: transparent !important;
+                border: none !important;
+                box-shadow: none !important;
+            }
+        }
+    </style>
 </head>
 
 <body>
@@ -199,10 +247,10 @@
             <div class="admin-sidebar-footer">
                 <div class="admin-user-info">
                     <div class="admin-user-avatar">
-                        {{ session.get('admin_usuario', 'A')[0]|upper }}
+                        {{ (current_admin_nome or session.get('admin_nome') or session.get('admin_usuario', 'A'))[0]|upper }}
                     </div>
                     <div class="admin-user-details">
-                        <span class="admin-user-name" title="{{ session.get('admin_usuario', 'Administrador') }}">{{ session.get('admin_usuario', 'Administrador') }}</span>
+                        <span class="admin-user-name" title="{{ current_admin_nome or session.get('admin_nome') or session.get('admin_usuario', 'Administrador') }}">{{ current_admin_nome or session.get('admin_nome') or session.get('admin_usuario', 'Administrador') }}</span>
                         <span class="admin-user-role">{{ 'Mestre' if (session.get('admin_usuario') == 'admin' or 'all' in session.get('admin_permissoes', [])) else 'Operador' }}</span>
                     </div>
                 </div>
@@ -279,7 +327,7 @@
         <div class="navbar-links">
             {% if request.path.startswith('/admin') %}
                 {% if session.get('is_admin') %}
-                <span>Admin: {{ session.get('admin_usuario', 'Administrador') }}</span>
+                <span>Admin: {{ current_admin_nome or session.get('admin_nome') or session.get('admin_usuario', 'Administrador') }}</span>
                 <a href="{{ url_for('admin_dashboard') }}">Painel</a>
                 {% if tem_permissao('fila') %}
                 <a href="{{ url_for('admin_entrega') }}">Fila</a>

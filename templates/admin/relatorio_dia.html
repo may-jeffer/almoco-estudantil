@@ -6,7 +6,7 @@
         <a href="{{ url_for('admin_relatorios') }}" style="color: var(--text-muted); display: inline-flex; align-items: center;"><i class="ph ph-arrow-left" style="margin-right: 4px;"></i> Voltar a Lista</a>
         <h1 style="margin-top: 1rem;"><i class="ph ph-receipt"></i> Relatório de Refeições</h1>
         <div style="display: flex; gap: 1rem; margin-top: 1rem;">
-            <button onclick="window.print()" class="btn btn-secondary"><i class="ph ph-printer" style="margin-right: 8px;"></i> Imprimir / PDF</button>
+            <a href="{{ url_for('admin.admin_relatorio_dia_imprimir', cardapio_id=cardapio.id, turma_id=filtro_turma or '', status=filtro_status or '', tipo_consumo=filtro_tipo or '') }}" target="_blank" class="btn btn-secondary"><i class="ph ph-printer" style="margin-right: 8px;"></i> Imprimir / PDF</a>
             <a href="{{ url_for('admin_relatorio_excel', cardapio_id=cardapio.id) }}" class="btn" style="background: #1D6F42; color: white;"><i class="ph ph-file-xls" style="margin-right: 8px;"></i> Baixar Planilha (Excel)</a>
         </div>
     </div>
@@ -241,14 +241,4 @@
         {% endif %}
     </div>
 </div>
-
-<style>
-@media print {
-    body { background: white; color: black; }
-    .navbar, .no-print { display: none !important; }
-    .card { box-shadow: none !important; border: 1px solid #ccc !important; page-break-inside: avoid; }
-    main { padding: 0 !important; max-width: 100% !important; }
-    .grid { gap: 1rem; }
-}
-</style>
 {% endblock %}

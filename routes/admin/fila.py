@@ -206,6 +206,7 @@ def admin_entrega():
         total_reservas_sistema = 0
         total_entregues_reserva = 0
         total_extras = 0
+        total_eventos = 0
         total_entregues = 0
         qtd_solicitada_empresa = 0
         

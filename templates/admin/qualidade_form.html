@@ -422,7 +422,7 @@ function adicionarItem(tipoPredefinido = 'Proteína', outroTexto = '', dados = n
         } else if (primeiroItem && primeiroItem.querySelector('.prof-medicao').value) {
             profInput.value = primeiroItem.querySelector('.prof-medicao').value;
         } else {
-            profInput.value = "{{ session.get('admin_usuario', '') }}";
+            profInput.value = "{{ current_admin_nome or session.get('admin_nome') or session.get('admin_usuario', '') }}";
         }
 
         if (dados.responsavel_recebimento) {
@@ -452,7 +452,7 @@ function adicionarItem(tipoPredefinido = 'Proteína', outroTexto = '', dados = n
             recInput.value = primeiroItem.querySelector('.resp-recebimento').value;
             fornInput.value = primeiroItem.querySelector('.resp-fornecedor').value;
         } else {
-            profInput.value = "{{ session.get('admin_usuario', '') }}";
+            profInput.value = "{{ current_admin_nome or session.get('admin_nome') or session.get('admin_usuario', '') }}";
         }
     }
 
