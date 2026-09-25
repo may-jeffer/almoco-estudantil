@@ -1032,13 +1032,13 @@ function switchTab(tabId) {
 
                     item.innerHTML = `
                         <div class="student-freq-info">
-                            <strong class="student-freq-name">${aluno.nome}</strong>
+                            <strong class="student-freq-name">${escapeHtml(aluno.nome)}</strong>
                             <div class="student-freq-sub">
-                                Matrícula: ${aluno.matricula} • ${aluno.turma_nome}
+                                Matrícula: ${escapeHtml(aluno.matricula)} • ${escapeHtml(aluno.turma_nome || 'Sem Turma')}
                             </div>
                         </div>
                         <div class="student-freq-badge">
-                            ${aluno.total_consumidas}/${aluno.total_reservas}
+                            ${escapeHtml(aluno.total_consumidas)}/${escapeHtml(aluno.total_reservas)}
                         </div>
                     `;
 

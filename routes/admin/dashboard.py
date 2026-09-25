@@ -275,8 +275,8 @@ def admin_administradores_alterar_senha(id):
     if not pode_alterar: return redirect(url_for('admin.admin_dashboard'))
     
     nova_senha = request.form.get('nova_senha')
-    if not nova_senha or len(nova_senha) < 4:
-        flash('Senha muito curta. Use ao menos 4 caracteres.', 'error')
+    if not nova_senha or len(nova_senha) < 6:
+        flash('Senha muito curta. Use ao menos 6 caracteres.', 'error')
         return redirect(url_for('admin.admin_administradores'))
         
     hash_senha = generate_password_hash(nova_senha)
@@ -454,8 +454,8 @@ def admin_recuperar_senha(token):
             nova_senha = request.form.get('nova_senha', '')
             confirma_senha = request.form.get('confirma_senha', '')
 
-            if len(nova_senha) < 4:
-                flash('Senha muito curta. Digite ao menos 4 caracteres.', 'error')
+            if len(nova_senha) < 6:
+                flash('Senha muito curta. Digite ao menos 6 caracteres.', 'error')
                 return render_template('admin/recuperar_senha.html', token=token, admin=admin)
 
             if nova_senha != confirma_senha:

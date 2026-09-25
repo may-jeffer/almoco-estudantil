@@ -920,6 +920,10 @@ def admin_alunos_suap_sync():
 @admin_bp.route('/admin/api/alunos/buscar')
 def admin_api_buscar_alunos():
     if not is_logged_in_admin(): return {"error": "Unauthorized"}, 401
+    # Permite acesso apenas a módulos que necessitam da busca rápida de alunos (alunos, entrega/fila ou reservas)
+    if not (tem_permissao('alunos') or tem_permissao('fila') or tem_permissao('reservas') or tem_permissao('all')):
+        return {"error": "Forbidden"}, 403
+
     q = request.args.get('q', '').strip()
     if len(q) < 2: return {"alunos": []}
     
@@ -938,4 +942,17 @@ def admin_api_buscar_alunos():
         query += " LIMIT 10"
         alunos = conn.execute(query, params).fetchall()
         
-    return {"alunos": [dict(a) for a in alunos]}
+    pode_ver_cpf_completo = tem_permissao('alunos') or tem_permissao('all')
+    resultado = []
+    for a in alunos:
+        d = dict(a)
+        if not pode_ver_cpf_completo and d.get('cpf'):
+            # Mascara os dígitos para privacidade LGPD (ex: ***.456.789-**)
+            digits = ''.join(filter(str.isdigit, str(d['cpf'])))
+            if len(digits) == 11:
+                d['cpf'] = f"***.{digits[3:6]}.{digits[6:9]}-**"
+            else:
+                d['cpf'] = "***"
+        resultado.append(d)
+
+    return {"alunos": resultado}

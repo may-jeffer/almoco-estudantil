@@ -35,42 +35,7 @@ def create_app():
     # Initialize DB
     init_db()
 
-    # Sincronização Automática do SUAP em segundo plano (Ponto 8)
-    import threading
-    import time
-    def run_auto_suap_sync():
-        time.sleep(15)  # Aguarda a inicialização completa do app
-        while True:
-            try:
-                from database import closing, get_db_connection
-                import json
-                mock_json = '''
-                [
-                    {"nome": "Maria Emília (Teste SUAP Auto)", "matricula": "202611SUAP", "cpf": "234.345.567-89", "data_nascimento": "2005-08-20"},
-                    {"nome": "Felipe Souza (Teste SUAP Auto)", "matricula": "202612SUAP", "cpf": "098.876.654-32", "data_nascimento": "2006-12-15"}
-                ]
-                '''
-                alunos_suap = json.loads(mock_json)
-                adicionados = 0
-                with closing(get_db_connection()) as conn:
-                    for asuap in alunos_suap:
-                        existe = conn.execute("SELECT id FROM alunos WHERE matricula = ? OR cpf = ?", (asuap['matricula'], asuap['cpf'])).fetchone()
-                        if not existe:
-                            conn.execute(
-                                "INSERT INTO alunos (nome, matricula, cpf, data_nascimento, restricoes, turma_id) VALUES (?, ?, ?, ?, ?, 1)",
-                                (asuap['nome'], asuap['matricula'], asuap['cpf'], asuap['data_nascimento'], '')
-                            )
-                            adicionados += 1
-                    conn.commit()
-                if adicionados > 0:
-                    print(f"[SUAP Auto-Sync] Sincronizacao realizada: {adicionados} novo(s) aluno(s) importado(s).")
-                else:
-                    print("[SUAP Auto-Sync] Sincronizacao realizada: nenhum aluno novo encontrado.")
-            except Exception as e:
-                print(f"[SUAP Auto-Sync] Erro ao executar sincronizacao em background: {e}")
-            time.sleep(86400)  # Executa uma vez a cada 24 horas
 
-    threading.Thread(target=run_auto_suap_sync, daemon=True).start()
 
     # Template filters
     register_filters(app)

@@ -5,8 +5,9 @@ env/
 
 # Ignorar banco de dados SQLite (Não enviar os dados dos alunos para o git)
 *.db
+*.db*
 *.sqlite3
-database.db
+database.db*
 
 # Ignorar chaves secretas, certificados locais e ACME challenges
 .secret_key

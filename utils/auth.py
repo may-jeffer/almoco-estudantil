@@ -44,14 +44,21 @@ class SimpleRateLimiter:
     def is_blocked(self, ip):
         with self.lock:
             now = time.time()
-            self.attempts[ip] = [t for t in self.attempts[ip] if now - t < self.window]
-            if len(self.attempts[ip]) >= self.limit:
-                return True
-            return False
+            valid_times = [t for t in self.attempts.get(ip, []) if now - t < self.window]
+            if not valid_times:
+                self.attempts.pop(ip, None)
+                return False
+            self.attempts[ip] = valid_times
+            return len(valid_times) >= self.limit
             
     def record_attempt(self, ip):
         with self.lock:
             now = time.time()
             self.attempts[ip].append(now)
+            # Expurgar chaves antigas periodicamente para evitar crescimento de memória
+            if len(self.attempts) > 500:
+                stale_keys = [k for k, v in self.attempts.items() if not v or (now - v[-1]) >= self.window]
+                for k in stale_keys:
+                    self.attempts.pop(k, None)
 
 login_limiter = SimpleRateLimiter(limit=5, window=60)

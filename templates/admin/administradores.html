@@ -324,7 +324,7 @@
             const form  = document.getElementById('formEditAdmin');
             const chkAll = document.getElementById('chk_all_edit');
 
-            title.innerHTML = `<i class="ph ph-user-gear" style="color: var(--primary);"></i> Editar: ${nome || usuario}`;
+            title.innerHTML = `<i class="ph ph-user-gear" style="color: var(--primary);"></i> Editar: ${escapeHtml(nome || usuario)}`;
             form.action = `/admin/administradores/editar/${id}`;
 
             document.getElementById('edit_nome').value = nome || '';

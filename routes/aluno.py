@@ -1,3 +1,4 @@
+import sqlite3
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 from datetime import datetime
 import qrcode
@@ -392,13 +393,19 @@ def reservar(cardapio_id):
                 
                 contexto_turma = session.get('contexto_turma_id')
                 novo_codigo = generate_unique_code()
-                conn.execute("UPDATE reservas SET status='ATIVA', codigo_unico=?, turma_id=? WHERE id = ?", (novo_codigo, contexto_turma, existente['id']))
-                conn.commit()
+                try:
+                    conn.execute("UPDATE reservas SET status='ATIVA', codigo_unico=?, turma_id=? WHERE id = ?", (novo_codigo, contexto_turma, existente['id']))
+                    conn.commit()
+                except sqlite3.IntegrityError:
+                    conn.rollback()
+                    flash('Você já possui uma reserva ativa para esta refeição.', 'warning')
+                    return redirect(url_for('aluno.aluno_dashboard'))
+
                 flash('Reserva reativada com sucesso!', 'success')
                 reserva_atualizada = conn.execute("SELECT * FROM reservas WHERE id = ?", (existente['id'],)).fetchone()
                 threading.Thread(target=enviar_qr_por_email, args=(aluno, reserva_atualizada, cardapio, config)).start()
             else:
-                flash('Você já possui uma reserva.', 'warning')
+                flash('Você já possui uma reserva ativa para esta refeição.', 'warning')
         else:
             todas_ativas = conn.execute(
                 "SELECT r.id, c.data FROM reservas r JOIN cardapios c ON r.cardapio_id = c.id WHERE r.aluno_id = ? AND r.status = 'ATIVA'",
@@ -412,11 +419,17 @@ def reservar(cardapio_id):
             
             contexto_turma = session.get('contexto_turma_id')
             novo_codigo = generate_unique_code()
-            conn.execute(
-                "INSERT INTO reservas (aluno_id, cardapio_id, codigo_unico, data_registro, turma_id) VALUES (?, ?, ?, ?, ?)",
-                (aluno_id, cardapio_id, novo_codigo, datetime_now_str(), contexto_turma)
-            )
-            conn.commit()
+            try:
+                conn.execute(
+                    "INSERT INTO reservas (aluno_id, cardapio_id, codigo_unico, data_registro, turma_id) VALUES (?, ?, ?, ?, ?)",
+                    (aluno_id, cardapio_id, novo_codigo, datetime_now_str(), contexto_turma)
+                )
+                conn.commit()
+            except sqlite3.IntegrityError:
+                conn.rollback()
+                flash('Você já possui uma reserva ativa para esta refeição.', 'warning')
+                return redirect(url_for('aluno.aluno_dashboard'))
+
             flash('Reserva confirmada com sucesso!', 'success')
             reserva_nova = conn.execute(
                 "SELECT * FROM reservas WHERE aluno_id = ? AND cardapio_id = ? AND status = 'ATIVA'",

@@ -840,3 +840,26 @@ def init_db():
             except Exception as e:
                 print(f"Aviso migração 41: {e}")
 
+            # Migração automática 42: Índice único condicional para evitar reservas ativas duplicadas (concorrência)
+            try:
+                # Sanitiza duplicatas legadas mantendo apenas uma reserva ativa por aluno/cardapio
+                cur.execute("""
+                    DELETE FROM reservas 
+                    WHERE status = 'ATIVA' 
+                      AND (tipo_consumo = 'NORMAL' OR tipo_consumo IS NULL)
+                      AND id NOT IN (
+                          SELECT MIN(id) 
+                          FROM reservas 
+                          WHERE status = 'ATIVA' AND (tipo_consumo = 'NORMAL' OR tipo_consumo IS NULL)
+                          GROUP BY aluno_id, cardapio_id
+                      )
+                """)
+                cur.execute("""
+                    CREATE UNIQUE INDEX IF NOT EXISTS idx_reserva_aluno_cardapio_ativa 
+                    ON reservas(aluno_id, cardapio_id) 
+                    WHERE status = 'ATIVA' AND (tipo_consumo = 'NORMAL' OR tipo_consumo IS NULL)
+                """)
+                conn.commit()
+            except Exception as e:
+                print(f"Aviso migração 42: {e}")
+

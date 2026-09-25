@@ -84,8 +84,8 @@ def main():
         if args.user and args.password:
             usuario = args.user.strip()
             senha = args.password
-            if len(senha) < 4:
-                print(f"{RED}Erro: A senha precisa ter no mínimo 4 caracteres.{RESET}")
+            if len(senha) < 6:
+                print(f"{RED}Erro: A senha precisa ter no mínimo 6 caracteres.{RESET}")
                 sys.exit(1)
             try:
                 criar_admin_no_banco(conn, usuario, senha, nome=args.nome, cpf=args.cpf, setor=args.setor, email=args.email.lower())
@@ -102,8 +102,8 @@ def main():
             return
 
         senha = getpass.getpass("Digite a SENHA para este Admin: ")
-        if len(senha) < 4:
-            print(f"{RED}Erro: A senha precisa ter no mínimo 4 caracteres.{RESET}")
+        if len(senha) < 6:
+            print(f"{RED}Erro: A senha precisa ter no mínimo 6 caracteres.{RESET}")
             return
 
         confirma = getpass.getpass("Confirme a SENHA: ")

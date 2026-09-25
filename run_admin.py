@@ -12,7 +12,7 @@ if __name__ == '__main__':
     try:
         # Por segurança, desabilitamos o modo debug por padrão em produção para evitar a exposição do console interativo do Werkzeug.
         # Caso precise ativá-lo para desenvolvimento local, defina a variável de ambiente FLASK_DEBUG=1.
-        debug_mode = os.environ.get('FLASK_DEBUG', '1') in ('1', 'true', 'True')
+        debug_mode = os.environ.get('FLASK_DEBUG', '0') in ('1', 'true', 'True')
         
         # Roda com criptografia auto-assinada para permitir acesso à Camera (HTML5 getUserMedia)
         app.run(host='0.0.0.0', port=5443, ssl_context='adhoc', debug=debug_mode)

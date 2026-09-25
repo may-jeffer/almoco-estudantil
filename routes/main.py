@@ -5,7 +5,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import time
 
 from database import closing, get_db_connection, get_config
-from utils.auth import is_logged_in_aluno
+from utils.auth import is_logged_in_aluno, login_limiter
 from utils.mailer import enviar_email_recuperacao
 from utils.helpers import date_hoje_str, datetime_now_str, parse_data_nascimento, normalizar_cpf
 import json
@@ -342,6 +342,11 @@ def pesquisa_responder(slug):
 def pesquisa_identificar(slug):
     """Autenticação/Identificação rápida do estudante para responder pesquisa identificada."""
     slug = slug.strip().upper()
+    client_ip = request.remote_addr or '127.0.0.1'
+    if login_limiter.is_blocked(client_ip):
+        flash('Muitas tentativas consecutivas de identificação. Por segurança, aguarde 1 minuto.', 'error')
+        return redirect(url_for('main.pesquisa_responder', slug=slug))
+
     config = get_config()
     modo_login = dict(config).get('modo_login_aluno', 'DATA_NASC') if config else 'DATA_NASC'
 
@@ -369,6 +374,7 @@ def pesquisa_identificar(slug):
                 (cpf_clean, cpf_formatted, cpf_raw, normalized_data, data_nascimento)
             ).fetchone()
             if not aluno:
+                login_limiter.record_attempt(client_ip)
                 flash('CPF ou Data de Nascimento inválidos. Verifique os dados.', 'error')
                 return redirect(url_for('main.pesquisa_responder', slug=slug))
         else:
@@ -377,6 +383,7 @@ def pesquisa_identificar(slug):
                 (cpf_clean, cpf_formatted, cpf_raw)
             ).fetchone()
             if not aluno:
+                login_limiter.record_attempt(client_ip)
                 flash('CPF não encontrado.', 'error')
                 return redirect(url_for('main.pesquisa_responder', slug=slug))
 
@@ -398,6 +405,7 @@ def pesquisa_identificar(slug):
                     senha_valida = True
 
             if not senha_valida:
+                login_limiter.record_attempt(client_ip)
                 flash('Senha incorreta.', 'error')
                 return redirect(url_for('main.pesquisa_responder', slug=slug))
 
@@ -424,6 +432,10 @@ def pesquisa_enviar(slug):
             flash('Este formulário está inativo.', 'error')
             return redirect(url_for('main.pesquisa_responder', slug=slug))
 
+        if formulario['data_inicio'] and hoje < formulario['data_inicio']:
+            flash('Este formulário ainda não iniciou o período de respostas.', 'error')
+            return redirect(url_for('main.pesquisa_responder', slug=slug))
+
         if formulario['data_fim'] and hoje > formulario['data_fim']:
             flash('Este formulário expirou.', 'error')
             return redirect(url_for('main.pesquisa_responder', slug=slug))
@@ -438,8 +450,11 @@ def pesquisa_enviar(slug):
                 return redirect(url_for('main.pesquisa_responder', slug=slug))
 
             aluno = conn.execute("SELECT a.nome, a.matricula, t.nome as turma_nome FROM alunos a LEFT JOIN turmas t ON a.turma_id = t.id WHERE a.id = ?", (aluno_id,)).fetchone()
-            if aluno:
-                aluno_identificacao = f"{aluno['nome']} (Mat: {aluno['matricula']} - Turma: {aluno['turma_nome'] or 'Sem Turma'})"
+            if not aluno:
+                flash('Identificação de estudante não encontrada ou inválida. Por favor, identifique-se novamente.', 'error')
+                return redirect(url_for('main.pesquisa_responder', slug=slug))
+
+            aluno_identificacao = f"{aluno['nome']} (Mat: {aluno['matricula']} - Turma: {aluno['turma_nome'] or 'Sem Turma'})"
 
             # Bloqueio de duplicidade
             ja_respondeu = conn.execute(

@@ -659,7 +659,7 @@ async function abrirTrajetoria(alunoId) {
         if (!resp.ok) throw new Error("Erro ao buscar histórico.");
         const data = await resp.json();
 
-        sub.innerHTML = `<strong>${data.aluno.nome}</strong> (Matrícula: <code>${data.aluno.matricula}</code>) &bull; Situação Atual: <strong>${data.aluno.situacao_matricula}</strong>`;
+        sub.innerHTML = `<strong>${escapeHtml(data.aluno.nome)}</strong> (Matrícula: <code>${escapeHtml(data.aluno.matricula)}</code>) &bull; Situação Atual: <strong>${escapeHtml(data.aluno.situacao_matricula)}</strong>`;
 
         if (data.historico.length === 0) {
             cont.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding: 1.5rem;">Nenhum histórico anterior registrado para este estudante.</p>';
@@ -668,8 +668,8 @@ async function abrirTrajetoria(alunoId) {
 
         let html = '<div style="position:relative; padding-left: 1.5rem; border-left: 2px solid var(--primary); margin-left: 0.75rem;">';
         data.historico.forEach(h => {
-            const anoBadge = h.ano_letivo ? `<span class="badge" style="background: rgba(59, 130, 246, 0.1); color:#2563eb; font-weight: bold;">Ano ${h.ano_letivo}</span>` : '';
-            const serieBadge = h.serie_ano ? `<span class="badge" style="background: rgba(16, 185, 129, 0.1); color:#059669; font-weight: bold;">${h.serie_ano}º Ano</span>` : '';
+            const anoBadge = h.ano_letivo ? `<span class="badge" style="background: rgba(59, 130, 246, 0.1); color:#2563eb; font-weight: bold;">Ano ${escapeHtml(h.ano_letivo)}</span>` : '';
+            const serieBadge = h.serie_ano ? `<span class="badge" style="background: rgba(16, 185, 129, 0.1); color:#059669; font-weight: bold;">${escapeHtml(h.serie_ano)}º Ano</span>` : '';
             
             let statusColor = '#059669';
             if (h.situacao === 'Retido') statusColor = '#d97706';
@@ -681,14 +681,14 @@ async function abrirTrajetoria(alunoId) {
                     <div style="position: absolute; left: -1.95rem; top: 0.2rem; width: 12px; height: 12px; border-radius: 50%; background: ${statusColor}; border: 2px solid var(--surface);"></div>
                     <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem 1rem;">
                         <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
-                            <strong style="font-size: 0.95rem;">${h.turma_nome || 'Turma não informada'}</strong>
+                            <strong style="font-size: 0.95rem;">${escapeHtml(h.turma_nome || 'Turma não informada')}</strong>
                             <div>${anoBadge} ${serieBadge}</div>
                         </div>
                         <div style="font-size: 0.85rem; color: var(--text-muted); display:flex; justify-content:space-between; flex-wrap:wrap; gap: 0.5rem;">
-                            <span>Situação: <strong style="color: ${statusColor};">${h.situacao}</strong></span>
-                            <span>Período: ${h.data_inicio} ${h.data_fim ? 'até ' + h.data_fim : '(Ativo)'}</span>
+                            <span>Situação: <strong style="color: ${statusColor};">${escapeHtml(h.situacao)}</strong></span>
+                            <span>Período: ${escapeHtml(h.data_inicio)} ${h.data_fim ? 'até ' + escapeHtml(h.data_fim) : '(Ativo)'}</span>
                         </div>
-                        ${h.observacao ? `<div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.4rem; font-style: italic;">Obs: ${h.observacao}</div>` : ''}
+                        ${h.observacao ? `<div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.4rem; font-style: italic;">Obs: ${escapeHtml(h.observacao)}</div>` : ''}
                     </div>
                 </div>
             `;
@@ -696,7 +696,7 @@ async function abrirTrajetoria(alunoId) {
         html += '</div>';
         cont.innerHTML = html;
     } catch (err) {
-        cont.innerHTML = `<p style="color:var(--danger); padding:1rem;">Falha ao carregar trajetória: ${err.message}</p>`;
+        cont.innerHTML = `<p style="color:var(--danger); padding:1rem;">Falha ao carregar trajetória: ${escapeHtml(err.message)}</p>`;
     }
 }
 function fecharTrajetoria() {
